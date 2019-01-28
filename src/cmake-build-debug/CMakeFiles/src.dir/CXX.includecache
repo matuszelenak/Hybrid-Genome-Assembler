@@ -1,0 +1,18 @@
+#IncludeRegexLine: ^[ 	]*[#%][ 	]*(include|import)[ 	]*[<"]([^">]+)([">])
+
+#IncludeRegexScan: ^.*$
+
+#IncludeRegexComplain: ^$
+
+#IncludeRegexTransform: 
+
+/home/whiskas/Documents/MEGAsync/FMFI/2. ročník Mgr/Diplomovka/Hybrid-Genome-Assembler/src/kmer_categorizer.cpp
+iostream
+-
+unordered_map
+-
+vector
+-
+string
+-
+

@@ -1,0 +1,1 @@
+/usr/bin/g++  -g   CMakeFiles/src.dir/kmer_categorizer.cpp.o  -o src 

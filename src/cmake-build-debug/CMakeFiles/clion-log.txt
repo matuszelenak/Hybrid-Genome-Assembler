@@ -1,0 +1,4 @@
+/snap/clion/58/bin/cmake/linux/bin/cmake -DCMAKE_BUILD_TYPE=Debug -DCMAKE_CXX_COMPILER=/usr/bin/g++ -G "CodeBlocks - Unix Makefiles" "/home/whiskas/Documents/MEGAsync/FMFI/2. ročník Mgr/Diplomovka/Hybrid-Genome-Assembler/src"
+-- Configuring done
+-- Generating done
+-- Build files have been written to: /home/whiskas/Documents/MEGAsync/FMFI/2. ročník Mgr/Diplomovka/Hybrid-Genome-Assembler/src/cmake-build-debug

@@ -1,0 +1,3 @@
+/home/whiskas/Documents/MEGAsync/FMFI/2. ročník Mgr/Diplomovka/Hybrid-Genome-Assembler/src/cmake-build-debug/CMakeFiles/rebuild_cache.dir
+/home/whiskas/Documents/MEGAsync/FMFI/2. ročník Mgr/Diplomovka/Hybrid-Genome-Assembler/src/cmake-build-debug/CMakeFiles/src.dir
+/home/whiskas/Documents/MEGAsync/FMFI/2. ročník Mgr/Diplomovka/Hybrid-Genome-Assembler/src/cmake-build-debug/CMakeFiles/edit_cache.dir
