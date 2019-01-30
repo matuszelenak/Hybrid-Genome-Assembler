@@ -1,0 +1,6 @@
+venv/
+cmake-build-debug/
+src
+src.cbp
+CMakeCache.txt
+.idea/
