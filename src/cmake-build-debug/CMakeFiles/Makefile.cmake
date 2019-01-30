@@ -25,6 +25,7 @@ set(CMAKE_MAKEFILE_DEPENDS
   "/snap/clion/58/bin/cmake/linux/share/cmake-3.13/Modules/Compiler/GNU-C.cmake"
   "/snap/clion/58/bin/cmake/linux/share/cmake-3.13/Modules/Compiler/GNU-CXX.cmake"
   "/snap/clion/58/bin/cmake/linux/share/cmake-3.13/Modules/Compiler/GNU.cmake"
+  "/snap/clion/58/bin/cmake/linux/share/cmake-3.13/Modules/FindBoost.cmake"
   "/snap/clion/58/bin/cmake/linux/share/cmake-3.13/Modules/Platform/Linux-GNU-C.cmake"
   "/snap/clion/58/bin/cmake/linux/share/cmake-3.13/Modules/Platform/Linux-GNU-CXX.cmake"
   "/snap/clion/58/bin/cmake/linux/share/cmake-3.13/Modules/Platform/Linux-GNU.cmake"
