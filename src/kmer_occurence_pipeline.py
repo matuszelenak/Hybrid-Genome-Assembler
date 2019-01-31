@@ -23,12 +23,12 @@ def mix_reads(paths, output_path):
     f.close()
 
 
-def plot_histogram(occurence, coverage, k):
+def plot_histogram(occurence, k):
     plt.figure()
     plt.title('Occurence histogram for k = {}'.format(k))
     plt.xlabel('Coverage')
     plt.ylabel('Frequency')
-    plt.hist([count for count in occurence if 0 < count < 50], color='blue', bins=100)
+    plt.hist(occurence, color='blue', bins=120)
     plt.show()
 
 
@@ -41,8 +41,8 @@ args = parser.parse_args()
 
 # mix_reads(args.paths, args.output)
 
-base_command = ['./src', '-i', '../data/mixed']
-for k in [9, 11, 13]:
+base_command = ['./cmake-build-debug/src', '-i', '../data/ecoli/mixed', '--cov', '30']
+for k in [10, 11, 12]:
     o = subprocess.check_output(base_command + ['--k', str(k)])
     occurence = [int(x) for x in o.strip().split()]
-    plot_histogram(occurence, 30, k)
+    plot_histogram(occurence, k)

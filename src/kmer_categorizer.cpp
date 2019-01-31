@@ -101,6 +101,7 @@ int main(int argc, char* argv[]) {
     desc.add_options()
             ("help,h", "Help screen")
             ("k", po::value<int >()->default_value(11), "Length of k-mer")
+            ("cov,c", po::value<int >()->default_value(30), "Coverage of the read file")
             ("in,i", po::value<string >(), "Path to file with reads");
 
     po::variables_map vm;
@@ -120,11 +121,17 @@ int main(int argc, char* argv[]) {
         in_path = vm["in"].as<string>();
     }
 
+    int c = 30;
+    if (vm.count("cov")){
+        c = vm["cov"].as<int>();
+    }
+
     vector<GenomeRead> reads = load_reads(in_path);
     unordered_map<uint64_t, uint64_t> occurences = kmer_occurences(reads, k);
 
     for (std::pair<uint64_t, uint64_t> element : occurences)
     {
+        if (element.second > 4 * c || element.second == 1) continue;
         cout << element.second << ' ';
     }
     return 0;
