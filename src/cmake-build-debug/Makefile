@@ -39,10 +39,10 @@ cmake_force:
 SHELL = /bin/sh
 
 # The CMake executable.
-CMAKE_COMMAND = /snap/clion/58/bin/cmake/linux/bin/cmake
+CMAKE_COMMAND = /snap/clion/61/bin/cmake/linux/bin/cmake
 
 # The command to remove a file.
-RM = /snap/clion/58/bin/cmake/linux/bin/cmake -E remove -f
+RM = /snap/clion/61/bin/cmake/linux/bin/cmake -E remove -f
 
 # Escaping for special characters.
 EQUALS = =
@@ -59,7 +59,7 @@ CMAKE_BINARY_DIR = "/home/whiskas/Documents/MEGAsync/FMFI/2. ročník Mgr/Diplom
 # Special rule for the target rebuild_cache
 rebuild_cache:
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --cyan "Running CMake to regenerate build system..."
-	/snap/clion/58/bin/cmake/linux/bin/cmake -S$(CMAKE_SOURCE_DIR) -B$(CMAKE_BINARY_DIR)
+	/snap/clion/61/bin/cmake/linux/bin/cmake -S$(CMAKE_SOURCE_DIR) -B$(CMAKE_BINARY_DIR)
 .PHONY : rebuild_cache
 
 # Special rule for the target rebuild_cache
@@ -70,7 +70,7 @@ rebuild_cache/fast: rebuild_cache
 # Special rule for the target edit_cache
 edit_cache:
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --cyan "No interactive CMake dialog available..."
-	/snap/clion/58/bin/cmake/linux/bin/cmake -E echo No\ interactive\ CMake\ dialog\ available.
+	/snap/clion/61/bin/cmake/linux/bin/cmake -E echo No\ interactive\ CMake\ dialog\ available.
 .PHONY : edit_cache
 
 # Special rule for the target edit_cache
@@ -123,6 +123,60 @@ src/fast:
 	$(MAKE) -f CMakeFiles/src.dir/build.make CMakeFiles/src.dir/build
 .PHONY : src/fast
 
+KmerIterator.o: KmerIterator.cpp.o
+
+.PHONY : KmerIterator.o
+
+# target to build an object file
+KmerIterator.cpp.o:
+	$(MAKE) -f CMakeFiles/src.dir/build.make CMakeFiles/src.dir/KmerIterator.cpp.o
+.PHONY : KmerIterator.cpp.o
+
+KmerIterator.i: KmerIterator.cpp.i
+
+.PHONY : KmerIterator.i
+
+# target to preprocess a source file
+KmerIterator.cpp.i:
+	$(MAKE) -f CMakeFiles/src.dir/build.make CMakeFiles/src.dir/KmerIterator.cpp.i
+.PHONY : KmerIterator.cpp.i
+
+KmerIterator.s: KmerIterator.cpp.s
+
+.PHONY : KmerIterator.s
+
+# target to generate assembly for a file
+KmerIterator.cpp.s:
+	$(MAKE) -f CMakeFiles/src.dir/build.make CMakeFiles/src.dir/KmerIterator.cpp.s
+.PHONY : KmerIterator.cpp.s
+
+SequenceReader.o: SequenceReader.cpp.o
+
+.PHONY : SequenceReader.o
+
+# target to build an object file
+SequenceReader.cpp.o:
+	$(MAKE) -f CMakeFiles/src.dir/build.make CMakeFiles/src.dir/SequenceReader.cpp.o
+.PHONY : SequenceReader.cpp.o
+
+SequenceReader.i: SequenceReader.cpp.i
+
+.PHONY : SequenceReader.i
+
+# target to preprocess a source file
+SequenceReader.cpp.i:
+	$(MAKE) -f CMakeFiles/src.dir/build.make CMakeFiles/src.dir/SequenceReader.cpp.i
+.PHONY : SequenceReader.cpp.i
+
+SequenceReader.s: SequenceReader.cpp.s
+
+.PHONY : SequenceReader.s
+
+# target to generate assembly for a file
+SequenceReader.cpp.s:
+	$(MAKE) -f CMakeFiles/src.dir/build.make CMakeFiles/src.dir/SequenceReader.cpp.s
+.PHONY : SequenceReader.cpp.s
+
 kmer_categorizer.o: kmer_categorizer.cpp.o
 
 .PHONY : kmer_categorizer.o
@@ -159,6 +213,12 @@ help:
 	@echo "... rebuild_cache"
 	@echo "... src"
 	@echo "... edit_cache"
+	@echo "... KmerIterator.o"
+	@echo "... KmerIterator.i"
+	@echo "... KmerIterator.s"
+	@echo "... SequenceReader.o"
+	@echo "... SequenceReader.i"
+	@echo "... SequenceReader.s"
 	@echo "... kmer_categorizer.o"
 	@echo "... kmer_categorizer.i"
 	@echo "... kmer_categorizer.s"

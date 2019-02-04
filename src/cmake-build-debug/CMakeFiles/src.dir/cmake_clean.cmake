@@ -1,5 +1,7 @@
 file(REMOVE_RECURSE
   "CMakeFiles/src.dir/kmer_categorizer.cpp.o"
+  "CMakeFiles/src.dir/SequenceReader.cpp.o"
+  "CMakeFiles/src.dir/KmerIterator.cpp.o"
   "src.pdb"
   "src"
 )
