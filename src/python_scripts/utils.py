@@ -1,10 +1,29 @@
+import random
+
 import numpy as np
 from Bio import SeqIO
 from Bio.Seq import Seq
 from Bio.SeqRecord import SeqRecord
 from Bio.Alphabet import DNAAlphabet
 
-from constants import *
+from .constants import *
+
+
+def mix_reads(paths, output_path):
+    raw_read_sequences = []
+    for path in paths:
+        for seq_record in SeqIO.parse(path, 'fastq'):
+            raw_read_sequences.append(str(seq_record.seq))
+
+    random.shuffle(raw_read_sequences)
+
+    f = open(output_path, 'w')
+    for seq in raw_read_sequences:
+        f.write('>read_descriptor\n')
+        f.write(seq)
+        f.write('\n')
+
+    f.close()
 
 
 def mutate_sequence(sequence, difference_rate):

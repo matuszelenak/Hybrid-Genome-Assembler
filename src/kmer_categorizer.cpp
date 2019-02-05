@@ -87,7 +87,6 @@ int main(int argc, char* argv[]) {
     desc.add_options()
             ("help,h", "Help screen")
             ("k", po::value<int >()->default_value(11), "Length of k-mer")
-            ("cov,c", po::value<int >()->default_value(30), "Coverage of the read file")
             ("command", po::value<string >(), "Command")
             ("read_path", po::value<string >(), "Path to file with reads (FASTA or FASTQ)")
             ("counts", po::value<string >(), "Path to file with computed kmer counts")
@@ -131,11 +130,6 @@ int main(int argc, char* argv[]) {
     }
 
     if (command == "count"){
-        int c = 30;
-        if (vm.count("cov")){
-            c = vm["cov"].as<int>();
-        }
-
         if (out_path.empty()){
             out_path = path.replace_extension("counts");
         }
