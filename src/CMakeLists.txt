@@ -10,4 +10,4 @@ INCLUDE_DIRECTORIES( ${Boost_INCLUDE_DIR} )
 add_executable(src kmer_categorizer.cpp SequenceReader.cpp SequenceReader.h KmerIterator.cpp KmerIterator.h consts.h)
 
 
-TARGET_LINK_LIBRARIES( src LINK_PUBLIC ${Boost_LIBRARIES} )
+TARGET_LINK_LIBRARIES( src LINK_PUBLIC ${Boost_LIBRARIES} stdc++fs)

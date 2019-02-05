@@ -5,10 +5,12 @@
 #include "SequenceReader.h"
 
 SequenceReader::SequenceReader(const std::string &path){
-    if (!(path.substr(path.size() - 5, path.size()) == "fasta" || path.substr(path.size() - 5, path.size()) == "fastq")){
+    std::string ext5 = path.substr(path.size() - 5, path.size());
+    std::string ext2 = path.substr(path.size() - 2, path.size());
+    if (!(ext5 == "fasta" || ext5 == "fastq" || ext2 == "fa" || ext2 == "fq")){
         throw std::invalid_argument("Only accepts FASTA or FASTQ files");
     }
-    if (path.substr(path.size() - 5, path.size()) == "fasta"){
+    if (ext5 == "fasta" || ext2 == "fa"){
         this->read_sequence_line = &SequenceReader::read_fasta_sequence;
     }
     else{

@@ -14,10 +14,6 @@ boost/optional.hpp
 optional
 -
 
-/home/whiskas/Documents/MEGAsync/FMFI/2. ročník Mgr/Diplomovka/Hybrid-Genome-Assembler/src/SequenceReader.cpp
-SequenceReader.h
-/home/whiskas/Documents/MEGAsync/FMFI/2. ročník Mgr/Diplomovka/Hybrid-Genome-Assembler/src/SequenceReader.h
-
 /home/whiskas/Documents/MEGAsync/FMFI/2. ročník Mgr/Diplomovka/Hybrid-Genome-Assembler/src/SequenceReader.h
 string
 -
@@ -38,6 +34,8 @@ vector
 string
 -
 fstream
+-
+experimental/filesystem
 -
 boost/program_options.hpp
 -
