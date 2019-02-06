@@ -5,10 +5,13 @@ CMakeFiles/src.dir/KmerIterator.cpp.o
  /home/whiskas/Documents/MEGAsync/FMFI/2. ročník Mgr/Diplomovka/Hybrid-Genome-Assembler/src/KmerIterator.cpp
  /home/whiskas/Documents/MEGAsync/FMFI/2. ročník Mgr/Diplomovka/Hybrid-Genome-Assembler/src/KmerIterator.h
  /home/whiskas/Documents/MEGAsync/FMFI/2. ročník Mgr/Diplomovka/Hybrid-Genome-Assembler/src/consts.h
+ /home/whiskas/Documents/MEGAsync/FMFI/2. ročník Mgr/Diplomovka/Hybrid-Genome-Assembler/src/structs.h
 CMakeFiles/src.dir/SequenceReader.cpp.o
  /home/whiskas/Documents/MEGAsync/FMFI/2. ročník Mgr/Diplomovka/Hybrid-Genome-Assembler/src/SequenceReader.cpp
  /home/whiskas/Documents/MEGAsync/FMFI/2. ročník Mgr/Diplomovka/Hybrid-Genome-Assembler/src/SequenceReader.h
+ /home/whiskas/Documents/MEGAsync/FMFI/2. ročník Mgr/Diplomovka/Hybrid-Genome-Assembler/src/structs.h
 CMakeFiles/src.dir/kmer_categorizer.cpp.o
  /home/whiskas/Documents/MEGAsync/FMFI/2. ročník Mgr/Diplomovka/Hybrid-Genome-Assembler/src/KmerIterator.h
  /home/whiskas/Documents/MEGAsync/FMFI/2. ročník Mgr/Diplomovka/Hybrid-Genome-Assembler/src/SequenceReader.h
  /home/whiskas/Documents/MEGAsync/FMFI/2. ročník Mgr/Diplomovka/Hybrid-Genome-Assembler/src/kmer_categorizer.cpp
+ /home/whiskas/Documents/MEGAsync/FMFI/2. ročník Mgr/Diplomovka/Hybrid-Genome-Assembler/src/structs.h

@@ -4,11 +4,14 @@
 CMakeFiles/src.dir/KmerIterator.cpp.o: ../KmerIterator.cpp
 CMakeFiles/src.dir/KmerIterator.cpp.o: ../KmerIterator.h
 CMakeFiles/src.dir/KmerIterator.cpp.o: ../consts.h
+CMakeFiles/src.dir/KmerIterator.cpp.o: ../structs.h
 
 CMakeFiles/src.dir/SequenceReader.cpp.o: ../SequenceReader.cpp
 CMakeFiles/src.dir/SequenceReader.cpp.o: ../SequenceReader.h
+CMakeFiles/src.dir/SequenceReader.cpp.o: ../structs.h
 
 CMakeFiles/src.dir/kmer_categorizer.cpp.o: ../KmerIterator.h
 CMakeFiles/src.dir/kmer_categorizer.cpp.o: ../SequenceReader.h
 CMakeFiles/src.dir/kmer_categorizer.cpp.o: ../kmer_categorizer.cpp
+CMakeFiles/src.dir/kmer_categorizer.cpp.o: ../structs.h
 

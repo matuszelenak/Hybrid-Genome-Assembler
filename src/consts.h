@@ -7,11 +7,22 @@
 #ifndef SRC_CONSTS_H
 #define SRC_CONSTS_H
 
+
+std::vector<char> BASES = {'A', 'C', 'G', 'T'};
+
+
 std::unordered_map<char, uint8_t> BASE_TO_NUM = {
         {'A', 0b00},
         {'C', 0b01},
         {'G', 0b10},
         {'T', 0b11},
+};
+
+std::unordered_map<uint8_t , char> NUM_TO_BASE = {
+        {0b00, 'A'},
+        {0b01, 'C'},
+        {0b10, 'G'},
+        {0b11, 'T'},
 };
 
 std::unordered_map<char, uint8_t> COMPLEMENT = {

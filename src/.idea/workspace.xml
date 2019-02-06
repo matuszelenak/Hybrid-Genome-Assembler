@@ -12,14 +12,18 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="1d481c57-3c56-45e4-b802-7bb83532e5dc" name="Default Changelist" comment="">
-      <change afterPath="$PROJECT_DIR$/python_scripts/pipeline.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/structs.h" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/constants.py" beforeDir="false" afterPath="$PROJECT_DIR$/python_scripts/constants.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/general_pipeline.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/CMakeLists.txt" beforeDir="false" afterPath="$PROJECT_DIR$/CMakeLists.txt" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/KmerIterator.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/KmerIterator.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/KmerIterator.h" beforeDir="false" afterPath="$PROJECT_DIR$/KmerIterator.h" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/SequenceReader.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/SequenceReader.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/SequenceReader.h" beforeDir="false" afterPath="$PROJECT_DIR$/SequenceReader.h" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/cmake-build-debug/src.cbp" beforeDir="false" afterPath="$PROJECT_DIR$/cmake-build-debug/src.cbp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/consts.h" beforeDir="false" afterPath="$PROJECT_DIR$/consts.h" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/kmer_categorizer.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/kmer_categorizer.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/kmer_occurence_pipeline.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/simulate_data.py" beforeDir="false" afterPath="$PROJECT_DIR$/python_scripts/simulate_data.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/utils.py" beforeDir="false" afterPath="$PROJECT_DIR$/python_scripts/utils.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/python_scripts/hga" beforeDir="false" afterPath="$PROJECT_DIR$/python_scripts/hga" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/python_scripts/pipeline.py" beforeDir="false" afterPath="$PROJECT_DIR$/python_scripts/pipeline.py" afterDir="false" />
     </list>
     <ignored path="$PROJECT_DIR$/cmake-build-debug/" />
     <ignored path="$PROJECT_DIR$/CMakeFiles/" />
@@ -34,11 +38,11 @@
   <component name="ExecutionTargetManager" SELECTED_TARGET="CMakeBuildProfile:Debug" />
   <component name="FileEditorManager">
     <leaf SIDE_TABS_SIZE_LIMIT_KEY="300">
-      <file pinned="false" current-in-tab="true">
+      <file pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/kmer_categorizer.cpp">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="531">
-              <caret line="51" column="1" lean-forward="true" selection-start-line="51" selection-start-column="1" selection-end-line="51" selection-end-column="1" />
+            <state relative-caret-position="330">
+              <caret line="22" column="87" lean-forward="true" selection-start-line="22" selection-start-column="87" selection-end-line="22" selection-end-column="87" />
               <folding>
                 <element signature="e#0#19#0" expanded="true" />
               </folding>
@@ -47,10 +51,28 @@
         </entry>
       </file>
       <file pinned="false" current-in-tab="false">
+        <entry file="file://$PROJECT_DIR$/SequenceReader.cpp">
+          <provider selected="true" editor-type-id="text-editor">
+            <state relative-caret-position="-355">
+              <caret column="2" lean-forward="true" selection-start-column="2" selection-end-column="2" />
+            </state>
+          </provider>
+        </entry>
+      </file>
+      <file pinned="false" current-in-tab="false">
+        <entry file="file://$PROJECT_DIR$/consts.h">
+          <provider selected="true" editor-type-id="text-editor">
+            <state relative-caret-position="150">
+              <caret line="10" column="47" selection-start-line="10" selection-start-column="47" selection-end-line="10" selection-end-column="47" />
+            </state>
+          </provider>
+        </entry>
+      </file>
+      <file pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/KmerIterator.h">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="390">
-              <caret line="26" selection-start-line="26" selection-end-line="26" />
+            <state relative-caret-position="135">
+              <caret line="9" lean-forward="true" selection-start-line="9" selection-end-line="9" />
               <folding>
                 <element signature="e#0#17#0" expanded="true" />
               </folding>
@@ -59,12 +81,33 @@
         </entry>
       </file>
       <file pinned="false" current-in-tab="false">
+        <entry file="file://$PROJECT_DIR$/structs.h">
+          <provider selected="true" editor-type-id="text-editor">
+            <state>
+              <caret column="2" lean-forward="true" selection-start-column="2" selection-end-column="2" />
+            </state>
+          </provider>
+        </entry>
+      </file>
+      <file pinned="false" current-in-tab="false">
+        <entry file="file://$PROJECT_DIR$/KmerIterator.cpp">
+          <provider selected="true" editor-type-id="text-editor">
+            <state relative-caret-position="455">
+              <caret line="59" lean-forward="true" selection-start-line="59" selection-end-line="59" />
+              <folding>
+                <element signature="e#0#20#0" expanded="true" />
+              </folding>
+            </state>
+          </provider>
+        </entry>
+      </file>
+      <file pinned="false" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/python_scripts/pipeline.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="375">
-              <caret line="49" column="31" selection-start-line="49" selection-start-column="31" selection-end-line="49" selection-end-column="31" />
+            <state relative-caret-position="390">
+              <caret line="60" column="34" lean-forward="true" selection-start-line="60" selection-start-column="34" selection-end-line="60" selection-end-column="34" />
               <folding>
-                <element signature="e#0#36#0" expanded="true" />
+                <element signature="e#0#21#0" expanded="true" />
               </folding>
             </state>
           </provider>
@@ -73,8 +116,8 @@
       <file pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/python_scripts/utils.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="150">
-              <caret line="10" selection-start-line="10" selection-end-line="10" />
+            <state relative-caret-position="285">
+              <caret line="52" selection-start-line="52" selection-end-line="53" selection-end-column="33" />
               <folding>
                 <element signature="e#0#13#0" expanded="true" />
               </folding>
@@ -83,10 +126,13 @@
         </entry>
       </file>
       <file pinned="false" current-in-tab="false">
-        <entry file="file://$PROJECT_DIR$/python_scripts/simulate_data.py">
+        <entry file="file://$PROJECT_DIR$/SequenceReader.h">
           <provider selected="true" editor-type-id="text-editor">
-            <state>
-              <caret column="19" selection-start-column="19" selection-end-column="19" />
+            <state relative-caret-position="240">
+              <caret line="16" column="8" selection-start-line="16" selection-start-column="8" selection-end-line="16" selection-end-column="8" />
+              <folding>
+                <element signature="e#42#59#0" expanded="true" />
+              </folding>
             </state>
           </provider>
         </entry>
@@ -109,6 +155,7 @@
       <find>occure</find>
       <find>throw</find>
       <find>cov</find>
+      <find>ALL_SET</find>
     </findStrings>
   </component>
   <component name="Git.Settings">
@@ -125,20 +172,25 @@
         <option value="$PROJECT_DIR$/constants.py" />
         <option value="$PROJECT_DIR$/pipeline_nanopore.py" />
         <option value="$PROJECT_DIR$/simulate_data.py" />
-        <option value="$PROJECT_DIR$/consts.h" />
-        <option value="$PROJECT_DIR$/KmerIterator.h" />
-        <option value="$PROJECT_DIR$/KmerIterator.cpp" />
-        <option value="$PROJECT_DIR$/SequenceReader.h" />
-        <option value="$PROJECT_DIR$/SequenceReader.cpp" />
         <option value="$PROJECT_DIR$/CMakeLists.txt" />
-        <option value="$PROJECT_DIR$/kmer_categorizer.cpp" />
         <option value="$PROJECT_DIR$/general_pipeline.py" />
         <option value="$PROJECT_DIR$/kmer_occurence_pipeline.py" />
         <option value="$PROJECT_DIR$/utils.py" />
+        <option value="$PROJECT_DIR$/python_scripts/simulate_data.py" />
+        <option value="$PROJECT_DIR$/python_scripts/utils.py" />
+        <option value="$PROJECT_DIR$/GenomeRead.h" />
+        <option value="$PROJECT_DIR$/SequenceReader.h" />
+        <option value="$PROJECT_DIR$/structs.h" />
+        <option value="$PROJECT_DIR$/SequenceReader.cpp" />
+        <option value="$PROJECT_DIR$/consts.h" />
+        <option value="$PROJECT_DIR$/KmerIterator.h" />
+        <option value="$PROJECT_DIR$/KmerIterator.cpp" />
+        <option value="$PROJECT_DIR$/kmer_categorizer.cpp" />
         <option value="$PROJECT_DIR$/python_scripts/pipeline.py" />
       </list>
     </option>
   </component>
+  <component name="OCFindUsagesOptions" text="true" ivars="false" properties="true" derivedClasses="false" />
   <component name="ProjectFrameBounds" extendedState="6">
     <option name="width" value="1920" />
     <option name="height" value="1080" />
@@ -173,6 +225,13 @@
     <property name="last_opened_file_path" value="$PROJECT_DIR$/.." />
     <property name="settings.editor.selected.configurable" value="CMakeSettings" />
   </component>
+  <component name="RecentsManager">
+    <key name="MoveFile.RECENT_KEYS">
+      <recent name="$PROJECT_DIR$/python_scripts" />
+      <recent name="$PROJECT_DIR$" />
+      <recent name="$PROJECT_DIR$/venv" />
+    </key>
+  </component>
   <component name="RunDashboard">
     <option name="ruleStates">
       <list>
@@ -191,7 +250,7 @@
         <option name="com.jetbrains.cidr.execution.CidrBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
       </method>
     </configuration>
-    <configuration name="src" type="CMakeRunConfiguration" factoryName="Application" nameIsGenerated="true" PROGRAM_PARAMS="count ../../data/simulated/mixed.fasta --cov 30 --k 10 --out ../../data/simulated/wtf" PASS_PARENT_ENVS_2="true" PROJECT_NAME="src" TARGET_NAME="src" CONFIG_NAME="Debug" RUN_TARGET_PROJECT_NAME="src" RUN_TARGET_NAME="src">
+    <configuration name="src" type="CMakeRunConfiguration" factoryName="Application" nameIsGenerated="true" PROGRAM_PARAMS="count ../../data/simple/why.fasta --k 5 --out ../../data/simple/wtf" PASS_PARENT_ENVS_2="true" PROJECT_NAME="src" TARGET_NAME="src" CONFIG_NAME="Debug" RUN_TARGET_PROJECT_NAME="src" RUN_TARGET_NAME="src">
       <method v="2">
         <option name="com.jetbrains.cidr.execution.CidrBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
       </method>
@@ -231,28 +290,29 @@
       <workItem from="1548707622166" duration="50407000" />
       <workItem from="1549026478127" duration="4806000" />
       <workItem from="1549198292538" duration="8955000" />
-      <workItem from="1549287581127" duration="26246000" />
+      <workItem from="1549287581127" duration="38055000" />
     </task>
     <servers />
   </component>
   <component name="TimeTrackingManager">
-    <option name="totallyTimeSpent" value="90414000" />
+    <option name="totallyTimeSpent" value="102223000" />
   </component>
   <component name="ToolWindowManager">
     <frame x="0" y="27" width="1920" height="1053" extended-state="6" />
+    <editor active="true" />
     <layout>
       <window_info id="Favorites" order="0" side_tool="true" />
-      <window_info content_ui="combo" id="Project" order="1" visible="true" weight="0.21611527" />
+      <window_info active="true" content_ui="combo" id="Project" order="1" visible="true" weight="0.21611527" />
       <window_info id="Structure" order="2" side_tool="true" weight="0.25" />
       <window_info anchor="bottom" id="Version Control" order="0" weight="0.3291536" />
-      <window_info active="true" anchor="bottom" id="Terminal" order="1" sideWeight="0.4994664" visible="true" weight="0.24408603" />
+      <window_info anchor="bottom" id="Terminal" order="1" sideWeight="0.4994664" visible="true" weight="0.3548387" />
       <window_info anchor="bottom" id="Event Log" order="2" sideWeight="0.50053364" side_tool="true" weight="0.25600836" />
       <window_info anchor="bottom" id="Database Changes" order="3" />
-      <window_info anchor="bottom" id="Messages" order="4" weight="0.15161291" />
+      <window_info anchor="bottom" id="Messages" order="4" weight="0.42580646" />
       <window_info anchor="bottom" id="Message" order="5" />
-      <window_info anchor="bottom" id="Find" order="6" weight="0.3291536" />
+      <window_info anchor="bottom" id="Find" order="6" weight="0.32903227" />
       <window_info anchor="bottom" id="Run" order="7" weight="0.24623656" />
-      <window_info anchor="bottom" id="Debug" order="8" weight="0.29354838" />
+      <window_info anchor="bottom" id="Debug" order="8" weight="0.28817204" />
       <window_info anchor="bottom" id="Cvs" order="9" weight="0.25" />
       <window_info anchor="bottom" id="CMake" order="10" weight="0.32810867" />
       <window_info anchor="bottom" id="Inspection" order="11" weight="0.4" />
@@ -262,6 +322,17 @@
       <window_info anchor="right" id="Ant Build" order="2" weight="0.25" />
       <window_info anchor="right" content_ui="combo" id="Hierarchy" order="3" weight="0.25" />
     </layout>
+  </component>
+  <component name="XDebuggerManager">
+    <breakpoint-manager>
+      <breakpoints>
+        <line-breakpoint enabled="true" type="com.jetbrains.cidr.execution.debugger.OCBreakpointType">
+          <url>file://$PROJECT_DIR$/KmerIterator.cpp</url>
+          <line>81</line>
+          <option name="timeStamp" value="19" />
+        </line-breakpoint>
+      </breakpoints>
+    </breakpoint-manager>
   </component>
   <component name="editorHistoryManager">
     <entry file="file:///usr/include/boost/throw_exception.hpp">
@@ -331,13 +402,6 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/consts.h">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="420">
-          <caret line="28" selection-start-line="28" selection-end-line="28" />
-        </state>
-      </provider>
-    </entry>
     <entry file="file:///usr/include/boost/program_options/options_description.hpp">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="135">
@@ -352,33 +416,6 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/SequenceReader.cpp">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="276">
-          <caret line="20" column="5" lean-forward="true" selection-start-line="20" selection-start-column="5" selection-end-line="20" selection-end-column="5" />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/KmerIterator.h">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="390">
-          <caret line="26" selection-start-line="26" selection-end-line="26" />
-          <folding>
-            <element signature="e#0#17#0" expanded="true" />
-          </folding>
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/KmerIterator.cpp">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="285">
-          <caret line="19" column="1" selection-start-line="19" selection-start-column="1" selection-end-line="19" selection-end-column="1" />
-          <folding>
-            <element signature="e#0#20#0" expanded="true" />
-          </folding>
-        </state>
-      </provider>
-    </entry>
     <entry file="file:///usr/include/c++/7/experimental/bits/fs_path.h">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="210">
@@ -386,27 +423,10 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/SequenceReader.h">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="270">
-          <caret line="18" column="53" selection-start-line="18" selection-start-column="53" selection-end-line="18" selection-end-column="53" />
-          <folding>
-            <element signature="e#42#59#0" expanded="true" />
-          </folding>
-        </state>
-      </provider>
-    </entry>
     <entry file="file:///usr/lib/python3.6/argparse.py">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="225">
           <caret line="1315" column="8" selection-start-line="1315" selection-start-column="8" selection-end-line="1315" selection-end-column="8" />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/python_scripts/simulate_data.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state>
-          <caret column="19" selection-start-column="19" selection-end-column="19" />
         </state>
       </provider>
     </entry>
@@ -434,32 +454,106 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/python_scripts/utils.py">
+    <entry file="file://$PROJECT_DIR$/python_scripts/simulate_data.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="315">
+          <caret line="21" column="31" lean-forward="true" selection-start-line="21" selection-start-column="31" selection-end-line="21" selection-end-column="31" />
+          <folding>
+            <element signature="e#0#19#0" expanded="true" />
+          </folding>
+        </state>
+      </provider>
+    </entry>
+    <entry file="file:///usr/include/c++/7/bits/basic_string.tcc">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="232">
+          <caret line="280" column="4" selection-start-line="280" selection-start-column="4" selection-end-line="280" selection-end-column="4" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/GenomeRead.cpp">
+      <provider selected="true" editor-type-id="text-editor" />
+    </entry>
+    <entry file="file://$PROJECT_DIR$/GenomeRead.h">
+      <provider selected="true" editor-type-id="text-editor" />
+    </entry>
+    <entry file="file://$PROJECT_DIR$/SequenceReader.h">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="240">
+          <caret line="16" column="8" selection-start-line="16" selection-start-column="8" selection-end-line="16" selection-end-column="8" />
+          <folding>
+            <element signature="e#42#59#0" expanded="true" />
+          </folding>
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/structs.h">
+      <provider selected="true" editor-type-id="text-editor">
+        <state>
+          <caret column="2" lean-forward="true" selection-start-column="2" selection-end-column="2" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/consts.h">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="150">
-          <caret line="10" selection-start-line="10" selection-end-line="10" />
+          <caret line="10" column="47" selection-start-line="10" selection-start-column="47" selection-end-line="10" selection-end-column="47" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/KmerIterator.h">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="135">
+          <caret line="9" lean-forward="true" selection-start-line="9" selection-end-line="9" />
+          <folding>
+            <element signature="e#0#17#0" expanded="true" />
+          </folding>
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/SequenceReader.cpp">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="-355">
+          <caret column="2" lean-forward="true" selection-start-column="2" selection-end-column="2" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/KmerIterator.cpp">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="455">
+          <caret line="59" lean-forward="true" selection-start-line="59" selection-end-line="59" />
+          <folding>
+            <element signature="e#0#20#0" expanded="true" />
+          </folding>
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/python_scripts/utils.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="285">
+          <caret line="52" selection-start-line="52" selection-end-line="53" selection-end-column="33" />
           <folding>
             <element signature="e#0#13#0" expanded="true" />
           </folding>
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/python_scripts/pipeline.py">
+    <entry file="file://$PROJECT_DIR$/kmer_categorizer.cpp">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="375">
-          <caret line="49" column="31" selection-start-line="49" selection-start-column="31" selection-end-line="49" selection-end-column="31" />
+        <state relative-caret-position="330">
+          <caret line="22" column="87" lean-forward="true" selection-start-line="22" selection-start-column="87" selection-end-line="22" selection-end-column="87" />
           <folding>
-            <element signature="e#0#36#0" expanded="true" />
+            <element signature="e#0#19#0" expanded="true" />
           </folding>
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/kmer_categorizer.cpp">
+    <entry file="file://$PROJECT_DIR$/python_scripts/pipeline.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="531">
-          <caret line="51" column="1" lean-forward="true" selection-start-line="51" selection-start-column="1" selection-end-line="51" selection-end-column="1" />
+        <state relative-caret-position="390">
+          <caret line="60" column="34" lean-forward="true" selection-start-line="60" selection-start-column="34" selection-end-line="60" selection-end-column="34" />
           <folding>
-            <element signature="e#0#19#0" expanded="true" />
+            <element signature="e#0#21#0" expanded="true" />
           </folding>
         </state>
       </provider>

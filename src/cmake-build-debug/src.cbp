@@ -102,6 +102,9 @@
 		<Unit filename="/home/whiskas/Documents/MEGAsync/FMFI/2. ročník Mgr/Diplomovka/Hybrid-Genome-Assembler/src/kmer_categorizer.cpp">
 			<Option target="src"/>
 		</Unit>
+		<Unit filename="/home/whiskas/Documents/MEGAsync/FMFI/2. ročník Mgr/Diplomovka/Hybrid-Genome-Assembler/src/structs.h">
+			<Option target="src"/>
+		</Unit>
 		<Unit filename="/home/whiskas/Documents/MEGAsync/FMFI/2. ročník Mgr/Diplomovka/Hybrid-Genome-Assembler/src/CMakeLists.txt">
 			<Option virtualFolder="CMake Files\"/>
 		</Unit>

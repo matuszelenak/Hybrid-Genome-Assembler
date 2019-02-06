@@ -23,30 +23,36 @@ SequenceReader::SequenceReader(const std::string &path){
     }
 }
 
-std::optional<std::string> SequenceReader::read_fasta_sequence() {
-    if (!input_file.is_open()) return "";
+std::optional<GenomeRead> SequenceReader::read_fasta_sequence() {
+    if (!input_file.is_open())
+        return std::nullopt;
+
     std::string header, sequence;
     if (!(input_file >> header)) {
         input_file.close();
         return std::nullopt;
     }
     input_file >> sequence;
-    return sequence.substr(0, sequence.size() - 1);
+
+    return std::optional<GenomeRead>{{header, sequence, ""}};
 }
 
-std::optional<std::string> SequenceReader::read_fastq_sequence() {
-    if (!input_file.is_open()) return "";
-    std::string line, sequence;
-    if (!(input_file >> line)){
+std::optional<GenomeRead> SequenceReader::read_fastq_sequence() {
+    if (!input_file.is_open())
+        return std::nullopt;
+
+    std::string header, sequence, comment, quality;
+    if (!(input_file >> header)){
         input_file.close();
         return std::nullopt;
     }
     input_file >> sequence;
-    input_file >> line; // + and comment
-    input_file >> line; // sequence quality, not used for now
-    return sequence.substr(0, sequence.size() - 1);
+    input_file >> comment;
+    input_file >> quality;
+
+    return std::optional<GenomeRead>{{header, sequence, quality}};
 }
 
-std::optional<std::string> SequenceReader::get_next_record(){
+std::optional<GenomeRead> SequenceReader::get_next_record(){
     return (this->*read_sequence_line)();
 }

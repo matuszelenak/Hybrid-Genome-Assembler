@@ -15,12 +15,12 @@ namespace po = boost::program_options;
 using namespace std;
 
 unordered_map<uint64_t , uint64_t > load_kmer_counts(const string &path){
-    ifstream infile;
-    infile.open(path);
-    uint64_t kmer, count;
     unordered_map<uint64_t , uint64_t > result;
-    while (infile >> kmer >> count){
-        result[kmer] = count;
+    SequenceReader reader = SequenceReader(path);
+    optional<GenomeRead> read;
+    while ((read = reader.get_next_record()) != nullopt){
+        pair<uint64_t , uint64_t > nums = KmerIterator::sequence_to_number((*read).sequence);
+        result[min(nums.first, nums.second)] = (uint64_t )stoull((*read).header.substr(1, (*read).header.length()));
     }
     return result;
 }
@@ -29,18 +29,14 @@ void characteristic_kmer_positions(const string &path, unordered_map<uint64_t, u
     SequenceReader reader = SequenceReader(path);
     ofstream out_file;
     out_file.open(out_path);
-    while (true){
-        optional<string> read = reader.get_next_record();
-        if (read == nullopt) {
-            break;
-        }
+    optional<GenomeRead> read;
+    while ((read = reader.get_next_record()) != nullopt){
 
         KmerIterator it = KmerIterator(*read, k);
         unsigned long position = 0;
-        while (true) {
-            optional<uint64_t> kmer_signature = it.get_next_kmer();
-            if (kmer_signature == nullopt) break;
+        optional<uint64_t> kmer_signature;
 
+        while ((kmer_signature = it.get_next_kmer()) != nullopt) {
             if (kmers.find(*kmer_signature) != kmers.end()){
                 out_file << position << " ";
             }
@@ -56,16 +52,13 @@ void kmer_counts(SequenceReader &reader, int k, const string &out_path){
 
     ofstream out_file;
     out_file.open(out_path);
-    while (true) {
-        optional<string> read = reader.get_next_record();
-        if (read == nullopt) {
-            break;
-        }
+    optional<GenomeRead> read;
+    while ((read = reader.get_next_record()) != nullopt){
 
         KmerIterator it = KmerIterator(*read, k);
-        while (true) {
-            optional<uint64_t> kmer_signature = it.get_next_kmer();
-            if (kmer_signature == nullopt) break;
+        optional<uint64_t> kmer_signature;
+
+        while ((kmer_signature = it.get_next_kmer()) != nullopt) {
 
             if (counts.find(*kmer_signature) == counts.end()) {
                 counts[*kmer_signature] = 0;
@@ -75,7 +68,8 @@ void kmer_counts(SequenceReader &reader, int k, const string &out_path){
     }
     for (std::pair<uint64_t, uint64_t> element : counts)
     {
-        out_file << element.first << ' ' << element.second << endl;
+        out_file << ">" << element.second << endl;
+        out_file << KmerIterator::number_to_sequence(element.first, k) << endl;
     }
     out_file.close();
 }
