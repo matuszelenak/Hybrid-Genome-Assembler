@@ -6,16 +6,6 @@
 
 #IncludeRegexTransform: 
 
-/home/whiskas/Documents/MEGAsync/FMFI/2. ročník Mgr/Diplomovka/Hybrid-Genome-Assembler/src/KmerIterator.cpp
-stdexcept
--
-algorithm
--
-KmerIterator.h
-/home/whiskas/Documents/MEGAsync/FMFI/2. ročník Mgr/Diplomovka/Hybrid-Genome-Assembler/src/KmerIterator.h
-consts.h
-/home/whiskas/Documents/MEGAsync/FMFI/2. ročník Mgr/Diplomovka/Hybrid-Genome-Assembler/src/consts.h
-
 /home/whiskas/Documents/MEGAsync/FMFI/2. ročník Mgr/Diplomovka/Hybrid-Genome-Assembler/src/KmerIterator.h
 string
 -
@@ -26,9 +16,43 @@ optional
 structs.h
 /home/whiskas/Documents/MEGAsync/FMFI/2. ročník Mgr/Diplomovka/Hybrid-Genome-Assembler/src/structs.h
 
-/home/whiskas/Documents/MEGAsync/FMFI/2. ročník Mgr/Diplomovka/Hybrid-Genome-Assembler/src/consts.h
+/home/whiskas/Documents/MEGAsync/FMFI/2. ročník Mgr/Diplomovka/Hybrid-Genome-Assembler/src/SequenceReader.cpp
+SequenceReader.h
+/home/whiskas/Documents/MEGAsync/FMFI/2. ročník Mgr/Diplomovka/Hybrid-Genome-Assembler/src/SequenceReader.h
+
+/home/whiskas/Documents/MEGAsync/FMFI/2. ročník Mgr/Diplomovka/Hybrid-Genome-Assembler/src/SequenceReader.h
+string
+-
+fstream
+-
+stdexcept
+-
+optional
+-
+structs.h
+/home/whiskas/Documents/MEGAsync/FMFI/2. ročník Mgr/Diplomovka/Hybrid-Genome-Assembler/src/structs.h
+
+/home/whiskas/Documents/MEGAsync/FMFI/2. ročník Mgr/Diplomovka/Hybrid-Genome-Assembler/src/kmer_categorizer.cpp
+iostream
+-
 unordered_map
 -
+vector
+-
+string
+-
+fstream
+-
+experimental/filesystem
+-
+boost/program_options.hpp
+-
+boost/program_options/options_description.hpp
+-
+SequenceReader.h
+/home/whiskas/Documents/MEGAsync/FMFI/2. ročník Mgr/Diplomovka/Hybrid-Genome-Assembler/src/SequenceReader.h
+KmerIterator.h
+/home/whiskas/Documents/MEGAsync/FMFI/2. ročník Mgr/Diplomovka/Hybrid-Genome-Assembler/src/KmerIterator.h
 
 /home/whiskas/Documents/MEGAsync/FMFI/2. ročník Mgr/Diplomovka/Hybrid-Genome-Assembler/src/structs.h
 string

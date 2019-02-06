@@ -25,24 +25,25 @@ unordered_map<uint64_t , uint64_t > load_kmer_counts(const string &path){
     return result;
 }
 
-void characteristic_kmer_positions(const string &path, unordered_map<uint64_t, uint64_t> &kmers, int k, const string &out_path){
+void characteristic_kmer_positions(const string &path, unordered_map<uint64_t, uint64_t> &kmers, const string &out_path, int k){
     SequenceReader reader = SequenceReader(path);
     ofstream out_file;
     out_file.open(out_path);
     optional<GenomeRead> read;
     while ((read = reader.get_next_record()) != nullopt){
 
+        out_file << (*read).header << ":[";
         KmerIterator it = KmerIterator(*read, k);
         unsigned long position = 0;
         optional<uint64_t> kmer_signature;
 
         while ((kmer_signature = it.get_next_kmer()) != nullopt) {
             if (kmers.find(*kmer_signature) != kmers.end()){
-                out_file << position << " ";
+                out_file << "(" << *kmer_signature << "," << position << "),";
             }
             position ++;
         }
-        out_file << endl;
+        out_file << "]" << endl;
     }
     out_file.close();
 }
@@ -85,7 +86,7 @@ int main(int argc, char* argv[]) {
             ("read_path", po::value<string >(), "Path to file with reads (FASTA or FASTQ)")
             ("counts", po::value<string >(), "Path to file with computed kmer counts")
             ("out,o", po::value<string >(), "Path to output file")
-            ("low,l", po::value<int >(), "Lower bound for coverage of characteristic kmers")
+            ("lower,l", po::value<int >(), "Lower bound for coverage of characteristic kmers")
             ("upper,u", po::value<int >(), "Upper bound for coverage of characteristic kmers");
 
 
@@ -160,7 +161,7 @@ int main(int argc, char* argv[]) {
             else
                 ++it;
         }
-        characteristic_kmer_positions(read_path, kmer_counts, k, out_path);
+        characteristic_kmer_positions(read_path, kmer_counts, out_path, k);
     }
 //
 

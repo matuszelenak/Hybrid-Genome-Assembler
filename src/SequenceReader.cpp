@@ -28,11 +28,11 @@ std::optional<GenomeRead> SequenceReader::read_fasta_sequence() {
         return std::nullopt;
 
     std::string header, sequence;
-    if (!(input_file >> header)) {
+    if (!std::getline(input_file, header)) {
         input_file.close();
         return std::nullopt;
     }
-    input_file >> sequence;
+    std::getline(input_file, sequence);
 
     return std::optional<GenomeRead>{{header, sequence, ""}};
 }
@@ -42,13 +42,13 @@ std::optional<GenomeRead> SequenceReader::read_fastq_sequence() {
         return std::nullopt;
 
     std::string header, sequence, comment, quality;
-    if (!(input_file >> header)){
+    if (!std::getline(input_file, header)){
         input_file.close();
         return std::nullopt;
     }
-    input_file >> sequence;
-    input_file >> comment;
-    input_file >> quality;
+    std::getline(input_file, sequence);
+    std::getline(input_file, comment);
+    std::getline(input_file, quality);
 
     return std::optional<GenomeRead>{{header, sequence, quality}};
 }
