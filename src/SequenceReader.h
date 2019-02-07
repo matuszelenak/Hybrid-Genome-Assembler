@@ -6,6 +6,8 @@
 #include <fstream>
 #include <stdexcept>
 #include <optional>
+#include <thread>
+#include <mutex>
 
 #include "structs.h"
 
@@ -19,6 +21,8 @@ private:
 
     std::optional<GenomeRead> read_fasta_sequence();
     std::optional<GenomeRead> read_fastq_sequence();
+
+    std::mutex _read_mutex;
 public:
     explicit SequenceReader(const std::string &path);
     std::optional<GenomeRead> (SequenceReader::*read_sequence_line)();

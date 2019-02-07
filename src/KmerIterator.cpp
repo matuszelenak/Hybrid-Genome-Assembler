@@ -15,12 +15,11 @@ KmerIterator::KmerIterator(GenomeRead &read, int k){
     complement_shift_by = (((uint8_t)(k - 1) * BITS_PER_BASE));
 
     std::string first_k_minus1 = sequence.substr(0, (unsigned long)(k - 1));
-    std::pair<uint64_t, uint64_t > initial = sequence_to_number(first_k_minus1);
-    forward_kmer = initial.first;
-    complementary_kmer = initial.second;
 
     forward_position = 0;
     complementary_position = 0;
+    forward_kmer = 0;
+    complementary_kmer = 0;
 
     for (int i = 0; i < k - 1; i++){
         roll_forward_strand();
