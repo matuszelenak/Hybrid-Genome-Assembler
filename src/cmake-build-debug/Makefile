@@ -123,6 +123,33 @@ src/fast:
 	$(MAKE) -f CMakeFiles/src.dir/build.make CMakeFiles/src.dir/build
 .PHONY : src/fast
 
+KmerAnalysisWriter.o: KmerAnalysisWriter.cpp.o
+
+.PHONY : KmerAnalysisWriter.o
+
+# target to build an object file
+KmerAnalysisWriter.cpp.o:
+	$(MAKE) -f CMakeFiles/src.dir/build.make CMakeFiles/src.dir/KmerAnalysisWriter.cpp.o
+.PHONY : KmerAnalysisWriter.cpp.o
+
+KmerAnalysisWriter.i: KmerAnalysisWriter.cpp.i
+
+.PHONY : KmerAnalysisWriter.i
+
+# target to preprocess a source file
+KmerAnalysisWriter.cpp.i:
+	$(MAKE) -f CMakeFiles/src.dir/build.make CMakeFiles/src.dir/KmerAnalysisWriter.cpp.i
+.PHONY : KmerAnalysisWriter.cpp.i
+
+KmerAnalysisWriter.s: KmerAnalysisWriter.cpp.s
+
+.PHONY : KmerAnalysisWriter.s
+
+# target to generate assembly for a file
+KmerAnalysisWriter.cpp.s:
+	$(MAKE) -f CMakeFiles/src.dir/build.make CMakeFiles/src.dir/KmerAnalysisWriter.cpp.s
+.PHONY : KmerAnalysisWriter.cpp.s
+
 KmerIterator.o: KmerIterator.cpp.o
 
 .PHONY : KmerIterator.o
@@ -213,6 +240,9 @@ help:
 	@echo "... rebuild_cache"
 	@echo "... src"
 	@echo "... edit_cache"
+	@echo "... KmerAnalysisWriter.o"
+	@echo "... KmerAnalysisWriter.i"
+	@echo "... KmerAnalysisWriter.s"
 	@echo "... KmerIterator.o"
 	@echo "... KmerIterator.i"
 	@echo "... KmerIterator.s"

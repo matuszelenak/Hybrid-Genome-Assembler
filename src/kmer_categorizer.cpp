@@ -9,43 +9,61 @@
 
 #include "SequenceReader.h"
 #include "KmerIterator.h"
+#include "KmerAnalysisWriter.h"
 
 namespace po = boost::program_options;
 
 using namespace std;
 
-unordered_map<uint64_t , uint64_t > load_kmer_counts(const string &path){
-    unordered_map<uint64_t , uint64_t > result;
+
+set<uint64_t > load_kmer_counts(const string &path, unsigned long lower, unsigned long upper){
+    set<uint64_t > result;
     SequenceReader reader = SequenceReader(path);
     optional<GenomeRead> read;
     while ((read = reader.get_next_record()) != nullopt){
         pair<uint64_t , uint64_t > nums = KmerIterator::sequence_to_number((*read).sequence);
-        result[min(nums.first, nums.second)] = (uint64_t )stoull((*read).header.substr(1, (*read).header.length()));
+        unsigned long kmer_count = stoul((*read).header.substr(1, (*read).header.length()));
+        if (kmer_count >= lower && kmer_count <= upper){
+            result.insert(min(nums.first, nums.second));
+        }
     }
     return result;
 }
 
-void characteristic_kmer_positions(const string &path, unordered_map<uint64_t, uint64_t> &kmers, const string &out_path, int k){
-    SequenceReader reader = SequenceReader(path);
-    ofstream out_file;
-    out_file.open(out_path);
+void get_kmer_positions(SequenceReader &reader, KmerAnalysisWriter &writer, std::set<uint64_t>characteristic_kmers, int k){
     optional<GenomeRead> read;
     while ((read = reader.get_next_record()) != nullopt){
-
-        out_file << (*read).header << ":[";
-        KmerIterator it = KmerIterator(*read, k);
+        vector<pair<uint64_t, unsigned long> > positions;
         unsigned long position = 0;
+
+        KmerIterator it = KmerIterator(*read, k);
         optional<uint64_t> kmer_signature;
 
         while ((kmer_signature = it.get_next_kmer()) != nullopt) {
-            if (kmers.find(*kmer_signature) != kmers.end()){
-                out_file << "(" << *kmer_signature << "," << position << "),";
+            if (characteristic_kmers.find(*kmer_signature) != characteristic_kmers.end()){
+                positions.emplace_back(make_pair(*kmer_signature, position));
             }
             position ++;
         }
-        out_file << "]" << endl;
+        writer.write_sequence_data((*read).header, positions);
     }
-    out_file.close();
+}
+
+void characteristic_kmer_positions(const string &path, set<uint64_t> &kmers, const string &out_path, int k){
+    SequenceReader reader = SequenceReader(path);
+    KmerAnalysisWriter writer = KmerAnalysisWriter(out_path);
+
+    int num_threads = thread::hardware_concurrency();
+
+    thread t[num_threads];
+
+    for (int i = 0; i < num_threads; ++i) {
+        t[i] = thread(get_kmer_positions, ref(reader), ref(writer), ref(kmers), k);
+    }
+
+    for (int i = 0; i < num_threads; ++i) {
+        t[i].join();
+    }
 }
 
 void kmer_counts(SequenceReader &reader, int k, const string &out_path){
@@ -103,8 +121,8 @@ int main(int argc, char* argv[]) {
     std::experimental::filesystem::path read_path, out_path;
     string command;
     int k = 11;
-    int lower = 1;
-    int upper = 1000;
+    unsigned long lower = 1;
+    unsigned long upper = 1000;
 
     if (vm.count("command")){
         command = vm["command"].as<string>();
@@ -135,11 +153,11 @@ int main(int argc, char* argv[]) {
     else if (command == "analyze"){
 
         if (vm.count("lower")){
-            lower = vm["lower"].as<int>();
+            lower = vm["lower"].as<unsigned long>();
         }
 
         if (vm.count("upper")){
-            upper = vm["upper"].as<int>();
+            upper = vm["upper"].as<unsigned long>();
         }
 
         string counts;
@@ -151,19 +169,8 @@ int main(int argc, char* argv[]) {
             out_path = path.replace_extension("analysis");
         }
 
-        unordered_map<uint64_t, uint64_t> kmer_counts = load_kmer_counts(counts);
-        for(auto it = begin(kmer_counts); it != end(kmer_counts);)
-        {
-            if (it->second < lower || it-> second > upper)
-            {
-                it = kmer_counts.erase(it);
-            }
-            else
-                ++it;
-        }
-        characteristic_kmer_positions(read_path, kmer_counts, out_path, k);
+        set<uint64_t > characteristic_kmers = load_kmer_counts(counts, lower, upper);
+        characteristic_kmer_positions(read_path, characteristic_kmers, out_path, k);
     }
-//
-
     return 0;
 }

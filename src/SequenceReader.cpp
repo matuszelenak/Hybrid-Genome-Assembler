@@ -1,7 +1,3 @@
-//
-// Created by whiskas on 04/02/19.
-//
-
 #include "SequenceReader.h"
 
 SequenceReader::SequenceReader(const std::string &path){
@@ -54,5 +50,6 @@ std::optional<GenomeRead> SequenceReader::read_fastq_sequence() {
 }
 
 std::optional<GenomeRead> SequenceReader::get_next_record(){
+    std::lock_guard<std::mutex> lock(_read_mutex);
     return (this->*read_sequence_line)();
 }

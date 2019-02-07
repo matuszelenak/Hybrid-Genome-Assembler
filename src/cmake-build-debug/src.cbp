@@ -84,6 +84,12 @@
 				</MakeCommands>
 			</Target>
 		</Build>
+		<Unit filename="/home/whiskas/Documents/MEGAsync/FMFI/2. ročník Mgr/Diplomovka/Hybrid-Genome-Assembler/src/KmerAnalysisWriter.cpp">
+			<Option target="src"/>
+		</Unit>
+		<Unit filename="/home/whiskas/Documents/MEGAsync/FMFI/2. ročník Mgr/Diplomovka/Hybrid-Genome-Assembler/src/KmerAnalysisWriter.h">
+			<Option target="src"/>
+		</Unit>
 		<Unit filename="/home/whiskas/Documents/MEGAsync/FMFI/2. ročník Mgr/Diplomovka/Hybrid-Genome-Assembler/src/KmerIterator.cpp">
 			<Option target="src"/>
 		</Unit>
