@@ -1,5 +1,7 @@
 #include "SequenceReader.h"
 
+#include <iostream>
+
 SequenceReader::SequenceReader(const std::string &path){
     std::string ext5 = path.substr(path.size() - 5, path.size());
     std::string ext2 = path.substr(path.size() - 2, path.size());
@@ -29,8 +31,7 @@ std::optional<GenomeRead> SequenceReader::read_fasta_sequence() {
         return std::nullopt;
     }
     std::getline(input_file, sequence);
-
-    return std::optional<GenomeRead>{{header, sequence, ""}};
+    return std::optional<GenomeRead>{{header.substr(1, header.length()), sequence, ""}};
 }
 
 std::optional<GenomeRead> SequenceReader::read_fastq_sequence() {
@@ -46,7 +47,7 @@ std::optional<GenomeRead> SequenceReader::read_fastq_sequence() {
     std::getline(input_file, comment);
     std::getline(input_file, quality);
 
-    return std::optional<GenomeRead>{{header, sequence, quality}};
+    return std::optional<GenomeRead>{{header.substr(1, header.length()), sequence, quality}};
 }
 
 std::optional<GenomeRead> SequenceReader::get_next_record(){

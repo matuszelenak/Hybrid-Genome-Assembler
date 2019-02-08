@@ -16,13 +16,13 @@ namespace po = boost::program_options;
 using namespace std;
 
 
-set<uint64_t > load_kmer_counts(const string &path, unsigned long lower, unsigned long upper){
+set<uint64_t > load_kmer_counts(const string &path, int lower, int upper){
     set<uint64_t > result;
     SequenceReader reader = SequenceReader(path);
     optional<GenomeRead> read;
     while ((read = reader.get_next_record()) != nullopt){
         pair<uint64_t , uint64_t > nums = KmerIterator::sequence_to_number((*read).sequence);
-        unsigned long kmer_count = stoul((*read).header.substr(1, (*read).header.length()));
+        int kmer_count = stoi((*read).header);
         if (kmer_count >= lower && kmer_count <= upper){
             result.insert(min(nums.first, nums.second));
         }
@@ -78,7 +78,6 @@ void kmer_counts(SequenceReader &reader, int k, const string &out_path){
         optional<uint64_t> kmer_signature;
 
         while ((kmer_signature = it.get_next_kmer()) != nullopt) {
-
             if (counts.find(*kmer_signature) == counts.end()) {
                 counts[*kmer_signature] = 0;
             }
@@ -121,8 +120,8 @@ int main(int argc, char* argv[]) {
     std::experimental::filesystem::path read_path, out_path;
     string command;
     int k = 11;
-    unsigned long lower = 1;
-    unsigned long upper = 1000;
+    int lower = 1;
+    int upper = 1000;
 
     if (vm.count("command")){
         command = vm["command"].as<string>();
@@ -153,11 +152,11 @@ int main(int argc, char* argv[]) {
     else if (command == "analyze"){
 
         if (vm.count("lower")){
-            lower = vm["lower"].as<unsigned long>();
+            lower = vm["lower"].as<int>();
         }
 
         if (vm.count("upper")){
-            upper = vm["upper"].as<unsigned long>();
+            upper = vm["upper"].as<int>();
         }
 
         string counts;
