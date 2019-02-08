@@ -30,7 +30,7 @@ std::optional<GenomeRead> SequenceReader::read_fasta_sequence() {
     }
     std::getline(input_file, sequence);
 
-    return std::optional<GenomeRead>{{header, sequence, ""}};
+    return std::optional<GenomeRead>{{header.substr(1, header.length()), sequence, ""}};
 }
 
 std::optional<GenomeRead> SequenceReader::read_fastq_sequence() {
@@ -46,7 +46,7 @@ std::optional<GenomeRead> SequenceReader::read_fastq_sequence() {
     std::getline(input_file, comment);
     std::getline(input_file, quality);
 
-    return std::optional<GenomeRead>{{header, sequence, quality}};
+    return std::optional<GenomeRead>{{header.substr(1, header.length()), sequence, quality}};
 }
 
 std::optional<GenomeRead> SequenceReader::get_next_record(){

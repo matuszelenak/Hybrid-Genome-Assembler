@@ -39,10 +39,10 @@ def jellyfish_path(path, k):
         print(histo_cmd)
         subprocess.check_output(histo_cmd.split())
 
-    histogram(hist_file, 'jellyfish')
+    # histogram(hist_file, 'jellyfish')
 
-    compile_cmd = "g++ ../kmer_categorizer.cpp ../SequenceReader.cpp ../KmerIterator.cpp" \
-                  " -lboost_program_options -std=c++17 -lstdc++fs -o hga -O3 -march=native"
+    compile_cmd = "g++ ../kmer_categorizer.cpp ../SequenceReader.cpp ../KmerIterator.cpp ../KmerAnalysisWriter.cpp" \
+                  " -lboost_program_options -std=c++17 -lpthread -lstdc++fs -o hga -O3 -march=native "
     compile_cmd = compile_cmd.split()
     print(compile_cmd)
     subprocess.run(compile_cmd)

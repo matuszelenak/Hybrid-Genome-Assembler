@@ -5,3 +5,5 @@ src.cbp
 CMakeCache.txt
 .idea/
 python_scripts/hga
+python_scripts/test_data/*
+__pycache__
