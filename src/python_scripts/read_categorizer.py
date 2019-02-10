@@ -13,9 +13,7 @@ class ReadCategorizer:
     def __init__(self, path, k):
         self.parent = []
         self.components = []
-
-        self.big_components = []
-        self.max_big = 2
+        self.component_kmers = []
 
         self.categorize_reads(path, k)
 
@@ -41,11 +39,12 @@ class ReadCategorizer:
 
         for vertex in self.components[smaller]:
             self.parent[vertex] = bigger
+
         self.components[bigger] += self.components[smaller]
         self.components[smaller] = []
 
-        # if len(self.components[bigger]) > 50 and bigger not in self.big_components and len(self.big_components) < self.max_big:
-        #    self.big_components.append(bigger)
+        self.component_kmers[bigger] = self.component_kmers[bigger] | self.component_kmers[smaller]
+        self.component_kmers[smaller] = set()
 
         return True
 
@@ -57,13 +56,25 @@ class ReadCategorizer:
         plt.hist(data, color='blue', bins=len(set(data)))
         plt.show()
 
-    def components_by_size(self):
-        r = [(len(x), i) for i, x in enumerate(self.components)]
+    def component_label(self, component, labels, label_kinds):
+        percentages = []
+        for label_id in label_kinds.values():
+            percentages.append((
+                int(sum([100 for v in self.components[component] if labels[v] == label_id]) / len(self.components[component])),
+                label_id
+            ))
+        percentages.sort(reverse=True)
+        return "{}%".format(percentages[0][0]), percentages[0][1]
+
+    def component_stats(self, labels, label_kinds):
+        r = [(len(x), i) for i, x in enumerate(self.components) if len(x) > 0]
         r.sort(reverse=True)
-        return r
+
+        print('|'.join(
+            [str(self.component_label(i, labels, label_kinds)) for _, i in r[:30]]
+        ))
 
     def categorize_reads(self, path, k):
-        print(path)
         base_path, extension = os.path.splitext(path)
         if extension in ('.fasta', '.fa'):
             extension = 'fasta'
@@ -81,24 +92,33 @@ class ReadCategorizer:
                     kmer_counts[signature] = 0
                 kmer_counts[signature] = kmer_counts[signature] + 1
 
-        self.histogram([x for _, x in kmer_counts.items() if 3 < x < 70])
+        self.histogram([x for _, x in kmer_counts.items() if 3 < x < 100])
         print("Enter lower and upper bound")
         lower, upper = [int(x) for x in input().split()]
         kmers = set([sequence for sequence, count in kmer_counts.items() if lower <= count <= upper])
 
+        kmer_to_number = {kmer: i for i, kmer in enumerate(kmers)}
+
         # for each read calculate its own set of characteristic kmers
         read_kmer_sets = []
         labels = []
+        label_kinds = {}
         for seq_record in SeqIO.parse(path, extension):
             sequence = str(seq_record.seq)
-            labels.append(seq_record.id[:30])
-            read_kmer_sets.append(set())
+            label = seq_record.id
+            if label not in label_kinds:
+                label_kinds[label] = len(label_kinds)
+            labels.append(label_kinds[label])
+
+            kmer_set = set()
             for i in range(k, len(sequence) + 1):
                 forward_kmer = sequence[i - k: i]
                 backward_kmer = ''.join([complement[x] for x in forward_kmer])[::-1]
                 signature = min(forward_kmer, backward_kmer)
                 if signature in kmers:
-                    read_kmer_sets[-1].add(signature)
+                    kmer_set.add(kmer_to_number[signature])
+
+            read_kmer_sets.append(kmer_set)
 
         edges = []
         for i, A in enumerate(read_kmer_sets):
@@ -114,38 +134,63 @@ class ReadCategorizer:
 
         edges.sort(reverse=True)
 
+        print("Label kinds: ", label_kinds)
+        print("Labels: ", labels[:30])
         print('Constructed {} nodes'.format(len(read_kmer_sets)))
         print("Constructed {} edges".format(len(edges)))
 
         self.parent = [x for x in range(len(read_kmer_sets))]
         self.components = [[x] for x in range(len(read_kmer_sets))]
-        num_of_components = len(read_kmer_sets)
+        self.component_kmers = [set(x for x in s) for s in read_kmer_sets]
 
-        G = nx.Graph()
-        G.add_nodes_from(range(len(read_kmer_sets)))
+        comp_size_treshold = 30
         for edge in edges:
-
-            if self.get_parent(edge[1]) in self.big_components and self.get_parent(edge[2]) in self.big_components:
-                continue
-
+            if edge[0] < 80:
+                break
             if self.unite(edge[1], edge[2]):
-                # G.add_edge(edge[1], edge[2])
-                # nx.draw(G)
-                # plt.show()
                 print(edge[0])
-                print([x for x, _ in self.components_by_size()][:30])
-                input()
-                # print(self.big_components)
-                # input()
-                num_of_components -= 1
-                if num_of_components == 2:
-                    break
+                self.component_stats(labels, label_kinds=label_kinds)
+                # i = input()
+                # if i:
+                #     comp_size_treshold = int(i)
+                #     break
 
-        for c in self.big_components:
-            hist_data = []
-            for v in self.components[c]:
-                hist_data.append(labels[v])
-            self.histogram(hist_data)
+        # Second round of union-find on clusters
+        edges = []
+        filtered_components = [(i, self.component_kmers[i]) for i, x in enumerate(self.components) if len(x) > comp_size_treshold]
+        for i, A in filtered_components:
+            for j, B in filtered_components:
+                if i == j:
+                    continue
+
+                edge_weight = len(A & B)
+                print("Components of sizes {} {}".format(len(self.components[i]), len(self.components[j])))
+                print("Component types {} and {}".format(
+                    self.component_label(i, labels, label_kinds),
+                    self.component_label(j, labels, label_kinds)
+                ))
+                print("Components with {} and {} kmers share {} kmers".format(
+                    len(A), len(B), edge_weight
+                ))
+                input()
+                if edge_weight == 0:
+                    continue
+
+                edges.append((edge_weight, i, j))
+
+        edges.sort(reverse=True)
+
+        for edge in edges:
+            if self.unite(edge[1], edge[2]):
+                print(edge[0])
+                self.component_stats(labels, label_kinds=label_kinds)
+                input()
+
+        # for c in self.big_components:
+        #     hist_data = []
+        #     for v in self.components[c]:
+        #         hist_data.append(labels[v])
+        #     self.histogram(hist_data)
 
 
 parser = argparse.ArgumentParser()
