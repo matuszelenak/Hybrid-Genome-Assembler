@@ -24,8 +24,7 @@ private:
 public:
     explicit ReadCategorizer(
             const std::string &read_path,
-            std::unordered_map<uint64_t,
-            uint64_t> &characteristic_kmers,
+            std::set< uint64_t> &characteristic_kmers,
             int k,
             int final_categories);
 };

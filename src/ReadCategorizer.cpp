@@ -57,8 +57,7 @@ bool ReadCategorizer::unite(uint64_t x, uint64_t y) {
 
 ReadCategorizer::ReadCategorizer(
         const std::string &read_path,
-        std::unordered_map<uint64_t,
-        uint64_t> &characteristic_kmers,
+        std::set< uint64_t> &characteristic_kmers,
         int k,
         int final_categories) {
     SequenceReader reader = SequenceReader(read_path);
@@ -66,8 +65,8 @@ ReadCategorizer::ReadCategorizer(
     // Compress kmers to a sequence of consecutive integers, since we won't care about their semantics anymore
     uint32_t kmer_counter = 0;
     std::unordered_map<uint64_t , uint32_t > kmer_compression_lookup;
-    for (auto kmer_data : characteristic_kmers){
-        kmer_compression_lookup[kmer_data.first] = kmer_counter;
+    for (auto kmer : characteristic_kmers){
+        kmer_compression_lookup[kmer] = kmer_counter;
         ++kmer_counter;
     }
 

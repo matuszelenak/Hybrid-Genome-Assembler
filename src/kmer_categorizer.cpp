@@ -10,6 +10,7 @@
 #include "SequenceReader.h"
 #include "KmerIterator.h"
 #include "KmerAnalysisWriter.h"
+#include "ReadCategorizer.h"
 
 namespace po = boost::program_options;
 
@@ -66,6 +67,10 @@ void characteristic_kmer_positions(const string &path, set<uint64_t> &kmers, con
     }
 }
 
+void categorize_reads(const string &path, set<uint64_t> &kmers, int k, int num_categories){
+    ReadCategorizer categorizer = ReadCategorizer(path, kmers, k, num_categories);
+}
+
 void kmer_counts(SequenceReader &reader, int k, const string &out_path){
     unordered_map<uint64_t, uint64_t> counts;
 
@@ -98,7 +103,8 @@ int main(int argc, char* argv[]) {
     p.add("command", 1).add("read_path", 1);
     desc.add_options()
             ("help,h", "Help screen")
-            ("k", po::value<int >()->default_value(11), "Length of k-mer")
+            ("kmer, k", po::value<int >()->default_value(11), "Length of k-mer")
+            ("categories, c", po::value<int >()->default_value(2), "Number of desired read categories")
             ("command", po::value<string >(), "Command")
             ("read_path", po::value<string >(), "Path to file with reads (FASTA or FASTQ)")
             ("counts", po::value<string >(), "Path to file with computed kmer counts")
@@ -149,7 +155,7 @@ int main(int argc, char* argv[]) {
         SequenceReader reader = SequenceReader(read_path);
         kmer_counts(reader, k, out_path);
     }
-    else if (command == "analyze"){
+    else if (command == "analyze" || command == "categorize"){
 
         if (vm.count("lower")){
             lower = vm["lower"].as<int>();
@@ -169,7 +175,15 @@ int main(int argc, char* argv[]) {
         }
 
         set<uint64_t > characteristic_kmers = load_kmer_counts(counts, lower, upper);
-        characteristic_kmer_positions(read_path, characteristic_kmers, out_path, k);
+        if (command == "analyze")
+            characteristic_kmer_positions(read_path, characteristic_kmers, out_path, k);
+        if (command == "categorize"){
+            int cats;
+            if (vm.count("c")){
+                cats = vm["c"].as<int>();
+            }
+            categorize_reads(read_path, characteristic_kmers, k, cats);
+        }
     }
     return 0;
 }
