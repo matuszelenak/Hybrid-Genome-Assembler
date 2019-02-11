@@ -1,5 +1,4 @@
-import os
-import random
+from matplotlib import pyplot as plt
 
 import numpy as np
 from Bio import SeqIO
@@ -7,6 +6,21 @@ from Bio.Seq import Seq
 from Bio.SeqRecord import SeqRecord
 
 from constants import *
+
+
+def histogram(path, tool="jellyfish"):
+    data = []
+    for seq_record in SeqIO.parse(path, 'fasta'):
+        data.append(int(seq_record.id))
+
+    data = [x for x in data if 1 < x < 100]
+
+    plt.figure()
+    plt.title('Occurence histogram ({})'.format(tool))
+    plt.xlabel('Coverage')
+    plt.ylabel('Frequency')
+    plt.hist(data, color='blue', bins=120)
+    plt.show()
 
 
 def random_fasta_file(path, num_sequences=10, seq_length=100):
