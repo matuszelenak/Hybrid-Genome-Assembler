@@ -37,7 +37,7 @@ std::tuple<unsigned long , int, int > ReadCategorizer::recalculate_component_sta
         );
         label_percentages.emplace_back(
                 std::make_pair(
-                        (int)floor((double)with_label / (double)components[component_id].size() ),
+                        (int)floor((double)with_label / (double)components[component_id].size() * 100 ),
                         label_type.second
                 )
         );
@@ -61,6 +61,7 @@ void ReadCategorizer::print_statistics(unsigned long limit){
                 std::get<2>(component_stats[size_and_id[i].second])
         );
     }
+    printf("\n");
 }
 
 
@@ -116,6 +117,9 @@ ReadCategorizer::ReadCategorizer(
     std::vector<std::set< uint32_t>> kmers_per_read;
     std::optional<GenomeRead> read;
 
+    std::vector<uint64_t > reads_with_many_kmers;
+
+    uint64_t read_counter = 0;
     while ((read = reader.get_next_record()) != std::nullopt){
         if (read_label_to_id.find((*read).header) == read_label_to_id.end()){
             read_label_to_id[(*read).header] = (int)read_label_to_id.size();
@@ -131,18 +135,28 @@ ReadCategorizer::ReadCategorizer(
                 reads_kmers.insert(kmer_compression_lookup[*kmer_signature]);
             }
         }
+        if (reads_kmers.size() > 40)
+            reads_with_many_kmers.push_back(read_counter);
+
         kmers_per_read.push_back(reads_kmers);
+        ++read_counter;
     }
 
     uint64_t num_of_reads = kmers_per_read.size();
+
+    components.clear();
+    parent.clear();
     for (uint64_t i = 0; i < num_of_reads; i++){
+        parent.push_back(i);
+        components.push_back({i});
         component_stats.emplace_back(std::make_tuple(1, 100, read_labels[i]));
     }
+    kmers_per_component = kmers_per_read;
 
     // Construct edges between reads, edge weight is the size of intersection of their char. kmers
     std::vector< std::tuple<uint64_t, uint64_t, uint64_t > > edges;
-    for (uint64_t component_A = 0; component_A < num_of_reads; component_A++){
-        for (uint64_t component_B = 0; component_B < num_of_reads; component_B++){
+    for (uint64_t component_A : reads_with_many_kmers){
+        for (uint64_t component_B : reads_with_many_kmers){
             if (component_A == component_B)
                 continue;
 
@@ -155,13 +169,11 @@ ReadCategorizer::ReadCategorizer(
     }
     // Process edges from the heaviest to the lightest
     std::sort(edges.rbegin(), edges.rend());
-    kmers_per_component = kmers_per_read;
 
     for (auto edge : edges){
         if (unite(std::get<1>(edge), std::get<2>(edge))){
-            print_statistics(30);
-            std::string dummy;
-            std::cin >> dummy;
+            printf("%ld\n", std::get<0>(edge));
+            print_statistics(20);
         }
     }
 
@@ -192,8 +204,10 @@ ReadCategorizer::ReadCategorizer(
     uint64_t num_of_components = large_component_indices.size();
     std::sort(edges.rbegin(), edges.rend());
     for (auto edge : edges){
-        if (unite(std::get<1>(edge), std::get<2>(edge)))
+        if (unite(std::get<1>(edge), std::get<2>(edge))){
+            print_statistics(20);
             num_of_components--;
+        }
 
         if (num_of_components == final_categories)
             break;

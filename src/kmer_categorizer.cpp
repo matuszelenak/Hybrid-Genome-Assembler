@@ -103,8 +103,8 @@ int main(int argc, char* argv[]) {
     p.add("command", 1).add("read_path", 1);
     desc.add_options()
             ("help,h", "Help screen")
-            ("kmer, k", po::value<int >()->default_value(11), "Length of k-mer")
-            ("categories, c", po::value<int >()->default_value(2), "Number of desired read categories")
+            ("kmer,k", po::value<int >()->default_value(11), "Length of k-mer")
+            ("categories,c", po::value<int >()->default_value(2), "Number of desired read categories")
             ("command", po::value<string >(), "Command")
             ("read_path", po::value<string >(), "Path to file with reads (FASTA or FASTQ)")
             ("counts", po::value<string >(), "Path to file with computed kmer counts")
@@ -139,8 +139,8 @@ int main(int argc, char* argv[]) {
 
     std::experimental::filesystem::path path(read_path);
 
-    if (vm.count("k")){
-        k = vm["k"].as<int>();
+    if (vm.count("kmer")){
+        k = vm["kmer"].as<int>();
     }
 
     if (vm.count("out")){
@@ -179,8 +179,8 @@ int main(int argc, char* argv[]) {
             characteristic_kmer_positions(read_path, characteristic_kmers, out_path, k);
         if (command == "categorize"){
             int cats;
-            if (vm.count("c")){
-                cats = vm["c"].as<int>();
+            if (vm.count("categories")){
+                cats = vm["categories"].as<int>();
             }
             categorize_reads(read_path, characteristic_kmers, k, cats);
         }
