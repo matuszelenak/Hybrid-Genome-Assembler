@@ -1,0 +1,72 @@
+Problem : given genome reads with knowledge that they contain several (two) similar (95% identity) genomes and their coverage, separate the reads into groups per genome
+
+Input:
+	Start with small bacterial genomes
+	E.coli looks to be suitable. Two strains : CTF073 and MG1655
+
+	simulate reads:
+		- from random sequence
+		- from reference genome
+
+		either perfect reads, or use read simulators (Illumina, PacBio, MinION ?)
+
+		Art-Illumina - Illumina simulator short reads, high quality
+
+		simlord - PacBio - longer reads (thousands of bases), indel and substitution errors
+
+		From all the nanopore sequencers, they either require an unavailable read profile or need to be trained on some existing reads
+
+	obtain reads from web
+		Short read archive - their server is HORRIBLY slow, not really doable even for bacterial genomes
+
+		reference genomes + client simulations seems more viable
+
+
+
+Algorithm: 
+
+Idea: calculate a histogram of all k-mers from reads. If the genomes are similar, there should be a large peak for kmers that occur <coverage> times and 
+smaller peak(s) for kmers, that are specific to one genome. We can use these specific kmers to separate the reads by some form of clustering.
+
+Calculating the histogram is easy : just move a sliding window of length k over reads and count the occurence in a hashmap.
+	technicalities: 
+		- choice of k matters: small k will result in a lot of spurious hits, inflating the counts. Too big k will capture a lot of sequencing errors and deflate the counts
+		- since we dont know, if the read is of 5' -> 3' or 3' -> 5', we need to only count canonical kmers (lexikographic minimum from kmer and its complement)
+		- to effectively move the window, we should map a kmer to a corresponding bit vector that can be represented by ordinary number types (64 bit is enough for 32-mer, which is excessive even for human genome)
+
+Once we have the histogram, we need to choose a lower and upper bound for the count of kmers that we consider specific.
+From all the kmers we found, we will only consider those with counts within these bounds from now on.
+
+For each read, we can now maintain a set of specific kmers that it contains. Note: from this point on its unlikely we will ever care about the actual content of kmer, so we can compress them further into 
+consecutive numbers <0 .. number of specific kmers - 1>
+
+At this point, we only need to cluster the reads together, ideally into two consistent groups each corresponding to one organism
+
+Idea number 1:
+	For each pair of reads, calculate their "closeness" by taking the length of intersection of their respectitive specific kmer sets.
+	Create "edges" between reads with this length, sort the edges from the strongest ones (very close reads) to the weakest.
+
+	Now run union-find on these reads, forming clusters. Ideally, we end up with two large consistent clusters
+
+Idea number 2:
+	When doing the union-find, set a treshold where we consider the two largest components to be "singletons", meaning that regardless of edges, we will never
+	connect them. This should help in case there is one very faulty edge that would otherwise ruin the whole thing
+
+Idea number 3:
+	No 'singletons', but halt the union-find once the edges become to weak or the total number of reads in components larger than some K exceeds some percentage of all reads.
+	Tests on simulated data show, that we can comfortably afford building the components until they are hundreds vertices large without any significant errors.
+	Now, take these large components and recalculate the edges between them (comparing sets of kmers of the entire components)
+	Since the component sizes can be in hundreds, this will cut the running time of edge computation by a large quadratic factor
+	In the following union-find, we will connect the large components into hopefully just two components (new singletons).
+	Components that are not large enough should either be left untouched or dissolved back into vertices. After we obtain the two singletons we will attempt to merge them into 
+	the singletons. This will only require N * 2 edge computations.
+
+Idea number 4:
+	While idea 3 is fine, the quadratic factor in initial edge computation between reads is too large. We can maybe mitigate this in some ways:
+	 - only consider reads that have large enough set of specific kmers
+	 - split the reads into sqrt(N) groups of sqrt(N) members and run the union find on each group separately. This has several benefits on first sight:
+	 		- complexity of edge computations drops to N * sqrt(N) * E where E is edge metric computation
+	 		- Straighforward implementation of multithreading
+
+	- Once we obtain the sqrt(N) * c (small constant) components, run second round of union find on them like in idea 3
+
