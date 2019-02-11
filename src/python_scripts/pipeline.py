@@ -1,21 +1,9 @@
-from Bio import SeqIO
-from matplotlib import pyplot as plt
 import subprocess
 import argparse
 import os
 
 
-def histogram(path, tool="jellyfish"):
-    data = []
-    for seq_record in SeqIO.parse(path, 'fasta'):
-        data.append(int(seq_record.id))
-
-    plt.figure()
-    plt.title('Occurence histogram ({})'.format(tool))
-    plt.xlabel('Coverage')
-    plt.ylabel('Frequency')
-    plt.hist(data, color='blue', bins=120)
-    plt.show()
+from utils import histogram
 
 
 def jellyfish_path(path, k):

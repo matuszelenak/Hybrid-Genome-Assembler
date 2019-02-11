@@ -32,7 +32,7 @@ def read_sequence_from_file(path):
         data_format = 'fastq'
     for seq in SeqIO.parse(path, data_format):
         seq.description = ''
-        yield seq
+        return seq
 
 
 def write_sequences_to_file(sequences, path, data_format='fasta'):

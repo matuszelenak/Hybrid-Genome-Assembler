@@ -198,4 +198,6 @@ ReadCategorizer::ReadCategorizer(
         if (num_of_components == final_categories)
             break;
     }
+
+    //TODO some actual output here
 }
