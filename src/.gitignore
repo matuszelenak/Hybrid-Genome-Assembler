@@ -7,3 +7,5 @@ CMakeCache.txt
 python_scripts/hga
 python_scripts/test_data/*
 __pycache__
+data
+../.idea/

@@ -2,8 +2,7 @@ import subprocess
 import argparse
 import os
 
-
-from utils import histogram
+from .utils import histogram
 
 
 def jellyfish_path(path, k):
@@ -53,8 +52,7 @@ def jellyfish_path(path, k):
 
 def hga_path(path, k):
     base_path, _ = os.path.splitext(path)
-    compile_cmd = "g++ ../kmer_categorizer.cpp ../SequenceReader.cpp ../KmerIterator.cpp" \
-                  " -lboost_program_options -std=c++17 -lstdc++fs -o hga"
+    compile_cmd = "g++ ../kmer_categorizer.cpp ../SequenceReader.cpp ../KmerIterator.cpp -lboost_program_options -std=c++17 -lstdc++fs -o hga"
     compile_cmd = compile_cmd.split()
     subprocess.run(compile_cmd)
 

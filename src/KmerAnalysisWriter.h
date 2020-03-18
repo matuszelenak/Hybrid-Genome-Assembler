@@ -14,7 +14,8 @@ private:
     std::mutex _read_mutex;
 public:
     explicit KmerAnalysisWriter(const std::string &path);
-    void write_sequence_data(std::string &sequence_header, std::vector<std::pair<uint64_t, unsigned long> >&positions);
+
+    void write_sequence_data(std::string &sequence_header, std::vector<std::pair<uint64_t, unsigned long> > &positions);
 };
 
 

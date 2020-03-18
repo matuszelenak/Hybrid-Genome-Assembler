@@ -2,8 +2,8 @@ import subprocess
 
 from Bio import SeqIO
 
-from utils import random_fasta_file
-from kmer_categorizer import kmer_occurence_count, kmer_positions
+from .utils import random_fasta_file
+from .kmer_categorizer import kmer_occurence_count, kmer_positions
 
 
 def test_pipeline():

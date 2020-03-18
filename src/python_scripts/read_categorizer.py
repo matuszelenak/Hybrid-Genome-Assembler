@@ -2,10 +2,9 @@ import argparse
 import os
 
 from Bio import SeqIO
-import networkx as nx
 import matplotlib.pyplot as plt
 
-from constants import *
+from .constants import *
 
 
 class ReadCategorizer:
