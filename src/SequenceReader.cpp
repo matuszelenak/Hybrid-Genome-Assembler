@@ -17,6 +17,10 @@ SequenceReader::SequenceReader(const std::string &path) {
     }
 }
 
+SequenceReader::~SequenceReader(){
+    if (input_file.is_open()) input_file.close();
+}
+
 std::optional<GenomeRead> SequenceReader::read_fasta_sequence() {
     if (!input_file.is_open())
         return std::nullopt;

@@ -22,6 +22,7 @@ private:
     std::mutex _read_mutex;
 public:
     explicit SequenceReader(const std::string &path);
+    ~SequenceReader();
 
     std::optional<GenomeRead> (SequenceReader::*read_sequence_line)();
 

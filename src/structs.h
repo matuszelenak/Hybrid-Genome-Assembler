@@ -18,6 +18,14 @@ struct GenomeRead {
     std::string category;
 };
 
+struct KmerInfo {
+    int in_first_category = 0;
+    int in_second_category = 0;
+    uint64_t avg_quality = 0;
+};
+
+typedef std::unordered_map<Kmer, KmerInfo> KmerOccurrences;
+
 struct KmerQuality {
     Quality min_quality;
     Quality avg_quality;
