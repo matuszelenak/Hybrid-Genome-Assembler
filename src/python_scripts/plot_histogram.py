@@ -35,16 +35,16 @@ def render_subplot(subplot, bound_specificities: List[BoundSpecificities], max_c
     subplot.legend(bars, [f'{low} ≤ x < {high}' for low, high in zip([50] + bounds, bounds)])
 
 
-def plot_histograms(specificities: List[KmerSpecificities]):
+def plot_histograms(specificities: List[KmerSpecificities], max_coverage: int):
     fig, axs = plt.subplots(len(specificities), sharex='col', sharey='row')
 
     for row, (k_value, data) in enumerate(specificities):
         axs[row].set_title(f'Occurrences of characteristic {k_value}-mers in reads')
-        render_subplot(axs[row], data, 60)
+        render_subplot(axs[row], data, max_coverage)
 
     plt.show()
 
 
-num_of_k = int(input())
-specs: List[KmerSpecificities] = [eval(input()) for _ in range(num_of_k)]
-plot_histograms(specs)
+num_of_k, max_cov = [int(x) for x in input().split()]
+specs: List[KmerSpecificities] = [eval(input()) for _ in range(num_of_k)]  # FOR THE GLORY OF SATAN
+plot_histograms(specs, max_cov)

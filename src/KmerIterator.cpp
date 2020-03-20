@@ -1,17 +1,30 @@
 #include <stdexcept>
-#include <algorithm>
 
 #include "KmerIterator.h"
-#include "consts.h"
 
-KmerIterator::KmerIterator(GenomeRead &read, int k) {
+uint8_t BITS_PER_BASE = 2;
+std::unordered_map<char, uint8_t> BASE_TO_NUM = {
+        {'A', 0b00},
+        {'C', 0b01},
+        {'G', 0b10},
+        {'T', 0b11},
+};
+
+std::unordered_map<char, uint8_t> COMPLEMENT = {
+        {'A', 0b11},
+        {'C', 0b10},
+        {'G', 0b01},
+        {'T', 0b00}
+};
+
+KmerIterator::KmerIterator(GenomeReadData &read, int k) {
     if (k > 32) {
         throw std::invalid_argument("Kmer size is too big");
     }
     kmer_size = k;
 
     sequence = read.sequence;
-    clearing_mask = ALL_SET >> (sizeof(uint64_t) * 8 - (k * BITS_PER_BASE));
+    clearing_mask = 0xFFFFFFFFFFFFFFFF >> (sizeof(uint64_t) * 8 - (k * BITS_PER_BASE));
     complement_shift_by = (((uint8_t) (k - 1) * BITS_PER_BASE));
 
     position_in_read = 0;
@@ -22,44 +35,17 @@ KmerIterator::KmerIterator(GenomeRead &read, int k) {
     kmer_qualities_sum = 0;
     quality_k_behind = 0;
 
-    for (int i = 0; i < k - 1; i++, position_in_read++) {
+    for (int i = 0; i < k - 1; i++) {
         roll_forward_strand();
         roll_complementary_strand();
 
         kmer_qualities_window.push_back(read.qualities[i]);
         kmer_qualities_sum += read.qualities[i];
+
+        position_in_read++;
     }
 }
 
-
-std::pair<Kmer, Kmer> KmerIterator::sequence_to_number(std::string &sequence) {
-    uint64_t forward = 0;
-    uint64_t backward = 0;
-    for (char c : sequence) {
-        forward <<= BITS_PER_BASE;
-        forward |= BASE_TO_NUM[c];
-    }
-
-    std::string complement = sequence;
-    std::reverse(complement.begin(), complement.end());
-    for (char c : complement) {
-        backward <<= BITS_PER_BASE;
-        backward |= COMPLEMENT[c];
-    }
-
-    return std::make_pair(forward, backward);
-}
-
-
-std::string KmerIterator::number_to_sequence(Kmer number, int k) {
-    std::string result;
-    for (int i = 0; i < k; i++) {
-        result.push_back(BASES[number & (uint64_t)0b11]);
-        number >>= BITS_PER_BASE;
-    }
-    std::reverse(result.begin(), result.end());
-    return result;
-}
 
 
 void KmerIterator::roll_forward_strand() {

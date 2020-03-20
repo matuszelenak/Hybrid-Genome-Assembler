@@ -9,10 +9,6 @@ INCLUDE_DIRECTORIES( ${Boost_INCLUDE_DIR} )
 
 add_subdirectory(fmt EXCLUDE_FROM_ALL)
 
-# add_executable(src kmer_categorizer.cpp SequenceReader.cpp SequenceReader.h KmerIterator.cpp KmerIterator.h consts.h structs.h KmerAnalysisWriter.cpp KmerAnalysisWriter.h ReadCategorizer.cpp ReadCategorizer.h)
+add_executable(pipeline MainPipeline.cpp KmerAnalysis.cpp ReadClustering.cpp ReadDataLoader.cpp KmerIterator.cpp Utils.cpp DNAStructures.cpp)
 
-add_executable(occurrences KmerOccurrences.cpp SequenceReader.cpp SequenceReader.h KmerIterator.cpp KmerIterator.h Utils.cpp Utils.h structs.h consts.h)
-
-add_executable(categorizer CategorizeReads.cpp GenomeReadCluster.h GenomeReadCluster.cpp)
-
-TARGET_LINK_LIBRARIES( occurrences LINK_PUBLIC ${Boost_LIBRARIES} stdc++fs pthread jsoncpp fmt)
+TARGET_LINK_LIBRARIES( pipeline LINK_PUBLIC ${Boost_LIBRARIES} stdc++fs pthread jsoncpp fmt)

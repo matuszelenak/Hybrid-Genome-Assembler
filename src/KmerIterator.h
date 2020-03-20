@@ -3,7 +3,7 @@
 #include <boost/optional.hpp>
 #include <optional>
 
-#include "structs.h"
+#include "DNAStructures.h"
 
 #ifndef SRC_KMERITERATOR_H
 #define SRC_KMERITERATOR_H
@@ -28,11 +28,8 @@ private:
     void roll_forward_strand();
     void roll_complementary_strand();
 public:
-    explicit KmerIterator(GenomeRead &read, int k);
+    explicit KmerIterator(GenomeReadData &read, int k);
     std::optional<std::pair<Kmer, KmerQuality>> get_next_kmer();
-
-    static std::pair<Kmer, Kmer > sequence_to_number(std::string &sequence);
-    static std::string number_to_sequence(uint64_t, int k);
 };
 
 
