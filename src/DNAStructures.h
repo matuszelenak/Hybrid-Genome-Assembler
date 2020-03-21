@@ -9,7 +9,6 @@
 
 
 typedef uint64_t Kmer;
-typedef std::string Category;
 typedef bool CategoryFlag;
 typedef int Quality;
 
@@ -17,7 +16,6 @@ struct GenomeReadData {
     std::string header;
     std::string sequence;
     std::vector<Quality > qualities;
-    std::string category;
     CategoryFlag category_flag;
 };
 

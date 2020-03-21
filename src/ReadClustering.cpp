@@ -149,7 +149,7 @@ void run_clustering(std::vector<GenomeReadCluster> &clusters){
     }
 }
 
-std::vector<GenomeReadCluster> get_initial_read_clusters(ReadDataLoader &reader, int k, KmerOccurrences &characteristic_kmers) {
+std::vector<GenomeReadCluster> get_initial_read_clusters(SequenceRecordIterator &reader, int k, KmerOccurrences &characteristic_kmers) {
     std::vector<GenomeReadCluster> clusters;
 
     std::optional<GenomeReadData> read;

@@ -1,7 +1,7 @@
 #include <vector>
 
 #include "DNAStructures.h"
-#include "ReadDataLoader.h"
+#include "SequenceRecordIterator.h"
 
 #ifndef SRC_READCLUSTERING_H
 #define SRC_READCLUSTERING_H
@@ -22,6 +22,6 @@ struct ClusterConnection{
 };
 
 void run_clustering(std::vector<GenomeReadCluster> &clusters);
-std::vector<GenomeReadCluster> get_initial_read_clusters(ReadDataLoader &reader, int k, KmerOccurrences &characteristic_kmers);
+std::vector<GenomeReadCluster> get_initial_read_clusters(SequenceRecordIterator &reader, int k, KmerOccurrences &characteristic_kmers);
 
 #endif //SRC_READCLUSTERING_H

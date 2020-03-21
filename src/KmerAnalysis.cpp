@@ -4,6 +4,7 @@
 
 #include "KmerAnalysis.h"
 #include "KmerIterator.h"
+#include "Utils.h"
 
 namespace algo = boost::algorithm;
 
@@ -57,11 +58,11 @@ KmerOccurrences filter_characteristic_kmers(KmerOccurrences &occurrences, int co
 }
 
 
-KmerOccurrences kmer_occurrences(ReadDataLoader &reader, int k) {
+KmerOccurrences kmer_occurrences(SequenceRecordIterator &read_iterator, int k) {
     KmerOccurrences occurrences;
 
     std::optional<GenomeReadData> read;
-    while ((read = reader.get_next_record()) != std::nullopt) {
+    while ((read = read_iterator.get_next_record()) != std::nullopt) {
         KmerIterator it = KmerIterator(*read, k);
         std::optional<std::pair<Kmer, KmerQuality>> kmer_info;
 

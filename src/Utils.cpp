@@ -26,16 +26,3 @@ int run_command_with_input(const char *command, const std::string& in){
     }
     return EXIT_SUCCESS;
 }
-
-void TwoCategoriesIdentifier::add_category(const std::string& category) {
-    if (!_category_to_id.contains(category)) {
-        _category_to_id[category] = _category_to_id.empty();
-        if (_category_to_id.size() > 2) {
-            throw std::logic_error("More than two categories found in reads");
-        }
-    }
-}
-
-bool TwoCategoriesIdentifier::id_for_category(const std::string& category) {
-    return _category_to_id[category];
-}

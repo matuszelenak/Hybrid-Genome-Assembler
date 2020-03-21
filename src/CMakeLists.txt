@@ -9,6 +9,6 @@ INCLUDE_DIRECTORIES( ${Boost_INCLUDE_DIR} )
 
 add_subdirectory(fmt EXCLUDE_FROM_ALL)
 
-add_executable(pipeline MainPipeline.cpp KmerAnalysis.cpp ReadClustering.cpp ReadDataLoader.cpp KmerIterator.cpp Utils.cpp DNAStructures.cpp)
+add_executable(pipeline MainPipeline.cpp KmerAnalysis.cpp ReadClustering.cpp KmerIterator.cpp Utils.cpp DNAStructures.cpp SequenceRecordIterator.cpp)
 
 TARGET_LINK_LIBRARIES( pipeline LINK_PUBLIC ${Boost_LIBRARIES} stdc++fs pthread jsoncpp fmt)
