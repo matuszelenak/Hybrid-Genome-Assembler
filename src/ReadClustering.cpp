@@ -154,6 +154,7 @@ std::vector<GenomeReadCluster> get_initial_read_clusters(SequenceRecordIterator 
 
     std::optional<GenomeReadData> read;
     uint64_t cluster_id = 0;
+    uint64_t read_count = 0;
     while ((read = reader.get_next_record()) != std::nullopt) {
         KmerIterator it = KmerIterator(*read, k);
         std::optional<std::pair<Kmer, KmerQuality>> kmer_info;
@@ -170,9 +171,11 @@ std::vector<GenomeReadCluster> get_initial_read_clusters(SequenceRecordIterator 
             InClusterReadData data = {read->header, read->category_flag};
             clusters.emplace_back(cluster_id++, data, in_read_characteristic);
         }
+
+        read_count++;
     }
 
-    std::cout << fmt::format("{} reads converted to clusters", clusters.size()) << std::endl;
+    std::cout << fmt::format("{} out of {} reads converted to clusters", clusters.size(), read_count) << std::endl;
 
     return clusters;
 }

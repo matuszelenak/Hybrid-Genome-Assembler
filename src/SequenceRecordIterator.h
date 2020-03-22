@@ -26,8 +26,8 @@ private:
     std::mutex _read_mutex;
 
     int current_file_index;
-    uint64_t current_file_size;
-    uint64_t current_file_position;
+    uint64_t current_file_size = 0;
+    uint64_t current_file_position = 0;
     bool exhausted = false;
 
 
@@ -43,6 +43,8 @@ public:
     std::string get_next_line();
 
     void configure_for_file();
+
+    std::vector<uint64_t >total_read_bases;
 };
 
 

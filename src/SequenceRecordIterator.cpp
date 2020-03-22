@@ -1,6 +1,5 @@
 #include <fmt/format.h>
 #include <iostream>
-# include <iomanip>
 #include "SequenceRecordIterator.h"
 #include "Utils.h"
 
@@ -12,6 +11,7 @@ SequenceRecordIterator::SequenceRecordIterator(std::vector<std::string> &reads_p
             throw std::invalid_argument(fmt::format("File with path \"{}\" does not exist", path));
         }
         this->read_files.push_back(file);
+        total_read_bases.push_back(0);
     }
     this->current_record_method = &SequenceRecordIterator::read_fastq_record;
     current_file_index = 0;
@@ -95,6 +95,8 @@ std::optional<GenomeReadData> SequenceRecordIterator::get_next_record() {
     }
 
     show_progress(current_file_position, current_file_size, paths[current_file_index]);
+
+    total_read_bases[current_file_index] += data.sequence.length();
 
     return std::optional<GenomeReadData>{
             {

@@ -114,3 +114,33 @@ KmerOccurrences kmer_occurrences(SequenceRecordIterator &read_iterator, int k) {
 
     return occurrences;
 }
+
+
+std::vector<int> get_k_sizes(int max_genome_size){
+    std::vector<int>k_sizes;
+    int k_guess = (int)ceil(log(max_genome_size) / log(4)) + 2;
+    for (int k_value = k_guess; k_value < k_guess + 2; k_value++){
+        k_sizes.push_back(k_value);
+    }
+    return k_sizes;
+}
+
+int _get_genome_size_or_coverage(SequenceRecordIterator &records, int known){
+    std::optional<GenomeReadData> read;
+    while ((read = records.get_next_record()) != std::nullopt){}
+    uint64_t unknown = 0;
+    for (auto read_bases : records.total_read_bases){
+        unknown = std::max(unknown, (uint64_t)(read_bases/known));
+    }
+    return unknown;
+}
+
+// For the case when only the coverage is known
+int get_genome_size(SequenceRecordIterator &records, int coverage){
+    return _get_genome_size_or_coverage(records, coverage);
+}
+
+// For the case when only the genome size is known
+int get_coverage(SequenceRecordIterator &records, int genome_size){
+    return _get_genome_size_or_coverage(records, genome_size);
+}

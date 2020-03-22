@@ -17,4 +17,9 @@ KmerSpecificity get_kmer_specificity(KmerOccurrences &occurrences);
 KmerOccurrences filter_characteristic_kmers(KmerOccurrences &occurrences, int coverage_lower_bound, int coverage_upper_bound);
 KmerOccurrences kmer_occurrences(SequenceRecordIterator &read_iterator, int k);
 
+std::vector<int> get_k_sizes(int max_genome_size);
+int get_coverage(SequenceRecordIterator &records, int genome_size);
+int get_genome_size(SequenceRecordIterator &records, int coverage);
+
+
 #endif //SRC_KMERANALYSIS_H

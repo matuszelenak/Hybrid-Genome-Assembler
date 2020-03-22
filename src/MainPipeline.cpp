@@ -26,7 +26,12 @@ int main(int argc, char *argv[]) {
     p.add("read_paths", -1);
     desc.add_options()
             ("help,h", "Help screen")
-            ("read_paths", po::value<std::vector<std::string>>(&read_paths)->multitoken(), "Path to file with reads (FASTA or FASTQ)");
+            ("read_paths", po::value<std::vector<std::string>>(&read_paths)->multitoken(), "Path to file with reads (FASTA or FASTQ)")
+            ("genome,g", po::value<int >(), "Estimated size of the larger genome")
+            ("coverage,c", po::value<int >(), "Estimated coverage (for one read file)")
+            ("k-size,k", po::value<int> (), "Size of kmer to analyze & select")
+            ("cov-lower,l", po::value<int> (), "Lower bound for coverage of characteristic kmers")
+            ("cov-upper,u", po::value<int> (), "Upper bound for coverage of characteristic kmers");
 
     po::variables_map vm;
     po::store(po::command_line_parser(argc, argv).
@@ -38,50 +43,81 @@ int main(int argc, char *argv[]) {
         return 0;
     }
 
-    int max_genome_size, max_coverage;
-
     if (read_paths.empty()) {
-        throw std::invalid_argument("You need to specify a read file");
+        throw std::invalid_argument("You need to specify paths to read files");
+    }
+
+    int max_genome_size = 0, max_coverage = 0;
+    if (vm.count("coverage") || vm.count("genome")){
+        if (vm.count("coverage")){
+            max_coverage = vm["coverage"].as<int>();
+
+            SequenceRecordIterator read_iterator = SequenceRecordIterator(read_paths);
+            max_genome_size = get_genome_size(read_iterator, max_coverage);
+            std::cout << fmt::format("Determined genome size {}\n", max_genome_size);
+        }
+        if (vm.count("genome")){
+            max_genome_size = vm["genome"].as<int>();
+            if (max_coverage == 0){
+                SequenceRecordIterator read_iterator = SequenceRecordIterator(read_paths);
+                max_coverage = get_coverage(read_iterator, max_genome_size);
+            }
+            std::cout << fmt::format("Determined coverage {}\n", max_coverage);
+        }
     } else {
-        std::vector<int> genome_sizes, coverages;
         for (auto &path : read_paths){
             Json::Value meta;
             std::ifstream file(path.substr(0, path.find_last_of('.')) + "_meta.json");
-            std::cout << fmt::format("Loading meta from {}\n", path.substr(0, path.find_last_of('.')) + "_meta.json");
             file >> meta;
             std::cout << meta << std::endl;
 
-            genome_sizes.push_back(meta["genome_size"].asInt());
-            coverages.push_back(meta["coverage"].asInt());
+            max_genome_size = std::max(max_genome_size, meta["genome_size"].asInt());
+            max_coverage = std::max(max_coverage, meta["coverage"].asInt());
+        }
+    }
+
+    std::vector<int>k_sizes;
+    if (vm.count("k-size")){
+        k_sizes = {vm["k-size"].as<int>()};
+    } else {
+        k_sizes = get_k_sizes(max_genome_size);
+    }
+
+    std::map<int, KmerSpecificity> per_k_specificities = {};
+    std::map<int, KmerOccurrences> per_k_occurrences;
+    for (auto k_length : k_sizes) {
+        std::cout << fmt::format("\n ### Running analysis for k-mer size {} ###\n", k_length);
+        SequenceRecordIterator read_iterator = SequenceRecordIterator(read_paths);
+        per_k_occurrences[k_length] = kmer_occurrences(read_iterator, k_length);
+        per_k_specificities[k_length] = get_kmer_specificity(per_k_occurrences[k_length]);
+    }
+
+    int selected_k = 0, cov_lower = 0, cov_upper = 0;
+    if (vm.count("k-size")) selected_k = vm["k-size"].as<int>();
+    if (vm.count("cov-lower")) cov_lower = vm["cov-lower"].as<int>();
+    if (vm.count("cov-upper")) cov_upper = vm["cov-upper"].as<int>();
+
+    if (!(selected_k && cov_lower && cov_upper)){
+        plot_kmer_specificity(per_k_specificities, max_coverage * 3);
+
+        if (!selected_k){
+            std::cout << "Enter the size of k-mer\n";
+            std::cin >> selected_k;
         }
 
-        max_genome_size = *std::max_element(genome_sizes.begin(), genome_sizes.end());
-        max_coverage = *std::max_element(coverages.begin(), coverages.end());
+        if (!(cov_lower && cov_upper)){
+            std::cout << "Enter the lower and upper bound for coverage of characteristic kmers\n";
+            std::cin >> cov_lower >> cov_upper;
+        }
     }
 
-    int k_guess = (int)ceil(log(max_genome_size) / log(4)) + 1;
-
-    std::map<int, KmerSpecificity> specificities = {};
-    std::map<int, KmerOccurrences> per_k_occurrences;
-    for (int k_length = k_guess; k_length < k_guess + 3; k_length++) {
-        std::cout << k_length << std::endl;
-
-        SequenceRecordIterator read_iterator = SequenceRecordIterator(read_paths);
-        KmerOccurrences occurrences = kmer_occurrences(read_iterator, k_length);
-        specificities[k_length] = get_kmer_specificity(occurrences);
-        per_k_occurrences[k_length] = occurrences;
-    }
-
-    plot_kmer_specificity(specificities, max_coverage * 2);
-    int selected_k, cov_low, cov_high;
-    std::cin >> selected_k >> cov_low >> cov_high;
     std::cout << fmt::format("{} total kmers\n", per_k_occurrences[selected_k].size());
-    KmerOccurrences characteristic_kmers = filter_characteristic_kmers(per_k_occurrences[selected_k], cov_low, cov_high);
+    KmerOccurrences characteristic_kmers = filter_characteristic_kmers(per_k_occurrences[selected_k], cov_lower, cov_upper);
 
     std::cout << fmt::format("{} characteristic kmers\n", characteristic_kmers.size());
 
     SequenceRecordIterator read_iterator = SequenceRecordIterator(read_paths);
     std::vector<GenomeReadCluster> initial_clusters = get_initial_read_clusters(read_iterator, selected_k, characteristic_kmers);
-    run_clustering(initial_clusters);
+    //run_clustering(initial_clusters);
     return 0;
 }
