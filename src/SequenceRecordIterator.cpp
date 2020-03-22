@@ -1,8 +1,11 @@
 #include <fmt/format.h>
 #include <iostream>
+# include <iomanip>
 #include "SequenceRecordIterator.h"
+#include "Utils.h"
 
 SequenceRecordIterator::SequenceRecordIterator(std::vector<std::string> &reads_paths) {
+    this->paths = reads_paths;
     for (auto &path : reads_paths) {
         auto *file = new std::ifstream(path.c_str());
         if (!file->is_open()) {
@@ -31,7 +34,10 @@ void SequenceRecordIterator::configure_for_file() {
     } else
         throw std::logic_error("Unrecognized file format");
 
-    read_files[current_file_index]->seekg(0);
+    read_files[current_file_index]->seekg(0, std::ifstream::end);
+    current_file_size = read_files[current_file_index]->tellg();
+    current_file_position = 0;
+    read_files[current_file_index]->seekg(0, std::ifstream::beg);
 }
 
 std::string SequenceRecordIterator::get_next_line() {
@@ -43,9 +49,11 @@ std::string SequenceRecordIterator::get_next_line() {
             configure_for_file();
             return get_next_line();
         } else {
+            exhausted = true;
             return "";
         }
     }
+    current_file_position += (in.length() + 1);
     return in;
 }
 
@@ -74,7 +82,8 @@ SeqRecordData SequenceRecordIterator::read_fasta_record(std::string &header) {
 }
 
 std::optional<GenomeReadData> SequenceRecordIterator::get_next_record() {
-    //std::lock_guard<std::mutex> lock(_read_mutex);
+    std::lock_guard<std::mutex> lock(_read_mutex);
+    if (exhausted) return std::nullopt;
 
     std::string header = get_next_line();
     if (header.empty()) return std::nullopt;
@@ -84,6 +93,8 @@ std::optional<GenomeReadData> SequenceRecordIterator::get_next_record() {
     if (data.header.empty() || data.sequence.empty()) {
         return std::nullopt;
     }
+
+    show_progress(current_file_position, current_file_size, paths[current_file_index]);
 
     return std::optional<GenomeReadData>{
             {

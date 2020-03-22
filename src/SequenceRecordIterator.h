@@ -21,10 +21,14 @@ struct SeqRecordData{
 
 class SequenceRecordIterator {
 private:
+    std::vector<std::string> paths;
     std::vector<std::ifstream*> read_files;
     std::mutex _read_mutex;
 
     int current_file_index;
+    uint64_t current_file_size;
+    uint64_t current_file_position;
+    bool exhausted = false;
 
 
     SeqRecordData read_fastq_record(std::string &header);

@@ -6,7 +6,7 @@ GenomeReadCluster::GenomeReadCluster(uint64_t id, InClusterReadData &read_data, 
     reference_id = id;
     _categories = {read_data.category_flag};
     reads.push_back(read_data);
-    this->characteristic_kmers = characteristic_kmers;
+    this->characteristic_kmers.insert(characteristic_kmers.begin(), characteristic_kmers.end());
 }
 
 void GenomeReadCluster::absorb(GenomeReadCluster &cluster) {

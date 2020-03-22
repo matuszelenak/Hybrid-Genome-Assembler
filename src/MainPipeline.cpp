@@ -38,10 +38,6 @@ int main(int argc, char *argv[]) {
         return 0;
     }
 
-    for (auto &s : read_paths){
-        std::cout << s << std::endl;
-    }
-
     int max_genome_size, max_coverage;
 
     if (read_paths.empty()) {
@@ -67,7 +63,7 @@ int main(int argc, char *argv[]) {
 
     std::map<int, KmerSpecificity> specificities = {};
     std::map<int, KmerOccurrences> per_k_occurrences;
-    for (int k_length = k_guess; k_length < k_guess + 4; k_length++) {
+    for (int k_length = k_guess; k_length < k_guess + 3; k_length++) {
         std::cout << k_length << std::endl;
 
         SequenceRecordIterator read_iterator = SequenceRecordIterator(read_paths);
