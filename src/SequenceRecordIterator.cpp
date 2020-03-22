@@ -6,19 +6,32 @@
 SequenceRecordIterator::SequenceRecordIterator(std::vector<std::string> &reads_paths) {
     this->paths = reads_paths;
     for (auto &path : reads_paths) {
-        auto *file = new std::ifstream(path.c_str());
-        if (!file->is_open()) {
-            throw std::invalid_argument(fmt::format("File with path \"{}\" does not exist", path));
-        }
-        this->read_files.push_back(file);
         total_read_bases.push_back(0);
     }
-    this->current_record_method = &SequenceRecordIterator::read_fastq_record;
+
     current_file_index = 0;
-    configure_for_file();
+    load_file_at_position(current_file_index);
 }
 
-void SequenceRecordIterator::configure_for_file() {
+bool SequenceRecordIterator::load_file_at_position(int pos) {
+    if (current_file.is_open()){
+        current_file.close();
+    }
+
+    if (pos >= paths.size()) return false;
+
+    current_file.open(paths[current_file_index]);
+    if(!current_file)
+    {
+        throw std::invalid_argument(fmt::format("File with path \"{}\" does not exist", paths[current_file_index]));
+    }
+
+    //Measure the size of the file
+    current_file.seekg(0, std::ifstream::end);
+    current_file_size = current_file.tellg();
+    current_file.seekg(0, std::ifstream::beg);
+
+    // Determine the file format
     std::string header = get_next_line();
     std::string sequence = get_next_line();
     if (header.empty()) {
@@ -34,26 +47,20 @@ void SequenceRecordIterator::configure_for_file() {
     } else
         throw std::logic_error("Unrecognized file format");
 
-    read_files[current_file_index]->seekg(0, std::ifstream::end);
-    current_file_size = read_files[current_file_index]->tellg();
-    current_file_position = 0;
-    read_files[current_file_index]->seekg(0, std::ifstream::beg);
+    current_file.seekg(0, std::ifstream::beg);
+    return true;
 }
 
 std::string SequenceRecordIterator::get_next_line() {
     std::string in;
-    if (!std::getline(*read_files[current_file_index], in)) {
-        read_files[current_file_index]->close();
-        current_file_index++;
-        if (current_file_index < read_files.size()) {
-            configure_for_file();
+    if (!std::getline(current_file, in)) {
+        if (load_file_at_position(++current_file_index)){
             return get_next_line();
         } else {
             exhausted = true;
             return "";
         }
     }
-    current_file_position += (in.length() + 1);
     return in;
 }
 
@@ -94,7 +101,7 @@ std::optional<GenomeReadData> SequenceRecordIterator::get_next_record() {
         return std::nullopt;
     }
 
-    show_progress(current_file_position, current_file_size, paths[current_file_index]);
+    show_progress(current_file.tellg(), current_file_size, paths[current_file_index]);
 
     total_read_bases[current_file_index] += data.sequence.length();
 
@@ -109,8 +116,5 @@ std::optional<GenomeReadData> SequenceRecordIterator::get_next_record() {
 }
 
 SequenceRecordIterator::~SequenceRecordIterator() {
-    for (auto file: read_files) {
-        if (file->is_open()) file->close();
-        free(file);
-    }
+    if (current_file.is_open()) current_file.close();
 }

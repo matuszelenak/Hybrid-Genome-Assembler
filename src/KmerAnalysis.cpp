@@ -64,7 +64,20 @@ KmerOccurrences filter_characteristic_kmers(KmerOccurrences &occurrences, int co
 }
 
 
-void kmer_occurrences_thread(SequenceRecordIterator &read_iterator, KmerOccurrences &total_occurrences, int k, int &finish_order) {
+void _merge_partial_occurrences(KmerOccurrences &merged_into, KmerOccurrences &to_merge){
+    for (auto it = begin(to_merge); it != end(to_merge); it++) {
+        if (!merged_into.contains(it->first)) {
+            merged_into[it->first] = {it->second.in_first_category, it->second.in_second_category, it->second.sum_of_qualities};
+        } else {
+            merged_into[it->first].in_first_category += it->second.in_first_category;
+            merged_into[it->first].in_second_category += it->second.in_second_category;
+            merged_into[it->first].sum_of_qualities += it->second.sum_of_qualities;
+        }
+    }
+}
+
+
+void kmer_occurrences_thread(SequenceRecordIterator &read_iterator, KmerOccurrences &total_occurrences, int k, int thread_id, int &merger_id, int num_of_threads) {
     KmerOccurrences partial_occurrences;
     std::optional<GenomeReadData> read;
     while ((read = read_iterator.get_next_record()) != std::nullopt) {
@@ -79,21 +92,16 @@ void kmer_occurrences_thread(SequenceRecordIterator &read_iterator, KmerOccurren
             partial_occurrences[kmer_info->first].in_second_category += (int) !read->category_flag;
             partial_occurrences[kmer_info->first].sum_of_qualities += kmer_info->second.avg_quality;
         }
-    }
 
-    // Merge into the total occurrences
-    mut.lock();
-    std::cout << fmt::format("Thread {} merging...\n", finish_order);
-    for (auto it = begin(partial_occurrences); it != end(partial_occurrences); it++) {
-        if (!total_occurrences.contains(it->first)) {
-            total_occurrences[it->first] = {0, 0, 0};
+        if (partial_occurrences.size() > 100000 && thread_id == merger_id){
+            mut.lock();
+            std::cout << fmt::format("Thread {} merging {} items...\n", thread_id, partial_occurrences.size());
+            _merge_partial_occurrences(total_occurrences, partial_occurrences);
+            merger_id = (merger_id + 1) % num_of_threads;
+            mut.unlock();
+            partial_occurrences.clear();
         }
-        total_occurrences[it->first].in_first_category += it->second.in_first_category;
-        total_occurrences[it->first].in_second_category += it->second.in_second_category;
-        total_occurrences[it->first].sum_of_qualities += it->second.sum_of_qualities;
     }
-    finish_order++;
-    mut.unlock();
 }
 
 
@@ -103,9 +111,9 @@ KmerOccurrences kmer_occurrences(SequenceRecordIterator &read_iterator, int k) {
     unsigned int num_threads = std::thread::hardware_concurrency();
     std::thread t[num_threads];
 
-    int finish_order = 0;
+    int approved_merger_id = 0;
     for (int i = 0; i < num_threads; ++i) {
-        t[i] = std::thread(kmer_occurrences_thread, std::ref(read_iterator), std::ref(occurrences), k, std::ref(finish_order));
+        t[i] = std::thread(kmer_occurrences_thread, std::ref(read_iterator), std::ref(occurrences), k, i, std::ref(approved_merger_id), num_threads);
     }
 
     for (int i = 0; i < num_threads; ++i) {
@@ -118,7 +126,7 @@ KmerOccurrences kmer_occurrences(SequenceRecordIterator &read_iterator, int k) {
 
 std::vector<int> get_k_sizes(int max_genome_size){
     std::vector<int>k_sizes;
-    int k_guess = (int)ceil(log(max_genome_size) / log(4)) + 2;
+    int k_guess = (int)ceil(log(max_genome_size) / log(4));
     for (int k_value = k_guess; k_value < k_guess + 2; k_value++){
         k_sizes.push_back(k_value);
     }

@@ -7,8 +7,8 @@
 #include "Utils.h"
 
 
-void show_progress(int curr, int total, std::string msg) {
-    float progress_percent = (float) curr / (float) total;
+void show_progress(uint64_t curr, uint64_t total, const std::string& msg) {
+    double progress_percent = (double) curr / (double) total;
 
     std::cout << std::fixed << std::setprecision(2)
               << fmt::format("\r{}: [{}{}] {}%", msg, std::string(progress_percent * 100, '#'), std::string(100 - progress_percent * 100, ' '), (int) (100 * progress_percent));

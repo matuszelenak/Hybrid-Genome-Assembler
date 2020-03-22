@@ -22,12 +22,11 @@ struct SeqRecordData{
 class SequenceRecordIterator {
 private:
     std::vector<std::string> paths;
-    std::vector<std::ifstream*> read_files;
     std::mutex _read_mutex;
 
+    std::ifstream current_file;
     int current_file_index;
     uint64_t current_file_size = 0;
-    uint64_t current_file_position = 0;
     bool exhausted = false;
 
 
@@ -42,7 +41,7 @@ public:
 
     std::string get_next_line();
 
-    void configure_for_file();
+    bool load_file_at_position(int pos);
 
     std::vector<uint64_t >total_read_bases;
 };
