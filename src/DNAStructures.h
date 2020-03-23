@@ -1,8 +1,8 @@
 #include <vector>
 #include <set>
 #include <string>
-#include <unordered_map>
 #include <map>
+#include <tsl/robin_map.h>
 
 #ifndef SRC_DNASTRUCTURES_H
 #define SRC_DNASTRUCTURES_H
@@ -29,7 +29,7 @@ struct KmerInfo {
     int in_second_category = 0;
     uint64_t sum_of_qualities = 0;
 
-    int total_occurrences(){
+    [[nodiscard]] int total_occurrences() const {
         return this->in_first_category + this->in_second_category;
     };
     Quality avg_quality(){
@@ -37,7 +37,7 @@ struct KmerInfo {
     };
 };
 
-typedef std::unordered_map<Kmer, KmerInfo> KmerOccurrences;
+typedef tsl::robin_map<Kmer, KmerInfo> KmerOccurrences;
 
 struct InClusterKmerInfo {
     uint64_t sum_of_qualities = 0;

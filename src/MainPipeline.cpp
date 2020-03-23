@@ -47,19 +47,19 @@ int main(int argc, char *argv[]) {
         throw std::invalid_argument("You need to specify paths to read files");
     }
 
+    SequenceRecordIterator read_iterator = SequenceRecordIterator(read_paths);
+
     int max_genome_size = 0, max_coverage = 0;
     if (vm.count("coverage") || vm.count("genome")){
         if (vm.count("coverage")){
             max_coverage = vm["coverage"].as<int>();
 
-            SequenceRecordIterator read_iterator = SequenceRecordIterator(read_paths);
             max_genome_size = get_genome_size(read_iterator, max_coverage);
             std::cout << fmt::format("Determined genome size {}\n", max_genome_size);
         }
         if (vm.count("genome")){
             max_genome_size = vm["genome"].as<int>();
             if (max_coverage == 0){
-                SequenceRecordIterator read_iterator = SequenceRecordIterator(read_paths);
                 max_coverage = get_coverage(read_iterator, max_genome_size);
             }
             std::cout << fmt::format("Determined coverage {}\n", max_coverage);
@@ -84,12 +84,10 @@ int main(int argc, char *argv[]) {
     }
 
     std::map<int, KmerSpecificity> per_k_specificities = {};
-    std::map<int, KmerOccurrences> per_k_occurrences;
     for (auto k_length : k_sizes) {
         std::cout << fmt::format("\n ### Running analysis for k-mer size {} ###\n", k_length);
-        SequenceRecordIterator read_iterator = SequenceRecordIterator(read_paths);
-        per_k_occurrences[k_length] = kmer_occurrences(read_iterator, k_length);
-        per_k_specificities[k_length] = get_kmer_specificity(per_k_occurrences[k_length]);
+        KmerOccurrences occ = kmer_occurrences(read_iterator, k_length);
+        per_k_specificities[k_length] = get_kmer_specificity(occ);
     }
 
     int selected_k = 0, cov_lower = 0, cov_upper = 0;
@@ -111,13 +109,13 @@ int main(int argc, char *argv[]) {
         }
     }
 
-    std::cout << fmt::format("{} total kmers\n", per_k_occurrences[selected_k].size());
-    KmerOccurrences characteristic_kmers = filter_characteristic_kmers(per_k_occurrences[selected_k], cov_lower, cov_upper);
+    KmerOccurrences selected_occurrences = kmer_occurrences(read_iterator, selected_k);
+    std::cout << fmt::format("{} total kmers\n", selected_occurrences.size());
+    KmerOccurrences characteristic_kmers = filter_characteristic_kmers(selected_occurrences, cov_lower, cov_upper);
 
     std::cout << fmt::format("{} characteristic kmers\n", characteristic_kmers.size());
 
-    SequenceRecordIterator read_iterator = SequenceRecordIterator(read_paths);
     std::vector<GenomeReadCluster> initial_clusters = get_initial_read_clusters(read_iterator, selected_k, characteristic_kmers);
-    //run_clustering(initial_clusters);
+    run_clustering(initial_clusters);
     return 0;
 }

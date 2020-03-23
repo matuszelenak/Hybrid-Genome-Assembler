@@ -25,17 +25,19 @@ private:
     std::mutex _read_mutex;
 
     std::ifstream current_file;
-    int current_file_index;
+    int current_file_index = 0;
     uint64_t current_file_size = 0;
     bool exhausted = false;
 
 
     SeqRecordData read_fastq_record(std::string &header);
     SeqRecordData read_fasta_record(std::string &header);
-    SeqRecordData (SequenceRecordIterator::*current_record_method)(std::string &header);
+    SeqRecordData (SequenceRecordIterator::*current_record_method)(std::string &header) = &SequenceRecordIterator::read_fastq_record;
 public:
     explicit SequenceRecordIterator(std::vector<std::string> &reads_paths);
     ~SequenceRecordIterator();
+
+    bool reset();
 
     std::optional<GenomeReadData> get_next_record();
 
