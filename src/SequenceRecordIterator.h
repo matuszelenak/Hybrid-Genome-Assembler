@@ -12,10 +12,20 @@
 #define SRC_SEQUENCERECORDITERATOR_H
 
 
-struct SeqRecordData{
+struct SeqRecordData {
     std::string header;
     std::string sequence;
     std::vector<Quality> qualities;
+};
+
+
+struct ReadFileMetaData {
+    std::string filename;
+    uint64_t records;
+    uint64_t min_read_length;
+    uint64_t max_read_length;
+    uint64_t avg_read_length;
+    uint64_t total_bases;
 };
 
 
@@ -31,21 +41,23 @@ private:
 
 
     SeqRecordData read_fastq_record(std::string &header);
+
     SeqRecordData read_fasta_record(std::string &header);
+
     SeqRecordData (SequenceRecordIterator::*current_record_method)(std::string &header) = &SequenceRecordIterator::read_fastq_record;
-public:
-    explicit SequenceRecordIterator(std::vector<std::string> &reads_paths);
-    ~SequenceRecordIterator();
-
-    bool reset();
-
-    std::optional<GenomeReadData> get_next_record();
 
     std::string get_next_line();
 
     bool load_file_at_position(int pos);
 
-    std::vector<uint64_t >total_read_bases;
+    void get_meta_data();
+public:
+    explicit SequenceRecordIterator(std::vector<std::string> &reads_paths);
+    ~SequenceRecordIterator();
+
+    bool reset();
+    std::optional<GenomeReadData> get_next_record();
+    std::vector<ReadFileMetaData> meta;
 };
 
 

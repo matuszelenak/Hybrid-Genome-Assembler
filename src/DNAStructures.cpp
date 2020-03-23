@@ -2,7 +2,7 @@
 #include "DNAStructures.h"
 
 
-GenomeReadCluster::GenomeReadCluster(uint64_t id, InClusterReadData &read_data, std::map<Kmer, InClusterKmerInfo> &characteristic_kmers) {
+GenomeReadCluster::GenomeReadCluster(uint32_t id, InClusterReadData &read_data, std::map<Kmer, InClusterKmerInfo> &characteristic_kmers) {
     reference_id = id;
     _categories = {read_data.category_flag};
     reads.push_back(read_data);

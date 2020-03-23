@@ -1,10 +1,8 @@
 #include <iostream>
 #include <map>
 #include <string>
-#include <cmath>
 #include <boost/program_options.hpp>
 #include <boost/program_options/options_description.hpp>
-#include <jsoncpp/json/json.h>
 #include <fmt/format.h>
 
 #include "SequenceRecordIterator.h"
@@ -54,26 +52,18 @@ int main(int argc, char *argv[]) {
         if (vm.count("coverage")){
             max_coverage = vm["coverage"].as<int>();
 
-            max_genome_size = get_genome_size(read_iterator, max_coverage);
+            max_genome_size = get_genome_size(read_iterator.meta, max_coverage);
             std::cout << fmt::format("Determined genome size {}\n", max_genome_size);
         }
         if (vm.count("genome")){
             max_genome_size = vm["genome"].as<int>();
             if (max_coverage == 0){
-                max_coverage = get_coverage(read_iterator, max_genome_size);
+                max_coverage = get_coverage(read_iterator.meta, max_genome_size);
             }
             std::cout << fmt::format("Determined coverage {}\n", max_coverage);
         }
     } else {
-        for (auto &path : read_paths){
-            Json::Value meta;
-            std::ifstream file(path.substr(0, path.find_last_of('.')) + "_meta.json");
-            file >> meta;
-            std::cout << meta << std::endl;
-
-            max_genome_size = std::max(max_genome_size, meta["genome_size"].asInt());
-            max_coverage = std::max(max_coverage, meta["coverage"].asInt());
-        }
+        throw std::invalid_argument("Please specify either the estimated genome size or coverage");
     }
 
     std::vector<int>k_sizes;
@@ -86,7 +76,7 @@ int main(int argc, char *argv[]) {
     std::map<int, KmerSpecificity> per_k_specificities = {};
     for (auto k_length : k_sizes) {
         std::cout << fmt::format("\n ### Running analysis for k-mer size {} ###\n", k_length);
-        KmerOccurrences occ = kmer_occurrences(read_iterator, k_length);
+        KmerOccurrences occ = kmer_occurrences(read_iterator, k_length, max_genome_size);
         per_k_specificities[k_length] = get_kmer_specificity(occ);
     }
 
@@ -96,7 +86,7 @@ int main(int argc, char *argv[]) {
     if (vm.count("cov-upper")) cov_upper = vm["cov-upper"].as<int>();
 
     if (!(selected_k && cov_lower && cov_upper)){
-        plot_kmer_specificity(per_k_specificities, max_coverage * 3);
+        plot_kmer_specificity(read_iterator.meta, per_k_specificities, max_coverage * 2);
 
         if (!selected_k){
             std::cout << "Enter the size of k-mer\n";
@@ -109,7 +99,7 @@ int main(int argc, char *argv[]) {
         }
     }
 
-    KmerOccurrences selected_occurrences = kmer_occurrences(read_iterator, selected_k);
+    KmerOccurrences selected_occurrences = kmer_occurrences(read_iterator, selected_k, max_genome_size);
     std::cout << fmt::format("{} total kmers\n", selected_occurrences.size());
     KmerOccurrences characteristic_kmers = filter_characteristic_kmers(selected_occurrences, cov_lower, cov_upper);
 

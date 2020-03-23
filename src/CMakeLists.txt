@@ -8,11 +8,9 @@ FIND_PACKAGE( Boost 1.65 COMPONENTS program_options date_time system REQUIRED )
 INCLUDE_DIRECTORIES( ${Boost_INCLUDE_DIR} )
 
 add_subdirectory(fmt EXCLUDE_FROM_ALL)
-# add_subdirectory(hopscotch-map EXCLUDE_FROM_ALL)
 add_subdirectory(robin-map EXCLUDE_FROM_ALL)
 
 add_executable(pipeline MainPipeline.cpp KmerAnalysis.cpp ReadClustering.cpp KmerIterator.cpp Utils.cpp DNAStructures.cpp SequenceRecordIterator.cpp)
 
-TARGET_LINK_LIBRARIES( pipeline LINK_PUBLIC ${Boost_LIBRARIES} stdc++fs pthread jsoncpp fmt)
+TARGET_LINK_LIBRARIES( pipeline LINK_PUBLIC ${Boost_LIBRARIES} stdc++fs pthread fmt)
 target_link_libraries( pipeline PRIVATE tsl::robin_map)
-# target_link_libraries( pipeline PRIVATE tsl::hopscotch_map)

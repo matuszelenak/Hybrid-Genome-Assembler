@@ -2,6 +2,7 @@
 #include <boost/algorithm/string/join.hpp>
 #include <boost/thread.hpp>
 #include <fmt/format.h>
+#include <cmath>
 
 #include "KmerAnalysis.h"
 #include "KmerIterator.h"
@@ -12,8 +13,10 @@ namespace algo = boost::algorithm;
 
 std::mutex mut;
 
+size_t PARTIAL_MERGE_AFTER = 100000;
 
-void plot_kmer_specificity(std::map<int, KmerSpecificity> &specificities, int max_coverage) {
+
+void plot_kmer_specificity(std::vector<ReadFileMetaData> &meta, std::map<int, KmerSpecificity> &specificities, int max_coverage) {
     // Lord forgive me for what I am about to do
     std::vector<std::string> k_spec_strings;
     for (const auto &k_specs : specificities) {
@@ -27,7 +30,9 @@ void plot_kmer_specificity(std::map<int, KmerSpecificity> &specificities, int ma
         }
         k_spec_strings.push_back(fmt::format("({}, [{}])", k_specs.first, algo::join(bound_strings, ", ")));
     }
-    std::string plot_input = fmt::format("{} {}\n{}", specificities.size(), max_coverage, algo::join(k_spec_strings, "\n"));
+    std::vector<std::string> filenames;
+    std::transform(meta.begin(), meta.end(), std::back_inserter(filenames), [](ReadFileMetaData &d) -> std::string { return d.filename; });
+    std::string plot_input = fmt::format("{}\n{} {}\n{}", algo::join(filenames, "/"), specificities.size(), max_coverage, algo::join(k_spec_strings, "\n"));
     std::cout << run_command_with_input("python python_scripts/plot_histogram.py", plot_input) << std::endl;
 }
 
@@ -40,7 +45,7 @@ KmerSpecificity get_kmer_specificity(KmerOccurrences &occurrences) {
 
     int progress = 1;
     for (auto iter = begin(occurrences); iter != end(occurrences); iter++, progress++) {
-        uint64_t total_count = iter->second.total_occurrences();
+        uint16_t total_count = iter->second.total_occurrences();
         uint64_t prevalent = std::max(iter->second.in_first_category, iter->second.in_second_category);
         UpperSpecificity kmer_specificity = *upper_specificity_bounds.upper_bound(((double) prevalent / (double) total_count) * 100);
         if (!specificity[kmer_specificity].contains(total_count)) {
@@ -64,48 +69,52 @@ KmerOccurrences filter_characteristic_kmers(KmerOccurrences &occurrences, int co
 }
 
 
-void _merge_partial_occurrences(KmerOccurrences &merged_into, KmerOccurrences &to_merge){
+void _merge_partial_occurrences(KmerOccurrences &merged_into, KmerOccurrences &to_merge) {
     for (auto it = begin(to_merge); it != end(to_merge); it++) {
-        if (!merged_into.contains(it->first)) {
-            merged_into[it->first] = {it->second.in_first_category, it->second.in_second_category, it->second.sum_of_qualities};
-        } else {
-            merged_into[it->first].in_first_category += it->second.in_first_category;
-            merged_into[it->first].in_second_category += it->second.in_second_category;
-            merged_into[it->first].sum_of_qualities += it->second.sum_of_qualities;
-        }
+        KmerOccurrences::iterator iter = merged_into.insert( KmerOccurrences::value_type(it->first, {0, 0, 0}) ).first;
+        iter.value().in_first_category += it->second.in_first_category;
+        iter.value().in_second_category += it->second.in_second_category;
+        iter.value().sum_of_qualities += it->second.sum_of_qualities;
     }
 }
 
 
 void kmer_occurrences_thread(SequenceRecordIterator &read_iterator, KmerOccurrences &total_occurrences, int k, int thread_id, int &merger_id, int num_of_threads) {
     KmerOccurrences partial_occurrences;
+    partial_occurrences.rehash(PARTIAL_MERGE_AFTER * 2);
     std::optional<GenomeReadData> read;
     while ((read = read_iterator.get_next_record()) != std::nullopt) {
         KmerIterator it = KmerIterator(*read, k);
         std::optional<std::pair<Kmer, KmerQuality>> kmer_info;
 
         while ((kmer_info = it.get_next_kmer()) != std::nullopt) {
-            if (!partial_occurrences.contains(kmer_info->first)) {
-                partial_occurrences[kmer_info->first] = {0, 0, (uint64_t) kmer_info->second.avg_quality};
-            }
-            partial_occurrences[kmer_info->first].in_first_category += (int) read->category_flag;
-            partial_occurrences[kmer_info->first].in_second_category += (int) !read->category_flag;
-            partial_occurrences[kmer_info->first].sum_of_qualities += kmer_info->second.avg_quality;
+            KmerOccurrences::iterator iter = partial_occurrences.insert( KmerOccurrences::value_type(kmer_info->first, {0, 0, (uint32_t) kmer_info->second.avg_quality}) ).first;
+            iter.value().in_first_category += (int) read->category_flag;
+            iter.value().in_second_category += (int) !read->category_flag;
+            iter.value().sum_of_qualities += kmer_info->second.avg_quality;
         }
 
-        if (partial_occurrences.size() > 100000 && thread_id == merger_id){
+        if (partial_occurrences.size() > PARTIAL_MERGE_AFTER && thread_id == merger_id) {
             mut.lock();
             _merge_partial_occurrences(total_occurrences, partial_occurrences);
+            //std::cout << fmt::format("Thread {} merging {} items\n", thread_id, partial_occurrences.size());
             merger_id = (merger_id + 1) % num_of_threads;
             mut.unlock();
             partial_occurrences.clear();
         }
     }
+    mut.lock();
+    _merge_partial_occurrences(total_occurrences, partial_occurrences);
+    mut.unlock();
 }
 
 
-KmerOccurrences kmer_occurrences(SequenceRecordIterator &read_iterator, int k) {
+KmerOccurrences kmer_occurrences(SequenceRecordIterator &read_iterator, int k, int max_genome_size) {
     KmerOccurrences occurrences;
+    // TODO finetune this formula, turns out it has quite an effect on speed
+    int expected_kmers = (int)round(max_genome_size * ((double)k / 10) * 2);
+    std::cout << fmt::format("Expecting {} kmers\n", expected_kmers);
+    occurrences.rehash((KmerOccurrences::size_type)expected_kmers);
 
     unsigned int num_threads = std::thread::hardware_concurrency();
 
@@ -124,37 +133,35 @@ KmerOccurrences kmer_occurrences(SequenceRecordIterator &read_iterator, int k) {
 
     boost::posix_time::ptime mst2 = boost::posix_time::microsec_clock::local_time();
     boost::posix_time::time_duration msdiff = mst2 - mst1;
-    std::cout << fmt::format("Occurrences computed in {} ms\n", msdiff.total_milliseconds());
+    std::cout << fmt::format("Occurrences computed in {} ms. Counted {} of {} possible kmers\n", msdiff.total_milliseconds(), occurrences.size(), pow(4, k));
 
     return occurrences;
 }
 
 
-std::vector<int> get_k_sizes(int max_genome_size){
-    std::vector<int>k_sizes;
-    int k_guess = (int)ceil(log(max_genome_size) / log(4));
-    for (int k_value = k_guess; k_value < k_guess + 4; k_value++){
+std::vector<int> get_k_sizes(int max_genome_size) {
+    std::vector<int> k_sizes;
+    int k_guess = (int) ceil(log(max_genome_size) / log(4));
+    for (int k_value = k_guess; k_value < std::min(k_guess + 4, 15); k_value++) {
         k_sizes.push_back(k_value);
     }
     return k_sizes;
 }
 
-int _get_genome_size_or_coverage(SequenceRecordIterator &records, int known){
-    records.reset();
-    while (records.get_next_record() != std::nullopt){}
+int _get_genome_size_or_coverage(std::vector<ReadFileMetaData> &read_meta_data, int known) {
     uint64_t unknown = 0;
-    for (auto read_bases : records.total_read_bases){
-        unknown = std::max(unknown, (uint64_t)(read_bases/known));
+    for (auto &meta : read_meta_data) {
+        unknown = std::max(unknown, (uint64_t) (meta.total_bases / known));
     }
     return unknown;
 }
 
 // For the case when only the coverage is known
-int get_genome_size(SequenceRecordIterator &records, int coverage){
-    return _get_genome_size_or_coverage(records, coverage);
+int get_genome_size(std::vector<ReadFileMetaData> &read_meta_data, int coverage) {
+    return _get_genome_size_or_coverage(read_meta_data, coverage);
 }
 
 // For the case when only the genome size is known
-int get_coverage(SequenceRecordIterator &records, int genome_size){
-    return _get_genome_size_or_coverage(records, genome_size);
+int get_coverage(std::vector<ReadFileMetaData> &read_meta_data, int genome_size) {
+    return _get_genome_size_or_coverage(read_meta_data, genome_size);
 }

@@ -7,8 +7,8 @@
 #define SRC_READCLUSTERING_H
 
 struct ClusterConnection{
-    uint64_t cluster_x_id;
-    uint64_t cluster_y_id;
+    uint32_t cluster_x_id;
+    uint32_t cluster_y_id;
     uint64_t score;
 
     bool operator < (const ClusterConnection& conn) const
