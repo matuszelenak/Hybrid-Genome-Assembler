@@ -5,13 +5,22 @@
 
 SequenceRecordIterator::SequenceRecordIterator(std::vector<std::string> &reads_paths) {
     this->paths = reads_paths;
-    for (auto &path : reads_paths) {
+    reset();
+}
+
+bool SequenceRecordIterator::reset() {
+    total_read_bases.clear();
+    for (auto &path : paths) {
         total_read_bases.push_back(0);
     }
-
     current_file_index = 0;
-    load_file_at_position(current_file_index);
+    bool file_loaded = load_file_at_position(current_file_index);
+    if (file_loaded){
+        exhausted = false;
+    }
+    return file_loaded;
 }
+
 
 bool SequenceRecordIterator::load_file_at_position(int pos) {
     if (current_file.is_open()){

@@ -1,5 +1,6 @@
 #include <iostream>
 #include <boost/algorithm/string/join.hpp>
+#include <boost/thread.hpp>
 #include <fmt/format.h>
 
 #include "KmerAnalysis.h"
@@ -37,9 +38,8 @@ KmerSpecificity get_kmer_specificity(KmerOccurrences &occurrences) {
     std::set<UpperSpecificity> upper_specificity_bounds = {70, 85, 90, 95, 99, 101};
     for (auto s : upper_specificity_bounds) specificity[s] = {};
 
-    KmerOccurrences::iterator iter;
-    int progress;
-    for (iter = occurrences.begin(), progress = 1; iter != occurrences.end(); iter++, progress++) {
+    int progress = 1;
+    for (auto iter = begin(occurrences); iter != end(occurrences); iter++, progress++) {
         uint64_t total_count = iter->second.total_occurrences();
         uint64_t prevalent = std::max(iter->second.in_first_category, iter->second.in_second_category);
         UpperSpecificity kmer_specificity = *upper_specificity_bounds.upper_bound(((double) prevalent / (double) total_count) * 100);
@@ -95,7 +95,6 @@ void kmer_occurrences_thread(SequenceRecordIterator &read_iterator, KmerOccurren
 
         if (partial_occurrences.size() > 100000 && thread_id == merger_id){
             mut.lock();
-            std::cout << fmt::format("Thread {} merging {} items...\n", thread_id, partial_occurrences.size());
             _merge_partial_occurrences(total_occurrences, partial_occurrences);
             merger_id = (merger_id + 1) % num_of_threads;
             mut.unlock();
@@ -109,9 +108,12 @@ KmerOccurrences kmer_occurrences(SequenceRecordIterator &read_iterator, int k) {
     KmerOccurrences occurrences;
 
     unsigned int num_threads = std::thread::hardware_concurrency();
-    std::thread t[num_threads];
 
+    boost::posix_time::ptime mst1 = boost::posix_time::microsec_clock::local_time();
+    read_iterator.reset();
     int approved_merger_id = 0;
+
+    std::thread t[num_threads];
     for (int i = 0; i < num_threads; ++i) {
         t[i] = std::thread(kmer_occurrences_thread, std::ref(read_iterator), std::ref(occurrences), k, i, std::ref(approved_merger_id), num_threads);
     }
@@ -120,6 +122,10 @@ KmerOccurrences kmer_occurrences(SequenceRecordIterator &read_iterator, int k) {
         t[i].join();
     }
 
+    boost::posix_time::ptime mst2 = boost::posix_time::microsec_clock::local_time();
+    boost::posix_time::time_duration msdiff = mst2 - mst1;
+    std::cout << fmt::format("Occurrences computed in {} ms\n", msdiff.total_milliseconds());
+
     return occurrences;
 }
 
@@ -127,15 +133,15 @@ KmerOccurrences kmer_occurrences(SequenceRecordIterator &read_iterator, int k) {
 std::vector<int> get_k_sizes(int max_genome_size){
     std::vector<int>k_sizes;
     int k_guess = (int)ceil(log(max_genome_size) / log(4));
-    for (int k_value = k_guess; k_value < k_guess + 2; k_value++){
+    for (int k_value = k_guess; k_value < k_guess + 4; k_value++){
         k_sizes.push_back(k_value);
     }
     return k_sizes;
 }
 
 int _get_genome_size_or_coverage(SequenceRecordIterator &records, int known){
-    std::optional<GenomeReadData> read;
-    while ((read = records.get_next_record()) != std::nullopt){}
+    records.reset();
+    while (records.get_next_record() != std::nullopt){}
     uint64_t unknown = 0;
     for (auto read_bases : records.total_read_bases){
         unknown = std::max(unknown, (uint64_t)(read_bases/known));

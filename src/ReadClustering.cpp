@@ -1,22 +1,21 @@
-#include <unordered_map>
 #include <vector>
 #include <set>
 #include <iostream>
 #include <fmt/format.h>
+#include <tsl/robin_map.h>
 
 #include "ReadClustering.h"
 #include "KmerIterator.h"
 
 typedef std::map<uint64_t, Quality> InClusterKmerQuality;
-typedef std::unordered_map<Kmer, InClusterKmerQuality> KmerIndex;
+typedef tsl::robin_map<Kmer, InClusterKmerQuality> KmerIndex;
 
 
 KmerIndex get_kmer_index(std::vector<GenomeReadCluster> &clusters) {
     KmerIndex index;
     for (auto &cluster : clusters) {
         std::cout << fmt::format("Index for cluster #{}\n", cluster.reference_id);
-        std::map<Kmer, InClusterKmerInfo>::iterator it;
-        for (it = cluster.characteristic_kmers.begin(); it != cluster.characteristic_kmers.end(); it++) {
+        for (auto it = begin(cluster.characteristic_kmers); it != end(cluster.characteristic_kmers); it++){
             if (index.contains(it->first)) {
                 index[it->first][cluster.reference_id] = it->second.avg_quality(cluster.size());
             } else {
@@ -39,7 +38,7 @@ std::vector<ClusterConnection> get_cluster_connection(std::vector<GenomeReadClus
     std::vector<ClusterConnection> connections;
 
     for (auto &pivot_cluster : clusters) {
-        std::unordered_map<uint64_t, uint64_t> shared_kmer_counts;
+        tsl::robin_map<uint64_t, uint64_t> shared_kmer_counts;
 
         for (auto it = begin(pivot_cluster.characteristic_kmers); it != end(pivot_cluster.characteristic_kmers); it++) {
             for (auto candidates_it = begin(index[it->first]); candidates_it != end(index[it->first]); candidates_it++){
@@ -54,8 +53,7 @@ std::vector<ClusterConnection> get_cluster_connection(std::vector<GenomeReadClus
 
         shared_kmer_counts.erase(pivot_cluster.reference_id);
 
-        std::unordered_map<uint64_t, uint64_t>::iterator iter;
-        for (iter = shared_kmer_counts.begin(); iter != shared_kmer_counts.end(); iter++) {
+        for (auto iter = begin(shared_kmer_counts); iter != end(shared_kmer_counts); iter++) {
             connections.push_back({iter->second, iter->first, pivot_cluster.reference_id});
         }
     }
@@ -75,7 +73,7 @@ std::vector<ClusterConnection> get_cluster_connection(std::vector<GenomeReadClus
 }
 
 std::vector<GenomeReadCluster> clustering_round(std::vector<GenomeReadCluster> &clusters, KmerIndex &index) {
-    std::unordered_map<uint64_t, GenomeReadCluster*> id_to_cluster;
+    tsl::robin_map<uint64_t, GenomeReadCluster*> id_to_cluster;
     for (auto cluster: clusters) { id_to_cluster[cluster.reference_id] = &cluster; }
 
     std::cout << 1 << std::endl;
@@ -109,9 +107,8 @@ std::vector<GenomeReadCluster> clustering_round(std::vector<GenomeReadCluster> &
         id_to_cluster.erase(smaller_id);
     }
 
-    std::unordered_map<uint64_t, GenomeReadCluster*>::iterator it;
     std::vector<GenomeReadCluster> result;
-    for (it = id_to_cluster.begin(); it != id_to_cluster.end(); it++){
+    for (auto it = begin(id_to_cluster); it != end(id_to_cluster); it++){
         result.push_back(*it->second);
     }
     return result;
@@ -155,6 +152,7 @@ std::vector<GenomeReadCluster> get_initial_read_clusters(SequenceRecordIterator 
     std::optional<GenomeReadData> read;
     uint64_t cluster_id = 0;
     uint64_t read_count = 0;
+    reader.reset();
     while ((read = reader.get_next_record()) != std::nullopt) {
         KmerIterator it = KmerIterator(*read, k);
         std::optional<std::pair<Kmer, KmerQuality>> kmer_info;
