@@ -89,8 +89,8 @@ void kmer_occurrences_thread(SequenceRecordIterator &read_iterator, KmerOccurren
 
         while ((kmer_info = it.get_next_kmer()) != std::nullopt) {
             KmerOccurrences::iterator iter = partial_occurrences.insert( KmerOccurrences::value_type(kmer_info->first, {0, 0, (uint32_t) kmer_info->second.avg_quality}) ).first;
-            iter.value().in_first_category += (int) read->category_flag;
-            iter.value().in_second_category += (int) !read->category_flag;
+            iter.value().in_first_category += (int) read->category_id;
+            iter.value().in_second_category += (int) !read->category_id;
             iter.value().sum_of_qualities += kmer_info->second.avg_quality;
         }
 

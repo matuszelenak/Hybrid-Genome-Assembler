@@ -6,10 +6,14 @@
 #ifndef SRC_READCLUSTERING_H
 #define SRC_READCLUSTERING_H
 
+typedef uint64_t ConnectionScore;
+typedef std::map<ClusterID, GenomeReadCluster*> ClusterIndex;
+
 struct ClusterConnection{
-    uint32_t cluster_x_id;
-    uint32_t cluster_y_id;
+    ClusterID cluster_x_id;
+    ClusterID cluster_y_id;
     uint64_t score;
+    bool is_good;
 
     bool operator < (const ClusterConnection& conn) const
     {
@@ -21,7 +25,7 @@ struct ClusterConnection{
     }
 };
 
-void run_clustering(std::vector<GenomeReadCluster> &clusters);
-std::vector<GenomeReadCluster> get_initial_read_clusters(SequenceRecordIterator &reader, int k, KmerOccurrences &characteristic_kmers);
+void run_clustering(ClusterIndex &clusters);
+ClusterIndex get_initial_read_clusters(SequenceRecordIterator &reader, int k, KmerOccurrences &characteristic_kmers);
 
 #endif //SRC_READCLUSTERING_H

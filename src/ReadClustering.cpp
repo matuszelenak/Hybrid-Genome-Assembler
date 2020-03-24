@@ -3,127 +3,132 @@
 #include <iostream>
 #include <fmt/format.h>
 #include <tsl/robin_map.h>
+#include <boost/algorithm/string/join.hpp>
 
 #include "ReadClustering.h"
 #include "KmerIterator.h"
+#include "Utils.h"
 
-typedef std::map<uint64_t, Quality> InClusterKmerQuality;
+typedef std::map<ClusterID, Quality> InClusterKmerQuality;
 typedef tsl::robin_map<Kmer, InClusterKmerQuality> KmerIndex;
 
+namespace algo = boost::algorithm;
 
-KmerIndex get_kmer_index(std::vector<GenomeReadCluster> &clusters) {
+
+void plot_connection_quality(std::vector<ClusterConnection> &connections){
+    std::map<bool, std::map<ConnectionScore , int>>score_to_matching;
+    for (auto &conn : connections){
+        score_to_matching[conn.is_good].insert(std::map<ConnectionScore , int>::value_type(conn.score, 0)).first->second += 1;
+    }
+    std::vector<std::string>good_connections, bad_connections;
+    for (auto it = begin(score_to_matching[false]); it != end(score_to_matching[false]); it++){
+        bad_connections.push_back(fmt::format("{}: {}", it->first, it->second));
+    }
+    for (auto it = begin(score_to_matching[true]); it != end(score_to_matching[true]); it++){
+        good_connections.push_back(fmt::format("{}: {}", it->first, it->second));
+    }
+    std::string hist_input = fmt::format("{{{}}}\n{{{}}}", algo::join(good_connections, ", "), algo::join(bad_connections, ", "));
+    run_command_with_input("python python_scripts/plot_connections_histogram.py", hist_input);
+}
+
+
+KmerIndex get_kmer_index(ClusterIndex &clusters) {
     KmerIndex index;
-    for (auto &cluster : clusters) {
-        std::cout << fmt::format("Index for cluster #{}\n", cluster.reference_id);
-        for (auto it = begin(cluster.characteristic_kmers); it != end(cluster.characteristic_kmers); it++){
-            if (index.contains(it->first)) {
-                index[it->first][cluster.reference_id] = it->second.avg_quality(cluster.size());
-            } else {
-                index[it->first] = {{cluster.reference_id, it->second.avg_quality(cluster.size())}};
-            }
+    for (auto cluster_iter = begin(clusters); cluster_iter != end(clusters); cluster_iter++) {
+        for (auto it = begin(cluster_iter->second->characteristic_kmers); it != end(cluster_iter->second->characteristic_kmers); it++){
+            KmerIndex::iterator iter = index.insert(KmerIndex::value_type(it->first, {})).first;
+            iter.value()[cluster_iter->first] = it->second.avg_quality(cluster_iter->second->size());
         }
     }
 
-    for (auto iter = begin(index); iter != end(index); iter++){
-        std::cout << fmt::format("Kmer {} ({}): ", iter->first, iter->second.size());
-        for (auto k_iter = begin(iter->second); k_iter != end(iter->second); k_iter++){
-            std::cout << fmt::format("#{}", k_iter->first);
-        }
-        std::cout << std::endl;
-    }
     return index;
 }
 
-std::vector<ClusterConnection> get_cluster_connection(std::vector<GenomeReadCluster> &clusters, KmerIndex &index) {
+std::vector<ClusterConnection> get_cluster_connections(ClusterIndex &clusters, KmerIndex &index) {
     std::vector<ClusterConnection> connections;
 
-    for (auto &pivot_cluster : clusters) {
-        tsl::robin_map<uint64_t, uint64_t> shared_kmer_counts;
+    for (auto pivot_it = begin(clusters); pivot_it != end(clusters); pivot_it++) {
+        std::map<ClusterID , ConnectionScore > shared_kmer_counts;
 
-        for (auto it = begin(pivot_cluster.characteristic_kmers); it != end(pivot_cluster.characteristic_kmers); it++) {
+        for (auto it = begin(pivot_it->second->characteristic_kmers); it != end(pivot_it->second->characteristic_kmers); it++) {
             for (auto candidates_it = begin(index[it->first]); candidates_it != end(index[it->first]); candidates_it++){
-                // TODO metric based on qualities (candidates_it->second)
-                if (!shared_kmer_counts.contains(candidates_it->first)) {
-                    shared_kmer_counts[candidates_it->first] = 1;
-                } else {
-                    shared_kmer_counts[candidates_it->first] += 1;
-                }
+                shared_kmer_counts.insert( std::map<ClusterID , ConnectionScore >::value_type(candidates_it->first, 0)).first->second += 1;
             }
         }
 
-        shared_kmer_counts.erase(pivot_cluster.reference_id);
+        shared_kmer_counts.erase(pivot_it->first);
 
         for (auto iter = begin(shared_kmer_counts); iter != end(shared_kmer_counts); iter++) {
-            connections.push_back({iter->second, iter->first, pivot_cluster.reference_id});
+            bool is_good = clusters[pivot_it->first]->categories == clusters[iter->first]->categories;
+            connections.push_back({iter->first, pivot_it->first, iter->second, is_good});
         }
     }
 
-    std::cout << 2 << std::endl;
     std::cout << fmt::format("{} connections\n", connections.size());
 
     std::sort(connections.rbegin(), connections.rend());
 
-    auto until = connections.cbegin();
-    std::advance(until, 100);
-    for (auto it = connections.cbegin(); it != until; it++){
-        std::cout << fmt::format("Score {} X {} Y {}\n", it->score, it->cluster_x_id, it->cluster_y_id);
-    }
-
     return connections;
 }
 
-std::vector<GenomeReadCluster> clustering_round(std::vector<GenomeReadCluster> &clusters, KmerIndex &index) {
-    tsl::robin_map<uint64_t, GenomeReadCluster*> id_to_cluster;
-    for (auto cluster: clusters) { id_to_cluster[cluster.reference_id] = &cluster; }
+int clustering_round(ClusterIndex &clusters, KmerIndex &index) {
+    std::vector<ClusterConnection> cluster_connections = get_cluster_connections(clusters, index);
+    plot_connection_quality(cluster_connections);
 
-    std::cout << 1 << std::endl;
-
-    std::vector<ClusterConnection> cluster_connections = get_cluster_connection(clusters, index);
+    int merge_operations = 0;
     for (ClusterConnection &connection : cluster_connections) {
-        if (!(id_to_cluster.contains(connection.cluster_x_id) && id_to_cluster.contains(connection.cluster_y_id))) continue;
+        if (!connection.is_good) continue;
 
-        GenomeReadCluster cluster_x = *id_to_cluster[connection.cluster_x_id];
-        GenomeReadCluster cluster_y = *id_to_cluster[connection.cluster_y_id];
+        if (!(clusters.contains(connection.cluster_x_id) && clusters.contains(connection.cluster_y_id))) continue;
 
-        uint64_t bigger_id, smaller_id;
-        if (cluster_x.size() > cluster_y.size()) {
-            bigger_id = cluster_x.reference_id;
-            smaller_id = cluster_y.reference_id;
+        GenomeReadCluster* cluster_x = clusters[connection.cluster_x_id];
+        GenomeReadCluster* cluster_y = clusters[connection.cluster_y_id];
+
+        ClusterID bigger_id, smaller_id;
+        if (cluster_x->size() > cluster_y->size()) {
+            bigger_id = cluster_x->reference_id;
+            smaller_id = cluster_y->reference_id;
         } else {
-            bigger_id = cluster_y.reference_id;
-            smaller_id = cluster_x.reference_id;
+            bigger_id = cluster_y->reference_id;
+            smaller_id = cluster_x->reference_id;
         }
 
-        GenomeReadCluster bigger = *id_to_cluster[bigger_id];
-        GenomeReadCluster smaller = *id_to_cluster[smaller_id];
+        GenomeReadCluster* bigger = clusters[bigger_id];
+        GenomeReadCluster* smaller = clusters[smaller_id];
 
-        bigger.absorb(smaller);
+        bigger->absorb(*smaller);
 
-        for (auto it = begin(smaller.characteristic_kmers); it != end(smaller.characteristic_kmers); it++){
+        for (auto it = begin(smaller->characteristic_kmers); it != end(smaller->characteristic_kmers); it++){
             index[it->first].erase(smaller_id);
-            index[it->first][bigger_id] = bigger.characteristic_kmers[it->first].avg_quality(bigger.size());
+            index[it->first][bigger_id] = bigger->characteristic_kmers[it->first].avg_quality(bigger->size());
         }
 
-        id_to_cluster.erase(smaller_id);
+        clusters.erase(smaller_id);
+        merge_operations++;
     }
 
-    std::vector<GenomeReadCluster> result;
-    for (auto it = begin(id_to_cluster); it != end(id_to_cluster); it++){
-        result.push_back(*it->second);
-    }
-    return result;
+    return merge_operations;
 }
 
 
-void print_clusters(std::vector<GenomeReadCluster> &clusters){
-    auto sort_by_size = [](GenomeReadCluster &x, GenomeReadCluster &y){
-        return x.size() < y.size();
+void print_clusters(ClusterIndex &clusters){
+    auto sort_by_size = [](GenomeReadCluster* x, GenomeReadCluster* y){
+        return x->size() < y->size();
     };
 
+    std::vector<GenomeReadCluster*> cluster_pointers;
+    std::transform(
+            clusters.begin(),
+            clusters.end(),
+            std::back_inserter(cluster_pointers),
+            [](std::pair<const ClusterID , GenomeReadCluster*> &p) -> GenomeReadCluster* { return p.second; }
+            );
+
+    sort(cluster_pointers.rbegin(), cluster_pointers.rend(), sort_by_size);
+
     int iterate_first = 200;
-    sort(clusters.rend(), clusters.rbegin(), sort_by_size);
-    for (auto cluster : clusters){
-        std::cout << cluster.consistency() << " ";
+    for (auto cluster : cluster_pointers){
+        std::cout << cluster->consistency() << " ";
 
         iterate_first--;
         if (iterate_first == 0) break;
@@ -132,26 +137,22 @@ void print_clusters(std::vector<GenomeReadCluster> &clusters){
 }
 
 
-void run_clustering(std::vector<GenomeReadCluster> &clusters){
+void run_clustering(ClusterIndex &clusters){
     KmerIndex index = get_kmer_index(clusters);
     size_t num_of_components = clusters.size();
     std::cout << fmt::format("{} clusters", num_of_components) << std::endl;
-    while (true){
-        clusters = clustering_round(clusters, index);
+    int merge_operations;
+    while ((merge_operations = clustering_round(clusters, index)) > 0){
+        std::cout << fmt::format("Performed {} merge operations\n", merge_operations);
         print_clusters(clusters);
-
-        if (clusters.size() == num_of_components) break;
-
-        num_of_components = clusters.size();
     }
 }
 
-std::vector<GenomeReadCluster> get_initial_read_clusters(SequenceRecordIterator &reader, int k, KmerOccurrences &characteristic_kmers) {
-    std::vector<GenomeReadCluster> clusters;
+ClusterIndex get_initial_read_clusters(SequenceRecordIterator &reader, int k, KmerOccurrences &characteristic_kmers) {
+    ClusterIndex clusters;
 
     std::optional<GenomeReadData> read;
-    uint64_t cluster_id = 0;
-    uint64_t read_count = 0;
+    ClusterID cluster_id = 0;
     reader.reset();
     while ((read = reader.get_next_record()) != std::nullopt) {
         KmerIterator it = KmerIterator(*read, k);
@@ -166,14 +167,11 @@ std::vector<GenomeReadCluster> get_initial_read_clusters(SequenceRecordIterator 
         }
 
         if (!in_read_characteristic.empty()){
-            InClusterReadData data = {read->header, read->category_flag};
-            clusters.emplace_back(cluster_id++, data, in_read_characteristic);
+            InClusterReadData data = {read->header, read->category_id};
+            clusters[cluster_id] = new GenomeReadCluster(cluster_id, data, in_read_characteristic);
+            cluster_id++;
         }
-
-        read_count++;
     }
-
-    std::cout << fmt::format("{} out of {} reads converted to clusters", clusters.size(), read_count) << std::endl;
 
     return clusters;
 }

@@ -9,19 +9,20 @@
 
 
 typedef uint64_t Kmer;
-typedef bool CategoryFlag;
+typedef int CategoryID;
 typedef int Quality;
+typedef uint32_t ClusterID;
 
 struct GenomeReadData {
     std::string header;
     std::string sequence;
     std::vector<Quality > qualities;
-    CategoryFlag category_flag;
+    CategoryID category_id;
 };
 
 struct InClusterReadData {
     std::string header;
-    CategoryFlag category_flag;
+    CategoryID category_id;
 };
 
 struct KmerInfo {
@@ -55,18 +56,15 @@ struct KmerQuality {
 
 
 class GenomeReadCluster {
-private:
-    std::set<CategoryFlag> _categories;
-
 public:
-    explicit GenomeReadCluster(uint32_t id, InClusterReadData &read_data, std::map<Kmer, InClusterKmerInfo> &characteristic_kmers);
+    explicit GenomeReadCluster(ClusterID id, InClusterReadData &read_data, std::map<Kmer, InClusterKmerInfo> &characteristic_kmers);
 
-    uint32_t reference_id;
+    ClusterID reference_id;
     std::vector<InClusterReadData> reads;
     std::map<Kmer, InClusterKmerInfo> characteristic_kmers;
 
     void absorb(GenomeReadCluster &cluster);
-    std::set<CategoryFlag> categories();
+    std::set<CategoryID> categories;
     std::string consistency();
     uint64_t size();
 };

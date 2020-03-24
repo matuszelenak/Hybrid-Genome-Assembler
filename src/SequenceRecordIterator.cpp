@@ -142,7 +142,7 @@ std::optional<GenomeReadData> SequenceRecordIterator::get_next_record() {
                     data.header,
                     data.sequence,
                     data.qualities,
-                    (bool) current_file_index
+                    current_file_index
             }
     };
 }

@@ -19,7 +19,7 @@ get_color = dict((
 
 def render_subplot(subplot, bound_specificities: List[BoundSpecificities], max_coverage: int):
     bars = []
-    indices = np.arange(max_coverage)
+    indices = np.arange(1, max_coverage + 1)
     bottoms = np.zeros((max_coverage,))
     for upper_bound, coverage_data in bound_specificities:
         coverage_dict = dict(coverage_data)

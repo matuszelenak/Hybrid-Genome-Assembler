@@ -1,17 +1,22 @@
 #include <fmt/format.h>
+#include <boost/algorithm/string/join.hpp>
+#include <iostream>
 #include "DNAStructures.h"
 
 
-GenomeReadCluster::GenomeReadCluster(uint32_t id, InClusterReadData &read_data, std::map<Kmer, InClusterKmerInfo> &characteristic_kmers) {
+namespace algo = boost::algorithm;
+
+
+GenomeReadCluster::GenomeReadCluster(ClusterID id, InClusterReadData &read_data, std::map<Kmer, InClusterKmerInfo> &characteristic_kmers) {
     reference_id = id;
-    _categories = {read_data.category_flag};
+    categories.insert(read_data.category_id);
     reads.push_back(read_data);
     this->characteristic_kmers.insert(characteristic_kmers.begin(), characteristic_kmers.end());
 }
 
 void GenomeReadCluster::absorb(GenomeReadCluster &cluster) {
     reads.insert(reads.end(), cluster.reads.begin(), cluster.reads.end());
-    _categories.insert(cluster.categories().begin(), cluster.categories().end());
+    categories.insert(cluster.categories.begin(), cluster.categories.end());
     for (auto it = begin(cluster.characteristic_kmers); it != end(cluster.characteristic_kmers); it++){
         if (characteristic_kmers.contains(it->first)){
             characteristic_kmers[it->first].sum_of_qualities += it->second.sum_of_qualities;
@@ -21,19 +26,21 @@ void GenomeReadCluster::absorb(GenomeReadCluster &cluster) {
     }
 }
 
-std::set<CategoryFlag> GenomeReadCluster::categories() {
-    return _categories;
-}
-
 uint64_t GenomeReadCluster::size() {
     return reads.size();
 }
 
 std::string GenomeReadCluster::consistency() {
-    uint64_t first = 0, second = 0;
+    std::map<CategoryID , int> category_counts;
     for (const auto& read : reads){
-        first += read.category_flag;
-        second += !read.category_flag;
+        category_counts.insert(std::map<CategoryID , int>::value_type(read.category_id, 0)).first->second += 1;
     }
-    return fmt::format("{}/{}", std::max(first, second), this->size());
+    std::vector<std::string>category_count_vector;
+    std::transform(
+            category_counts.begin(),
+            category_counts.end(),
+            std::back_inserter(category_count_vector),
+            [](std::pair<const CategoryID, int> &p) -> std::string { return fmt::format("{}", p.second); }
+            );
+    return algo::join(category_count_vector, "/");
 }

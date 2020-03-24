@@ -105,7 +105,7 @@ int main(int argc, char *argv[]) {
 
     std::cout << fmt::format("{} characteristic kmers\n", characteristic_kmers.size());
 
-    std::vector<GenomeReadCluster> initial_clusters = get_initial_read_clusters(read_iterator, selected_k, characteristic_kmers);
+    ClusterIndex initial_clusters = get_initial_read_clusters(read_iterator, selected_k, characteristic_kmers);
     run_clustering(initial_clusters);
     return 0;
 }
