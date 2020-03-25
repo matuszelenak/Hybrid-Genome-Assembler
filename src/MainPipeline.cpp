@@ -9,8 +9,8 @@
 #include "DNAStructures.h"
 #include "KmerAnalysis.h"
 #include "KmerIterator.h"
-#include "ReadClustering.h"
 #include "Utils.h"
+#include "ReadClusteringEngine.h"
 
 
 namespace po = boost::program_options;
@@ -105,7 +105,6 @@ int main(int argc, char *argv[]) {
 
     std::cout << fmt::format("{} characteristic kmers\n", characteristic_kmers.size());
 
-    ClusterIndex initial_clusters = get_initial_read_clusters(read_iterator, selected_k, characteristic_kmers);
-    run_clustering(initial_clusters);
+    auto engine = ReadClusteringEngine(read_iterator, characteristic_kmers, selected_k);
     return 0;
 }

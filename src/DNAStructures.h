@@ -9,6 +9,7 @@
 
 
 typedef uint64_t Kmer;
+typedef uint32_t KmerID;
 typedef int CategoryID;
 typedef int Quality;
 typedef uint32_t ClusterID;
@@ -38,14 +39,14 @@ struct KmerInfo {
     };
 };
 
-//typedef tsl::robin_map<Kmer, KmerInfo, std::hash<Kmer>, std::equal_to<>, std::allocator<std::pair<Kmer, KmerInfo>>, true> KmerOccurrences;
 typedef tsl::robin_map<Kmer, KmerInfo> KmerOccurrences;
 
 struct InClusterKmerInfo {
-    uint64_t sum_of_qualities = 0;
+    uint32_t sum_of_qualities = 0;
+    uint32_t total_count = 0;
 
-    Quality avg_quality(int total_count){
-        return (Quality)(this->sum_of_qualities / total_count);
+    Quality avg_quality(){
+        return (Quality)(this->sum_of_qualities / this->total_count);
     };
 };
 
@@ -57,11 +58,11 @@ struct KmerQuality {
 
 class GenomeReadCluster {
 public:
-    explicit GenomeReadCluster(ClusterID id, InClusterReadData &read_data, std::map<Kmer, InClusterKmerInfo> &characteristic_kmers);
+    explicit GenomeReadCluster(ClusterID id, InClusterReadData &read_data, std::set<KmerID> &characteristic_kmers);
 
     ClusterID reference_id;
     std::vector<InClusterReadData> reads;
-    std::map<Kmer, InClusterKmerInfo> characteristic_kmers;
+    std::set<KmerID> characteristic_kmer_ids;
 
     void absorb(GenomeReadCluster &cluster);
     std::set<CategoryID> categories;

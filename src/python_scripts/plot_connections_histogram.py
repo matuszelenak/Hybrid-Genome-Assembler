@@ -11,10 +11,10 @@ strengths = sorted(list(list(good_conns.keys()) + list(bad_conns.keys())), rever
 
 plt.figure(num=None, figsize=(1920 // 80, 1080 // 80), dpi=80, facecolor='w', edgecolor='k')
 indices = np.array(strengths)
-good_data = np.array([(math.log(good_conns[strength]) if strength in good_conns else 0) for strength in strengths])
+good_data = np.array([(math.sqrt(good_conns[strength]) if strength in good_conns else 0) for strength in strengths])
 plt.bar(indices, good_data, width=0.8, color='g')
 
-bad_data = np.array([(math.log(bad_conns[strength]) if strength in bad_conns else 0) for strength in strengths])
+bad_data = np.array([(math.sqrt(bad_conns[strength]) if strength in bad_conns else 0) for strength in strengths])
 plt.bar(indices, bad_data, bottom=good_data, width=0.8, color='r')
 
 plt.show()

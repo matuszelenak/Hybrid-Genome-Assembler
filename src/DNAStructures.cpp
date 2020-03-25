@@ -7,23 +7,17 @@
 namespace algo = boost::algorithm;
 
 
-GenomeReadCluster::GenomeReadCluster(ClusterID id, InClusterReadData &read_data, std::map<Kmer, InClusterKmerInfo> &characteristic_kmers) {
+GenomeReadCluster::GenomeReadCluster(ClusterID id, InClusterReadData &read_data, std::set<KmerID> &characteristic_kmers) {
     reference_id = id;
     categories.insert(read_data.category_id);
     reads.push_back(read_data);
-    this->characteristic_kmers.insert(characteristic_kmers.begin(), characteristic_kmers.end());
+    this->characteristic_kmer_ids.insert(characteristic_kmers.begin(), characteristic_kmers.end());
 }
 
 void GenomeReadCluster::absorb(GenomeReadCluster &cluster) {
     reads.insert(reads.end(), cluster.reads.begin(), cluster.reads.end());
     categories.insert(cluster.categories.begin(), cluster.categories.end());
-    for (auto it = begin(cluster.characteristic_kmers); it != end(cluster.characteristic_kmers); it++){
-        if (characteristic_kmers.contains(it->first)){
-            characteristic_kmers[it->first].sum_of_qualities += it->second.sum_of_qualities;
-        } else {
-            characteristic_kmers[it->first] = {it->second.sum_of_qualities};
-        }
-    }
+    characteristic_kmer_ids.insert(cluster.characteristic_kmer_ids.begin(), cluster.characteristic_kmer_ids.end());
 }
 
 uint64_t GenomeReadCluster::size() {

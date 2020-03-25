@@ -35,7 +35,7 @@ void plot_connection_quality(std::vector<ClusterConnection> &connections){
 KmerIndex get_kmer_index(ClusterIndex &clusters) {
     KmerIndex index;
     for (auto cluster_iter = begin(clusters); cluster_iter != end(clusters); cluster_iter++) {
-        for (auto it = begin(cluster_iter->second->characteristic_kmers); it != end(cluster_iter->second->characteristic_kmers); it++){
+        for (auto it = begin(cluster_iter->second->characteristic_kmer_ids); it != end(cluster_iter->second->characteristic_kmer_ids); it++){
             KmerIndex::iterator iter = index.insert(KmerIndex::value_type(it->first, {})).first;
             iter.value()[cluster_iter->first] = it->second.avg_quality(cluster_iter->second->size());
         }
@@ -50,7 +50,7 @@ std::vector<ClusterConnection> get_cluster_connections(ClusterIndex &clusters, K
     for (auto pivot_it = begin(clusters); pivot_it != end(clusters); pivot_it++) {
         std::map<ClusterID , ConnectionScore > shared_kmer_counts;
 
-        for (auto it = begin(pivot_it->second->characteristic_kmers); it != end(pivot_it->second->characteristic_kmers); it++) {
+        for (auto it = begin(pivot_it->second->characteristic_kmer_ids); it != end(pivot_it->second->characteristic_kmer_ids); it++) {
             for (auto candidates_it = begin(index[it->first]); candidates_it != end(index[it->first]); candidates_it++){
                 shared_kmer_counts.insert( std::map<ClusterID , ConnectionScore >::value_type(candidates_it->first, 0)).first->second += 1;
             }
@@ -74,10 +74,12 @@ std::vector<ClusterConnection> get_cluster_connections(ClusterIndex &clusters, K
 int clustering_round(ClusterIndex &clusters, KmerIndex &index) {
     std::vector<ClusterConnection> cluster_connections = get_cluster_connections(clusters, index);
     plot_connection_quality(cluster_connections);
+    int score_threshold;
+    std::cin >> score_threshold;
 
     int merge_operations = 0;
     for (ClusterConnection &connection : cluster_connections) {
-        if (!connection.is_good) continue;
+        if (connection.score < score_threshold) break;
 
         if (!(clusters.contains(connection.cluster_x_id) && clusters.contains(connection.cluster_y_id))) continue;
 
@@ -98,9 +100,9 @@ int clustering_round(ClusterIndex &clusters, KmerIndex &index) {
 
         bigger->absorb(*smaller);
 
-        for (auto it = begin(smaller->characteristic_kmers); it != end(smaller->characteristic_kmers); it++){
+        for (auto it = begin(smaller->characteristic_kmer_ids); it != end(smaller->characteristic_kmer_ids); it++){
             index[it->first].erase(smaller_id);
-            index[it->first][bigger_id] = bigger->characteristic_kmers[it->first].avg_quality(bigger->size());
+            index[it->first][bigger_id] = bigger->characteristic_kmer_ids[it->first].avg_quality(bigger->size());
         }
 
         clusters.erase(smaller_id);
@@ -111,11 +113,7 @@ int clustering_round(ClusterIndex &clusters, KmerIndex &index) {
 }
 
 
-void print_clusters(ClusterIndex &clusters){
-    auto sort_by_size = [](GenomeReadCluster* x, GenomeReadCluster* y){
-        return x->size() < y->size();
-    };
-
+void print_clusters(ClusterIndex &clusters, int first_n){
     std::vector<GenomeReadCluster*> cluster_pointers;
     std::transform(
             clusters.begin(),
@@ -124,9 +122,9 @@ void print_clusters(ClusterIndex &clusters){
             [](std::pair<const ClusterID , GenomeReadCluster*> &p) -> GenomeReadCluster* { return p.second; }
             );
 
-    sort(cluster_pointers.rbegin(), cluster_pointers.rend(), sort_by_size);
+    sort(cluster_pointers.rbegin(), cluster_pointers.rend(), [](GenomeReadCluster* x, GenomeReadCluster* y) -> bool { return x->size() < y->size(); });
 
-    int iterate_first = 200;
+    int iterate_first = first_n;
     for (auto cluster : cluster_pointers){
         std::cout << cluster->consistency() << " ";
 
@@ -144,8 +142,9 @@ void run_clustering(ClusterIndex &clusters){
     int merge_operations;
     while ((merge_operations = clustering_round(clusters, index)) > 0){
         std::cout << fmt::format("Performed {} merge operations\n", merge_operations);
-        print_clusters(clusters);
+        print_clusters(clusters, 200);
     }
+    print_clusters(clusters, 1000000);
 }
 
 ClusterIndex get_initial_read_clusters(SequenceRecordIterator &reader, int k, KmerOccurrences &characteristic_kmers) {
