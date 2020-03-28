@@ -76,7 +76,7 @@ int main(int argc, char *argv[]) {
     std::map<int, KmerSpecificity> per_k_specificities = {};
     for (auto k_length : k_sizes) {
         std::cout << fmt::format("\n ### Running analysis for k-mer size {} ###\n", k_length);
-        KmerOccurrences occ = kmer_occurrences(read_iterator, k_length, max_genome_size);
+        KmerOccurrences occ = kmer_occurrences(read_iterator, k_length, max_genome_size, max_coverage);
         per_k_specificities[k_length] = get_kmer_specificity(occ);
     }
 
@@ -99,12 +99,13 @@ int main(int argc, char *argv[]) {
         }
     }
 
-    KmerOccurrences selected_occurrences = kmer_occurrences(read_iterator, selected_k, max_genome_size);
+    KmerOccurrences selected_occurrences = kmer_occurrences(read_iterator, selected_k, max_genome_size, max_coverage);
     std::cout << fmt::format("{} total kmers\n", selected_occurrences.size());
     KmerOccurrences characteristic_kmers = filter_characteristic_kmers(selected_occurrences, cov_lower, cov_upper);
 
     std::cout << fmt::format("{} characteristic kmers\n", characteristic_kmers.size());
 
     auto engine = ReadClusteringEngine(read_iterator, characteristic_kmers, selected_k);
+    engine.run_clustering();
     return 0;
 }

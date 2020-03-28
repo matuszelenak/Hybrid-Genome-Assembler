@@ -15,8 +15,32 @@ unsigned int num_threads = std::thread::hardware_concurrency();
 uint64_t MIN_SCORE = 5;
 
 
-void get_connections_thread(ClusterIndex &cluster_index, ClusterID cluster_from, ClusterID cluster_to, KmerClusterIndex &kmer_cluster_index, std::vector<ClusterConnection> &accumulator){
-    for (ClusterID pivot_id = cluster_from; pivot_id < cluster_to; pivot_id++){
+void print_clusters(ClusterIndex &clusters, int first_n){
+    std::vector<GenomeReadCluster*> cluster_pointers;
+    std::transform(
+            clusters.begin(),
+            clusters.end(),
+            std::back_inserter(cluster_pointers),
+            [](std::pair<const ClusterID , GenomeReadCluster*> &p) -> GenomeReadCluster* { return p.second; }
+    );
+
+    sort(cluster_pointers.rbegin(), cluster_pointers.rend(), [](GenomeReadCluster* x, GenomeReadCluster* y) -> bool { return x->size() < y->size(); });
+
+    int iterate_first = first_n;
+    if (first_n == -1) iterate_first = cluster_pointers.size();
+    for (auto cluster : cluster_pointers){
+        std::cout << cluster->consistency() << " ";
+
+        iterate_first--;
+        if (iterate_first == 0) break;
+    }
+    std::cout << std::endl;
+}
+
+
+void get_connections_thread(ClusterIndex &cluster_index, std::vector<ClusterID> &cluster_indices, std::pair<int, int> range, KmerClusterIndex &kmer_cluster_index, std::vector<ClusterConnection> &accumulator){
+    for (int i = range.first; i < range.second; i++){
+        ClusterID pivot_id = cluster_indices[i];
         std::map<ClusterID , ConnectionScore > shared_kmer_counts;
         for (KmerID kmer_id : cluster_index[pivot_id]->characteristic_kmer_ids){
             for (ClusterID candidate_id : kmer_cluster_index[kmer_id]){
@@ -40,15 +64,18 @@ void get_connections_thread(ClusterIndex &cluster_index, ClusterID cluster_from,
 std::vector<ClusterConnection> ReadClusteringEngine::get_connections(){
     std::vector<ClusterConnection> connections;
 
-    int clusters_per_thread = (int)ceil(cluster_index.size() / (double)num_threads);
+    std::vector<ClusterID> cluster_ids;
+    std::transform(cluster_index.begin(), cluster_index.end(), std::back_inserter(cluster_ids), [](ClusterIndex::value_type &val) -> ClusterID { return val.first; });
+
     std::thread t[num_threads];
     std::cout << "Launching connection computing threads\n";
+    int clusters_per_thread = (int)ceil(cluster_ids.size() / (double)num_threads);
     for (int i = 0; i < num_threads; ++i) {
         t[i] = std::thread(
                 get_connections_thread,
                 std::ref(cluster_index),
-                i * clusters_per_thread,
-                std::min((i + 1) * clusters_per_thread, (int)cluster_index.size()),
+                std::ref(cluster_ids),
+                std::make_pair(i * clusters_per_thread, std::min((i + 1) * clusters_per_thread, (int)cluster_ids.size())),
                 std::ref(kmer_cluster_index),
                 std::ref(connections)
                 );
@@ -70,7 +97,7 @@ ClusterID get_parent(ClusterID cluster_id, tsl::robin_map<ClusterID, ClusterID> 
 }
 
 
-void merge_clusters_thread(std::queue<IDComponent> &component_queue, ClusterIndex &cluster_index){
+void merge_clusters_thread(std::queue<IDComponent> &component_queue, ClusterIndex &cluster_index, KmerClusterIndex &kmer_cluster_index){
     while (true){
         merge_mut.lock();
         if (component_queue.empty()){
@@ -89,6 +116,11 @@ void merge_clusters_thread(std::queue<IDComponent> &component_queue, ClusterInde
 
         component_erase_mut.lock();
         for (int i = 1; i < component.size(); i++){
+
+            for (KmerID kmer_id : cluster_index[component[i]]->characteristic_kmer_ids){
+                kmer_cluster_index[kmer_id].erase(component[i]);
+                kmer_cluster_index[kmer_id].insert(survivor->reference_id);
+            }
             cluster_index.erase(component[i]);
         }
         component_erase_mut.unlock();
@@ -109,6 +141,7 @@ int ReadClusteringEngine::clustering_round(){
     for (ClusterConnection &conn : cluster_connections){
         ClusterID parent_x = get_parent(conn.cluster_x_id, parents);
         ClusterID parent_y = get_parent(conn.cluster_y_id, parents);
+        if (!conn.is_good) continue;
         if (parent_x == parent_y) continue;
 
         ClusterID bigger, smaller;
@@ -140,11 +173,23 @@ int ReadClusteringEngine::clustering_round(){
     std::thread t[num_threads];
     std::cout << "Launching merging threads\n";
     for (int i = 0; i < num_threads; ++i) {
-        t[i] = std::thread(merge_clusters_thread, std::ref(component_queue), std::ref(cluster_index));
+        t[i] = std::thread(merge_clusters_thread, std::ref(component_queue), std::ref(cluster_index), std::ref(kmer_cluster_index));
     }
     for (int i = 0; i < num_threads; ++i) t[i].join();
 
+
     return merge_operations;
+}
+
+void ReadClusteringEngine::run_clustering(){
+    size_t num_of_components = cluster_index.size();
+    std::cout << fmt::format("{} clusters", num_of_components) << std::endl;
+    int merge_operations;
+    while ((merge_operations = clustering_round()) > 0){
+        std::cout << fmt::format("Performed {} merge operations\n", merge_operations);
+        print_clusters(cluster_index, 200);
+    }
+    print_clusters(cluster_index, 1000000);
 }
 
 

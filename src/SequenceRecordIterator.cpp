@@ -1,5 +1,6 @@
 #include <fmt/format.h>
 #include <iostream>
+#include <numeric>
 #include "SequenceRecordIterator.h"
 #include "Utils.h"
 
@@ -27,7 +28,7 @@ void SequenceRecordIterator::get_meta_data() {
     std::optional<GenomeReadData> read_record;
     while ((read_record = get_next_record()) != std::nullopt) {
         if (current_file_index != previous_file_index) {
-            meta[current_file_index] = {paths[current_file_index].substr(paths[current_file_index].find_last_of("/\\") + 1), 0, UINT64_MAX, 0, 0, 0};
+            meta[current_file_index] = {paths[current_file_index].substr(paths[current_file_index].find_last_of("/\\") + 1), current_file_type, 0, UINT64_MAX, 0, 0, 0};
             current_meta = &meta[current_file_index];
             previous_file_index = current_file_index;
         }
@@ -42,7 +43,7 @@ void SequenceRecordIterator::get_meta_data() {
     }
     for (auto &data : meta) {
         data.avg_read_length /= data.records;
-        std::cout << fmt::format("{}:\n- {} reads\n- {} total bases\n- {} average read length\n- {} max read length\n- {} min read length\n\n",
+        std::cout << fmt::format("{}:\n-{} reads\n- {} total bases\n- {} average read length\n- {} max read length\n- {} min read length\n\n",
                                  data.filename, data.records, data.total_bases, data.avg_read_length, data.max_read_length, data.min_read_length);
     }
 }
@@ -73,10 +74,13 @@ bool SequenceRecordIterator::load_file_at_position(int pos) {
 
     if (header[0] == '@') {
         std::string comment = get_next_line();
-        if (!comment.empty() && comment[0] == '+')
+        if (!comment.empty() && comment[0] == '+') {
             this->current_record_method = &SequenceRecordIterator::read_fastq_record;
+            this->current_file_type = FASTQ;
+        }
     } else if (header[0] == '>') {
         this->current_record_method = &SequenceRecordIterator::read_fasta_record;
+        this->current_file_type = FASTA;
     } else
         throw std::logic_error("Unrecognized file format");
 
@@ -149,4 +153,8 @@ std::optional<GenomeReadData> SequenceRecordIterator::get_next_record() {
 
 SequenceRecordIterator::~SequenceRecordIterator() {
     if (current_file.is_open()) current_file.close();
+}
+
+uint64_t SequenceRecordIterator::average_read_length() {
+    return std::accumulate(meta.begin(), meta.end(), 0, [](uint64_t acc, ReadFileMetaData &m) -> uint64_t { return acc + m.avg_read_length; }) / meta.size();
 }

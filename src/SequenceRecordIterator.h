@@ -19,8 +19,12 @@ struct SeqRecordData {
 };
 
 
+enum FileType {FASTA, FASTQ};
+
+
 struct ReadFileMetaData {
     std::string filename;
+    FileType file_type;
     uint64_t records;
     uint64_t min_read_length;
     uint64_t max_read_length;
@@ -36,6 +40,7 @@ private:
 
     std::ifstream current_file;
     int current_file_index = 0;
+    FileType current_file_type = FASTQ;
     uint64_t current_file_size = 0;
     bool exhausted = false;
 
@@ -58,6 +63,8 @@ public:
     bool reset();
     std::optional<GenomeReadData> get_next_record();
     std::vector<ReadFileMetaData> meta;
+
+    uint64_t average_read_length();
 };
 
 

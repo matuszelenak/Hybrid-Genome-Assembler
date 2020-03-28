@@ -47,4 +47,4 @@ files = input().split('/')
 num_of_k, max_cov = [int(x) for x in input().split()]
 specs: List[KmerSpecificities] = [eval(input()) for _ in range(num_of_k)]  # FOR THE GLORY OF SATAN
 plot_histograms(specs, max_cov)
-plt.savefig(f'histogram_{",".join(files)}_k=[{",".join(map(str, [k for k, _ in specs]))}].png')
+# plt.savefig(f'histogram_{",".join(files)}_k=[{",".join(map(str, [k for k, _ in specs]))}].png')

@@ -43,6 +43,7 @@ private:
     int clustering_round();
 public:
     explicit ReadClusteringEngine(SequenceRecordIterator &read_iterator, KmerOccurrences &characteristic_kmers, int k);
+    void run_clustering();
 };
 
 
