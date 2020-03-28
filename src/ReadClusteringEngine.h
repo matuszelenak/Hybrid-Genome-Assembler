@@ -38,9 +38,9 @@ private:
     KmerClusterIndex kmer_cluster_index;
 
     std::vector<ClusterConnection> get_connections();
-    int clustering_round();
     KmerClusterIndex get_index();
     ClusterIndex get_initial_read_clusters(SequenceRecordIterator &reader, KmerOccurrences &characteristic_kmers, int k);
+    int clustering_round();
 public:
     explicit ReadClusteringEngine(SequenceRecordIterator &read_iterator, KmerOccurrences &characteristic_kmers, int k);
 };

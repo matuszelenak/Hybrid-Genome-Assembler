@@ -71,10 +71,10 @@ KmerOccurrences filter_characteristic_kmers(KmerOccurrences &occurrences, int co
 
 void _merge_partial_occurrences(KmerOccurrences &merged_into, KmerOccurrences &to_merge) {
     for (auto it = begin(to_merge); it != end(to_merge); it++) {
-        KmerOccurrences::iterator iter = merged_into.insert( KmerOccurrences::value_type(it->first, {0, 0, 0}) ).first;
+        KmerOccurrences::iterator iter = merged_into.insert(KmerOccurrences::value_type(it->first, {0, 0, 0})).first;
         iter.value().in_first_category += it->second.in_first_category;
         iter.value().in_second_category += it->second.in_second_category;
-        iter.value().sum_of_qualities += it->second.sum_of_qualities;
+        //iter.value().sum_of_qualities += it->second.sum_of_qualities;
     }
 }
 
@@ -84,14 +84,13 @@ void kmer_occurrences_thread(SequenceRecordIterator &read_iterator, KmerOccurren
     partial_occurrences.rehash(PARTIAL_MERGE_AFTER * 2);
     std::optional<GenomeReadData> read;
     while ((read = read_iterator.get_next_record()) != std::nullopt) {
-        KmerIterator it = KmerIterator(*read, k);
-        std::optional<std::pair<Kmer, KmerQuality>> kmer_info;
+        KmerIterator it = KmerIterator(*read, k, true);
 
-        while ((kmer_info = it.get_next_kmer()) != std::nullopt) {
-            KmerOccurrences::iterator iter = partial_occurrences.insert( KmerOccurrences::value_type(kmer_info->first, {0, 0, (uint32_t) kmer_info->second.avg_quality}) ).first;
+        while (it.next_kmer()) {
+            KmerOccurrences::iterator iter = partial_occurrences.insert(KmerOccurrences::value_type(it.current_kmer, {0, 0, 0})).first;
             iter.value().in_first_category += (int) read->category_id;
             iter.value().in_second_category += (int) !read->category_id;
-            iter.value().sum_of_qualities += kmer_info->second.avg_quality;
+            //iter.value().sum_of_qualities += kmer_info->second.avg_quality;
         }
 
         if (partial_occurrences.size() > PARTIAL_MERGE_AFTER && thread_id == merger_id) {
@@ -112,9 +111,9 @@ void kmer_occurrences_thread(SequenceRecordIterator &read_iterator, KmerOccurren
 KmerOccurrences kmer_occurrences(SequenceRecordIterator &read_iterator, int k, int max_genome_size) {
     KmerOccurrences occurrences;
     // TODO finetune this formula, turns out it has quite an effect on speed
-    int expected_kmers = (int)round(max_genome_size * ((double)k / 10) * 2);
+    int expected_kmers = (int) round(max_genome_size * ((double) k / 10) * 2);
     std::cout << fmt::format("Expecting {} kmers\n", expected_kmers);
-    occurrences.rehash((KmerOccurrences::size_type)expected_kmers);
+    occurrences.rehash((KmerOccurrences::size_type) expected_kmers);
 
     unsigned int num_threads = std::thread::hardware_concurrency();
 
@@ -164,4 +163,8 @@ int get_genome_size(std::vector<ReadFileMetaData> &read_meta_data, int coverage)
 // For the case when only the genome size is known
 int get_coverage(std::vector<ReadFileMetaData> &read_meta_data, int genome_size) {
     return _get_genome_size_or_coverage(read_meta_data, genome_size);
+}
+
+uint32_t get_num_of_expected_kmers(int k, int genome_size, int coverage, int read_length, double error_rate) {
+    return genome_size * coverage * ((double) (read_length - k + 1) / (double) read_length) * (1 - pow(1 - error_rate, k));
 }

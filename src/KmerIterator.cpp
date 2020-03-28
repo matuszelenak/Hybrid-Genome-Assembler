@@ -1,23 +1,26 @@
 #include <stdexcept>
+#include <fmt/format.h>
 
 #include "KmerIterator.h"
 
 uint8_t BITS_PER_BASE = 2;
-std::unordered_map<char, uint8_t> BASE_TO_NUM = {
+std::unordered_map<char, Kmer> BASE_TO_NUM = {
         {'A', 0b00},
         {'C', 0b01},
         {'G', 0b10},
         {'T', 0b11},
 };
 
-std::unordered_map<char, uint8_t> COMPLEMENT = {
+std::unordered_map<char, Kmer> COMPLEMENT = {
         {'A', 0b11},
         {'C', 0b10},
         {'G', 0b01},
         {'T', 0b00}
 };
 
-KmerIterator::KmerIterator(GenomeReadData &read, int k) {
+char BASES[] = {'A', 'C', 'G', 'T'};
+
+KmerIterator::KmerIterator(GenomeReadData &read, int k, bool ignore_qualities) {
     if (k > 32) {
         throw std::invalid_argument("Kmer size is too big");
     }
@@ -31,22 +34,31 @@ KmerIterator::KmerIterator(GenomeReadData &read, int k) {
     forward_kmer = 0;
     complementary_kmer = 0;
 
-    qualities = read.qualities;
-    kmer_qualities_sum = 0;
-    quality_k_behind = 0;
-
     for (int i = 0; i < k - 1; i++) {
         roll_forward_strand();
         roll_complementary_strand();
-
-        kmer_qualities_window.push_back(read.qualities[i]);
-        kmer_qualities_sum += read.qualities[i];
-
         position_in_read++;
+    }
+
+    this->ignore_qualities = ignore_qualities | read.qualities.empty();
+    if (!this->ignore_qualities) {
+        qualities = read.qualities;
+        for (int i = 0; i < k - 1; i++) {
+            kmer_qualities_window.push_back(read.qualities[i]);
+            kmer_qualities_sum += read.qualities[i];
+        }
     }
 }
 
-
+std::string KmerIterator::number_to_sequence(Kmer kmer) {
+    std::string result;
+    for (int i = 0; i < kmer_size; i++) {
+        result.push_back(BASES[kmer & 0b11u]);
+        kmer >>= BITS_PER_BASE;
+    }
+    std::reverse(result.begin(), result.end());
+    return result;
+}
 
 void KmerIterator::roll_forward_strand() {
     forward_kmer <<= BITS_PER_BASE;
@@ -56,28 +68,32 @@ void KmerIterator::roll_forward_strand() {
 
 void KmerIterator::roll_complementary_strand() {
     complementary_kmer >>= BITS_PER_BASE;
-    complementary_kmer |= ((uint64_t) (COMPLEMENT[sequence[position_in_read]] << complement_shift_by));
+    complementary_kmer |= ((Kmer) (COMPLEMENT[sequence[position_in_read]] << complement_shift_by));
 }
 
-std::optional<std::pair<Kmer, KmerQuality>> KmerIterator::get_next_kmer() {
-
+bool KmerIterator::next_kmer() {
     if (position_in_read < sequence.size()) {
         roll_forward_strand();
         roll_complementary_strand();
+        current_kmer = std::min(forward_kmer, complementary_kmer);
 
-        kmer_qualities_window.push_back(qualities[position_in_read]);
+        if (ignore_qualities) {
+            position_in_read++;
+        } else {
+            kmer_qualities_window.push_back(qualities[position_in_read]);
 
-        kmer_qualities_sum -= quality_k_behind;
-        kmer_qualities_sum += qualities[position_in_read];
+            kmer_qualities_sum -= quality_k_behind;
+            kmer_qualities_sum += qualities[position_in_read];
 
-        KmerQuality q = {*std::min_element(kmer_qualities_window.begin(), kmer_qualities_window.end()),(Quality)(kmer_qualities_sum / kmer_size)};
-        position_in_read++;
+            current_quality = {*std::min_element(kmer_qualities_window.begin(), kmer_qualities_window.end()), (Quality) (kmer_qualities_sum / kmer_size)};
+            position_in_read++;
 
-        quality_k_behind = qualities[position_in_read - kmer_size];
-        kmer_qualities_window.pop_front();
+            quality_k_behind = qualities[position_in_read - kmer_size];
+            kmer_qualities_window.pop_front();
+        }
 
-        return std::make_pair(std::min(forward_kmer, complementary_kmer), q);
-    } else {
-        return std::nullopt;
+        return true;
     }
+
+    return false;
 }

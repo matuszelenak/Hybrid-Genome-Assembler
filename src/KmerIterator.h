@@ -20,16 +20,22 @@ private:
 
     unsigned long position_in_read;
 
+    bool ignore_qualities = false;
     std::vector<Quality > qualities;
     std::deque<Quality> kmer_qualities_window;
-    Quality quality_k_behind;
-    uint32_t kmer_qualities_sum;
+    Quality quality_k_behind = 0;
+    uint32_t kmer_qualities_sum = 0;
 
     void roll_forward_strand();
     void roll_complementary_strand();
 public:
-    explicit KmerIterator(GenomeReadData &read, int k);
-    std::optional<std::pair<Kmer, KmerQuality>> get_next_kmer();
+    explicit KmerIterator(GenomeReadData &read, int k, bool ignore_qualities);
+
+    bool next_kmer();
+    std::string number_to_sequence(Kmer kmer);
+
+    Kmer current_kmer = 0;
+    KmerQuality current_quality = {0, 0};
 };
 
 

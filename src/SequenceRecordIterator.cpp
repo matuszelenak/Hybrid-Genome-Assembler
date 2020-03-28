@@ -23,10 +23,10 @@ void SequenceRecordIterator::get_meta_data() {
     meta.resize(paths.size());
 
     int previous_file_index = -1;
-    ReadFileMetaData* current_meta = {};
+    ReadFileMetaData *current_meta = {};
     std::optional<GenomeReadData> read_record;
     while ((read_record = get_next_record()) != std::nullopt) {
-        if (current_file_index != previous_file_index){
+        if (current_file_index != previous_file_index) {
             meta[current_file_index] = {paths[current_file_index].substr(paths[current_file_index].find_last_of("/\\") + 1), 0, UINT64_MAX, 0, 0, 0};
             current_meta = &meta[current_file_index];
             previous_file_index = current_file_index;
@@ -104,13 +104,13 @@ SeqRecordData SequenceRecordIterator::read_fastq_record(std::string &header) {
     comment = get_next_line();
     quality = get_next_line();
 
-    std::vector<Quality> qualities(sequence.length(), -33);
+//    std::vector<Quality> qualities(sequence.length(), -33);
+//
+//    for (int i = 0; i < sequence.length(); i++) {
+//        qualities[i] += sequence[i];
+//    }
 
-    for (int i = 0; i < sequence.length(); i++) {
-        qualities[i] += sequence[i];
-    }
-
-    return {header, sequence, qualities};
+    return {header, sequence, {}};
 }
 
 SeqRecordData SequenceRecordIterator::read_fasta_record(std::string &header) {
@@ -135,7 +135,7 @@ std::optional<GenomeReadData> SequenceRecordIterator::get_next_record() {
         return std::nullopt;
     }
 
-    show_progress(current_file.tellg(), current_file_size, paths[current_file_index]);
+    //show_progress(current_file.tellg(), current_file_size, paths[current_file_index]);
 
     return std::optional<GenomeReadData>{
             {
