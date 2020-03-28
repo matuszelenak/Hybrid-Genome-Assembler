@@ -1,6 +1,5 @@
-#include "smhasher/MurmurHash3.h"
-
-#include "DNAStructures.h"
+#include "MurmurHash3.h"
+#include "Types.h"
 
 #ifndef SRC_COUNTINGBLOOM_H
 #define SRC_COUNTINGBLOOM_H

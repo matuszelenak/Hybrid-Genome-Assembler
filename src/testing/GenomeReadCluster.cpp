@@ -1,8 +1,9 @@
 #include <fmt/format.h>
 #include <boost/algorithm/string/join.hpp>
 #include <iostream>
-#include "DNAStructures.h"
+#include <map>
 
+#include "GenomeReadCluster.h"
 
 namespace algo = boost::algorithm;
 
@@ -35,6 +36,6 @@ std::string GenomeReadCluster::consistency() {
             category_counts.end(),
             std::back_inserter(category_count_vector),
             [](std::pair<const CategoryID, int> &p) -> std::string { return fmt::format("{}", p.second); }
-            );
+    );
     return algo::join(category_count_vector, "/");
 }

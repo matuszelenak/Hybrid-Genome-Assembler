@@ -5,11 +5,10 @@
 #include <boost/program_options/options_description.hpp>
 #include <fmt/format.h>
 
-#include "SequenceRecordIterator.h"
-#include "DNAStructures.h"
+#include "../common/SequenceRecordIterator.h"
+#include "../common/KmerIterator.h"
+#include "../common/Utils.h"
 #include "KmerAnalysis.h"
-#include "KmerIterator.h"
-#include "Utils.h"
 #include "ReadClusteringEngine.h"
 
 
@@ -75,7 +74,7 @@ int main(int argc, char *argv[]) {
 
     std::map<int, KmerSpecificity> per_k_specificities = {};
     for (auto k_length : k_sizes) {
-        std::cout << fmt::format("\n ### Running analysis for k-mer size {} ###\n", k_length);
+        std::cout << fmt::format("\n ### Running testing for k-mer size {} ###\n", k_length);
         KmerOccurrences occ = kmer_occurrences(read_iterator, k_length, max_genome_size, max_coverage);
         per_k_specificities[k_length] = get_kmer_specificity(occ);
     }

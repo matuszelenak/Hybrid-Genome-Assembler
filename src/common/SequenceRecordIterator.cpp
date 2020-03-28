@@ -1,6 +1,7 @@
 #include <fmt/format.h>
 #include <iostream>
 #include <numeric>
+
 #include "SequenceRecordIterator.h"
 #include "Utils.h"
 
@@ -12,11 +13,7 @@ SequenceRecordIterator::SequenceRecordIterator(std::vector<std::string> &reads_p
 
 bool SequenceRecordIterator::reset() {
     current_file_index = 0;
-    bool file_loaded = load_file_at_position(current_file_index);
-    if (file_loaded) {
-        exhausted = false;
-    }
-    return file_loaded;
+    return load_file_at_position(current_file_index);
 }
 
 void SequenceRecordIterator::get_meta_data() {
@@ -95,60 +92,37 @@ std::string SequenceRecordIterator::get_next_line() {
         if (load_file_at_position(current_file_index + 1)) {
             return get_next_line();
         } else {
-            exhausted = true;
-            return "";
+            throw std::length_error("");
         }
     }
     return in;
 }
 
-SeqRecordData SequenceRecordIterator::read_fastq_record(std::string &header) {
-    std::string sequence, comment, quality;
+GenomeReadData SequenceRecordIterator::read_fastq_record() {
+    std::string header, sequence, comment, qualities;
+    header = get_next_line();
     sequence = get_next_line();
     comment = get_next_line();
-    quality = get_next_line();
+    qualities = get_next_line();
 
-//    std::vector<Quality> qualities(sequence.length(), -33);
-//
-//    for (int i = 0; i < sequence.length(); i++) {
-//        qualities[i] += sequence[i];
-//    }
-
-    return {header, sequence, {}};
+    return {header, sequence, qualities, current_file_index};
 }
 
-SeqRecordData SequenceRecordIterator::read_fasta_record(std::string &header) {
-    std::string sequence;
+GenomeReadData SequenceRecordIterator::read_fasta_record() {
+    std::string header, sequence;
+    header = get_next_line();
     sequence = get_next_line();
 
-    std::vector<Quality> qualities(sequence.length(), 40);
-
-    return {header, sequence, qualities};
+    return {header, sequence, "", current_file_index};
 }
 
 std::optional<GenomeReadData> SequenceRecordIterator::get_next_record() {
     std::lock_guard<std::mutex> lock(_read_mutex);
-    if (exhausted) return std::nullopt;
-
-    std::string header = get_next_line();
-    if (header.empty()) return std::nullopt;
-
-    SeqRecordData data = (this->*current_record_method)(header);
-
-    if (data.header.empty() || data.sequence.empty()) {
+    try {
+        return std::optional<GenomeReadData>{(this->*current_record_method)()};
+    } catch (const std::length_error &e){
         return std::nullopt;
     }
-
-    //show_progress(current_file.tellg(), current_file_size, paths[current_file_index]);
-
-    return std::optional<GenomeReadData>{
-            {
-                    data.header,
-                    data.sequence,
-                    data.qualities,
-                    current_file_index
-            }
-    };
 }
 
 SequenceRecordIterator::~SequenceRecordIterator() {

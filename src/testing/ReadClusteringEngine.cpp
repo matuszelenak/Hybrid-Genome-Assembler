@@ -3,7 +3,7 @@
 #include <fmt/format.h>
 #include <queue>
 
-#include "KmerIterator.h"
+#include "../common/KmerIterator.h"
 #include "ReadClusteringEngine.h"
 
 std::mutex index_mut;
@@ -228,7 +228,7 @@ KmerClusterIndex ReadClusteringEngine::get_index(){
 void get_initial_read_clusters_thread(SequenceRecordIterator &reader, const KmerIndex &kmer_index, int k, std::vector<GenomeReadCluster*> &result){
     std::optional<GenomeReadData> read;
     while ((read = reader.get_next_record()) != std::nullopt) {
-        KmerIterator it = KmerIterator(*read, k, true);
+        KmerIterator it = KmerIterator(read->sequence, k);
 
         std::set<KmerID> in_read_characteristic;
 

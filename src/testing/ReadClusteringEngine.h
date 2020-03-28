@@ -1,4 +1,8 @@
-#include "SequenceRecordIterator.h"
+#include <tsl/robin_map.h>
+
+#include "../common/SequenceRecordIterator.h"
+#include "KmerAnalysis.h"
+#include "GenomeReadCluster.h"
 
 #ifndef SRC_READCLUSTERINGENGINE_H
 #define SRC_READCLUSTERINGENGINE_H
@@ -9,7 +13,6 @@ typedef tsl::robin_map<Kmer, KmerID> KmerIndex;
 typedef uint64_t ConnectionScore;
 typedef std::map<ClusterID, GenomeReadCluster*> ClusterIndex;
 
-//typedef std::map<ClusterID, Quality> InClusterKmerQuality;
 typedef std::vector<std::set<ClusterID> > KmerClusterIndex;
 typedef std::vector<ClusterID > IDComponent;
 
@@ -44,6 +47,16 @@ private:
 public:
     explicit ReadClusteringEngine(SequenceRecordIterator &read_iterator, KmerOccurrences &characteristic_kmers, int k);
     void run_clustering();
+};
+
+
+struct InClusterKmerInfo {
+    uint32_t sum_of_qualities = 0;
+    uint32_t total_count = 0;
+
+    Quality avg_quality(){
+        return (Quality)(this->sum_of_qualities / this->total_count);
+    };
 };
 
 

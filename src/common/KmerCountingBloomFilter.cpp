@@ -3,7 +3,6 @@
 #include <fmt/format.h>
 
 #include "KmerCountingBloomFilter.h"
-#include "smhasher/MurmurHash3.h"
 
 
 uint16_t BIN_SIZE = CACHE_LINE_SIZE / (sizeof(KmerCount) * 8);

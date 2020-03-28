@@ -6,21 +6,21 @@
 #include <thread>
 #include <mutex>
 
-#include "DNAStructures.h"
+#include "Types.h"
 
 #ifndef SRC_SEQUENCERECORDITERATOR_H
 #define SRC_SEQUENCERECORDITERATOR_H
 
 
-struct SeqRecordData {
-    std::string header;
-    std::string sequence;
-    std::vector<Quality> qualities;
-};
-
-
 enum FileType {FASTA, FASTQ};
 
+
+struct GenomeReadData {
+    std::string header;
+    std::string sequence;
+    std::string qualities;
+    CategoryID category_id;
+};
 
 struct ReadFileMetaData {
     std::string filename;
@@ -42,16 +42,15 @@ private:
     int current_file_index = 0;
     FileType current_file_type = FASTQ;
     uint64_t current_file_size = 0;
-    bool exhausted = false;
 
-
-    SeqRecordData read_fastq_record(std::string &header);
-
-    SeqRecordData read_fasta_record(std::string &header);
-
-    SeqRecordData (SequenceRecordIterator::*current_record_method)(std::string &header) = &SequenceRecordIterator::read_fastq_record;
 
     std::string get_next_line();
+
+    GenomeReadData read_fastq_record();
+
+    GenomeReadData read_fasta_record();
+
+    GenomeReadData (SequenceRecordIterator::*current_record_method)() = &SequenceRecordIterator::read_fastq_record;
 
     bool load_file_at_position(int pos);
 
