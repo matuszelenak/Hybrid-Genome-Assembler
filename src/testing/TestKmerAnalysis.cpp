@@ -2,12 +2,11 @@
 #include <boost/algorithm/string/join.hpp>
 #include <boost/thread.hpp>
 #include <fmt/format.h>
-#include <cmath>
 
-#include "KmerAnalysis.h"
-#include "KmerIterator.h"
-#include "KmerCountingBloomFilter.h"
-#include "Utils.h"
+#include "../common/KmerAnalysis.h"
+#include "../common/KmerIterator.h"
+#include "../common/Utils.h"
+#include "TestKmerAnalysis.h"
 
 namespace algo = boost::algorithm;
 namespace pt = boost::posix_time;
@@ -17,6 +16,14 @@ std::mutex mut;
 
 size_t PARTIAL_MERGE_AFTER = 100000;
 
+KmerOccurrences filter_characteristic_kmers(KmerOccurrences &occurrences, int coverage_lower_bound, int coverage_upper_bound) {
+    for (auto it = begin(occurrences); it != end(occurrences);) {
+        if (it->second.total_occurrences() < coverage_lower_bound || it->second.total_occurrences() > coverage_upper_bound) {
+            it = occurrences.erase(it);
+        } else ++it;
+    }
+    return occurrences;
+}
 
 void plot_kmer_specificity(std::vector<ReadFileMetaData> &meta, std::map<int, KmerSpecificity> &specificities, int max_coverage) {
     // Lord forgive me for what I am about to do
@@ -35,7 +42,7 @@ void plot_kmer_specificity(std::vector<ReadFileMetaData> &meta, std::map<int, Km
     std::vector<std::string> filenames;
     std::transform(meta.begin(), meta.end(), std::back_inserter(filenames), [](ReadFileMetaData &d) -> std::string { return d.filename; });
     std::string plot_input = fmt::format("{}\n{} {}\n{}", algo::join(filenames, "/"), specificities.size(), max_coverage, algo::join(k_spec_strings, "\n"));
-    std::cout << run_command_with_input("python python_scripts/plot_histogram.py", plot_input) << std::endl;
+    std::cout << run_command_with_input("python common/python/plot_histogram.py", plot_input) << std::endl;
 }
 
 
@@ -60,17 +67,6 @@ KmerSpecificity get_kmer_specificity(KmerOccurrences &occurrences) {
     return specificity;
 }
 
-
-KmerOccurrences filter_characteristic_kmers(KmerOccurrences &occurrences, int coverage_lower_bound, int coverage_upper_bound) {
-    for (auto it = begin(occurrences); it != end(occurrences);) {
-        if (it->second.total_occurrences() < coverage_lower_bound || it->second.total_occurrences() > coverage_upper_bound) {
-            it = occurrences.erase(it);
-        } else ++it;
-    }
-    return occurrences;
-}
-
-
 void _merge_partial_occurrences(KmerOccurrences &merged_into, KmerOccurrences &to_merge) {
     for (auto it = begin(to_merge); it != end(to_merge); it++) {
         KmerOccurrences::iterator iter = merged_into.insert(KmerOccurrences::value_type(it->first, {0, 0, 0})).first;
@@ -86,7 +82,7 @@ void kmer_occurrences_thread(SequenceRecordIterator &read_iterator, KmerOccurren
     partial_occurrences.rehash(PARTIAL_MERGE_AFTER * 2);
     std::optional<GenomeReadData> read;
     while ((read = read_iterator.get_next_record()) != std::nullopt) {
-        KmerIterator it = KmerIterator(*read, k, true);
+        KmerIterator it = KmerIterator(read->sequence, k);
 
         while (it.next_kmer()) {
             KmerOccurrences::iterator iter = partial_occurrences.insert(KmerOccurrences::value_type(it.current_kmer, {0, 0, 0})).first;
@@ -129,7 +125,6 @@ KmerOccurrences kmer_occurrences(SequenceRecordIterator &read_iterator, int k, i
     return occurrences;
 }
 
-
 std::vector<int> get_k_sizes(int max_genome_size) {
     std::vector<int> k_sizes;
     int k_guess = (int) ceil(log(max_genome_size) / log(4));
@@ -137,84 +132,4 @@ std::vector<int> get_k_sizes(int max_genome_size) {
         k_sizes.push_back(k_value);
     }
     return k_sizes;
-}
-
-int _get_genome_size_or_coverage(std::vector<ReadFileMetaData> &read_meta_data, int known) {
-    uint64_t unknown = 0;
-    for (auto &meta : read_meta_data) {
-        unknown = std::max(unknown, (uint64_t) (meta.total_bases / known));
-    }
-    return unknown;
-}
-
-// For the case when only the coverage is known
-int get_genome_size(std::vector<ReadFileMetaData> &read_meta_data, int coverage) {
-    return _get_genome_size_or_coverage(read_meta_data, coverage);
-}
-
-// For the case when only the genome size is known
-int get_coverage(std::vector<ReadFileMetaData> &read_meta_data, int genome_size) {
-    return _get_genome_size_or_coverage(read_meta_data, genome_size);
-}
-
-uint32_t get_num_of_expected_kmers(uint k, uint genome_size, uint coverage, uint read_length, double error_rate) {
-    return genome_size * coverage * ((double) (read_length - k + 1) / (double) read_length) * (1 - pow(1 - error_rate, k));
-}
-
-
-void kmer_occurrences_first_pass(SequenceRecordIterator &read_iterator, KmerCountingBloomFilter &bf, int k){
-    std::optional<GenomeReadData> read;
-    while ((read = read_iterator.get_next_record()) != std::nullopt) {
-        KmerIterator it = KmerIterator(*read, k, true);
-        while (it.next_kmer()) {
-            bf.add(it.current_kmer);
-        }
-    }
-}
-
-
-void kmer_occurrences_second_pass(SequenceRecordIterator &read_iterator, KmerCountingBloomFilter &bf, int k, int lower_bound, int upper_bound, KmerOccurrences &occ){
-    std::optional<GenomeReadData> read;
-    while ((read = read_iterator.get_next_record()) != std::nullopt) {
-        KmerIterator it = KmerIterator(*read, k, true);
-        while (it.next_kmer()) {
-            if (bf.has_kmer_count_in_range(it.current_kmer, lower_bound, upper_bound)){
-                mut.lock();
-                occ.insert(KmerOccurrences::value_type(it.current_kmer, {bf.get_count(it.current_kmer), 0, 0}));
-                mut.unlock();
-            }
-        }
-    }
-}
-
-
-KmerOccurrences kmer_occurrences_bf(SequenceRecordIterator &read_iterator, int k, int genome_size, int coverage){
-    uint32_t expected_kmers = get_num_of_expected_kmers(k, genome_size, coverage, read_iterator.average_read_length(), 0.01);
-    auto bf = KmerCountingBloomFilter(expected_kmers, 0.001);
-
-    unsigned int num_threads = std::thread::hardware_concurrency();
-    std::thread t[num_threads];
-
-    // First pass to fill the bloom filter
-    read_iterator.reset();
-    pt::ptime ts_start = pt::microsec_clock::local_time();
-    for (auto &i : t) i = std::thread(kmer_occurrences_first_pass, std::ref(read_iterator), std::ref(bf), k);
-    for (auto &i : t) i.join();
-    std::cout << fmt::format("First pass done in {}ms\n", (pt::microsec_clock::local_time() - ts_start).total_milliseconds());
-
-    ts_start = pt::microsec_clock::local_time();
-    KmerOccurrences occurrences;
-    int lower = 1, upper = 255;
-    uint64_t expected_kmers_in_range = bf.get_kmer_count_in_count_range(lower, upper);
-    std::cout << fmt::format("Expecting {} kmers in range <{}, {}>\n", expected_kmers_in_range, lower, upper);
-    occurrences.rehash(expected_kmers_in_range);
-    std::cout << fmt::format("Occurence map constructed in {}ms\n", (pt::microsec_clock::local_time() - ts_start).total_milliseconds());
-
-    read_iterator.reset();
-    ts_start = pt::microsec_clock::local_time();
-    for (auto &i : t) i = std::thread(kmer_occurrences_second_pass, std::ref(read_iterator), std::ref(bf), k, lower, upper, std::ref(occurrences));
-    for (auto &i : t) i.join();
-    std::cout << fmt::format("Second pass done in {}ms\n", (pt::microsec_clock::local_time() - ts_start).total_milliseconds());
-
-    return occurrences;
 }

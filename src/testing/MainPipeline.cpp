@@ -5,12 +5,13 @@
 #include <boost/program_options/options_description.hpp>
 #include <fmt/format.h>
 
-#include "SequenceRecordIterator.h"
-#include "DNAStructures.h"
-#include "KmerAnalysis.h"
-#include "KmerIterator.h"
-#include "Utils.h"
-#include "ReadClusteringEngine.h"
+#include "../common/SequenceRecordIterator.h"
+#include "../common/KmerIterator.h"
+#include "../common/Utils.h"
+#include "../common/KmerAnalysis.h"
+
+#include "TestKmerAnalysis.h"
+#include "TestReadClusteringEngine.h"
 
 
 namespace po = boost::program_options;
@@ -75,7 +76,7 @@ int main(int argc, char *argv[]) {
 
     std::map<int, KmerSpecificity> per_k_specificities = {};
     for (auto k_length : k_sizes) {
-        std::cout << fmt::format("\n ### Running analysis for k-mer size {} ###\n", k_length);
+        std::cout << fmt::format("\n ### Running testing for k-mer size {} ###\n", k_length);
         KmerOccurrences occ = kmer_occurrences(read_iterator, k_length, max_genome_size, max_coverage);
         per_k_specificities[k_length] = get_kmer_specificity(occ);
     }
@@ -105,7 +106,11 @@ int main(int argc, char *argv[]) {
 
     std::cout << fmt::format("{} characteristic kmers\n", characteristic_kmers.size());
 
-    auto engine = ReadClusteringEngine(read_iterator, characteristic_kmers, selected_k);
+    std::set<Kmer> char_kmer_set;
+    for (auto it = begin(characteristic_kmers); it != end(characteristic_kmers); it++){
+        char_kmer_set.insert(it->first);
+    }
+    auto engine = TestReadClusteringEngine(read_iterator, char_kmer_set, selected_k);
     engine.run_clustering();
     return 0;
 }

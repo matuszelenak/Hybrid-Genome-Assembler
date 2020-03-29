@@ -1,4 +1,9 @@
+#include <tsl/robin_map.h>
+#include <map>
+#include <queue>
+
 #include "SequenceRecordIterator.h"
+#include "GenomeReadCluster.h"
 
 #ifndef SRC_READCLUSTERINGENGINE_H
 #define SRC_READCLUSTERINGENGINE_H
@@ -9,7 +14,6 @@ typedef tsl::robin_map<Kmer, KmerID> KmerIndex;
 typedef uint64_t ConnectionScore;
 typedef std::map<ClusterID, GenomeReadCluster*> ClusterIndex;
 
-//typedef std::map<ClusterID, Quality> InClusterKmerQuality;
 typedef std::vector<std::set<ClusterID> > KmerClusterIndex;
 typedef std::vector<ClusterID > IDComponent;
 
@@ -18,7 +22,6 @@ struct ClusterConnection{
     ClusterID cluster_x_id;
     ClusterID cluster_y_id;
     ConnectionScore score;
-    bool is_good;
 
     bool operator < (const ClusterConnection& conn) const
     {
@@ -32,18 +35,26 @@ struct ClusterConnection{
 
 
 class ReadClusteringEngine {
-private:
+protected:
     ClusterIndex cluster_index;
     KmerIndex kmer_index;
     KmerClusterIndex kmer_cluster_index;
 
+    void get_connections_thread(std::vector<ClusterID> &cluster_indices, std::pair<int, int> range, std::vector<ClusterConnection> &accumulator);
     std::vector<ClusterConnection> get_connections();
-    KmerClusterIndex get_index();
-    ClusterIndex get_initial_read_clusters(SequenceRecordIterator &reader, KmerOccurrences &characteristic_kmers, int k);
+
+    void kmer_cluster_index_thread(ClusterID cluster_from, ClusterID cluster_to);
+    void construct_kmer_cluster_index();
+
+    void cluster_index_thread(SequenceRecordIterator &reader, int k, std::vector<GenomeReadCluster*> &thread_result);
+    void construct_cluster_index(SequenceRecordIterator &reader, std::set<Kmer> &characteristic_kmers, int k);
+
+    void merge_clusters_thread(std::queue<IDComponent> &component_queue);
     int clustering_round();
 public:
-    explicit ReadClusteringEngine(SequenceRecordIterator &read_iterator, KmerOccurrences &characteristic_kmers, int k);
-    void run_clustering();
+    explicit ReadClusteringEngine(SequenceRecordIterator &read_iterator, std::set<Kmer> &characteristic_kmers, int k);
+
+    virtual void run_clustering();
 };
 
 

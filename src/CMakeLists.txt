@@ -11,11 +11,19 @@ INCLUDE_DIRECTORIES( ${Boost_INCLUDE_DIR} )
 add_subdirectory(fmt EXCLUDE_FROM_ALL)
 add_subdirectory(robin-map EXCLUDE_FROM_ALL)
 
-add_executable(pipeline MainPipeline.cpp KmerAnalysis.cpp KmerIterator.cpp Utils.cpp DNAStructures.cpp SequenceRecordIterator.cpp ReadClusteringEngine.cpp KmerCountingBloomFilter.cpp smhasher/MurmurHash3.cpp)
+
+file(GLOB COMMON_SRC_FILES ${PROJECT_SOURCE_DIR}/common/*.cpp)
+
+# Testing executable
+file(GLOB TESTING_SRC_FILES ${PROJECT_SOURCE_DIR}/testing/*.cpp)
+add_executable(pipeline_test ${COMMON_SRC_FILES} ${TESTING_SRC_FILES})
+
+TARGET_LINK_LIBRARIES( pipeline_test LINK_PUBLIC ${Boost_LIBRARIES} stdc++fs pthread fmt)
+target_link_libraries( pipeline_test PRIVATE tsl::robin_map)
+
+## Production executable
+file(GLOB PRODUCTION_SRC_FILES ${PROJECT_SOURCE_DIR}/production/*.cpp)
+add_executable(pipeline ${COMMON_SRC_FILES} ${PRODUCTION_SRC_FILES})
 
 TARGET_LINK_LIBRARIES( pipeline LINK_PUBLIC ${Boost_LIBRARIES} stdc++fs pthread fmt)
 target_link_libraries( pipeline PRIVATE tsl::robin_map)
-
-add_executable(playground Playground.cpp KmerCountingBloomFilter.cpp smhasher/MurmurHash3.cpp KmerAnalysis.cpp KmerIterator.cpp SequenceRecordIterator.cpp Utils.cpp)
-target_link_libraries( playground LINK_PUBLIC ${Boost_LIBRARIES} fmt pthread)
-target_link_libraries( playground PRIVATE tsl::robin_map)
