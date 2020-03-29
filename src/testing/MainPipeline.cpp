@@ -8,8 +8,10 @@
 #include "../common/SequenceRecordIterator.h"
 #include "../common/KmerIterator.h"
 #include "../common/Utils.h"
-#include "KmerAnalysis.h"
-#include "ReadClusteringEngine.h"
+#include "../common/KmerAnalysis.h"
+
+#include "TestKmerAnalysis.h"
+#include "TestReadClusteringEngine.h"
 
 
 namespace po = boost::program_options;
@@ -104,7 +106,11 @@ int main(int argc, char *argv[]) {
 
     std::cout << fmt::format("{} characteristic kmers\n", characteristic_kmers.size());
 
-    auto engine = ReadClusteringEngine(read_iterator, characteristic_kmers, selected_k);
+    std::set<Kmer> char_kmer_set;
+    for (auto it = begin(characteristic_kmers); it != end(characteristic_kmers); it++){
+        char_kmer_set.insert(it->first);
+    }
+    auto engine = TestReadClusteringEngine(read_iterator, char_kmer_set, selected_k);
     engine.run_clustering();
     return 0;
 }

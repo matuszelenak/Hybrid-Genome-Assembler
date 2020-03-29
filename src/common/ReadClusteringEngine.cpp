@@ -3,7 +3,7 @@
 #include <fmt/format.h>
 #include <queue>
 
-#include "../common/KmerIterator.h"
+#include "KmerIterator.h"
 #include "ReadClusteringEngine.h"
 
 std::mutex index_mut;
@@ -15,30 +15,7 @@ unsigned int num_threads = std::thread::hardware_concurrency();
 uint64_t MIN_SCORE = 5;
 
 
-void print_clusters(ClusterIndex &clusters, int first_n){
-    std::vector<GenomeReadCluster*> cluster_pointers;
-    std::transform(
-            clusters.begin(),
-            clusters.end(),
-            std::back_inserter(cluster_pointers),
-            [](std::pair<const ClusterID , GenomeReadCluster*> &p) -> GenomeReadCluster* { return p.second; }
-    );
-
-    sort(cluster_pointers.rbegin(), cluster_pointers.rend(), [](GenomeReadCluster* x, GenomeReadCluster* y) -> bool { return x->size() < y->size(); });
-
-    int iterate_first = first_n;
-    if (first_n == -1) iterate_first = cluster_pointers.size();
-    for (auto cluster : cluster_pointers){
-        std::cout << cluster->consistency() << " ";
-
-        iterate_first--;
-        if (iterate_first == 0) break;
-    }
-    std::cout << std::endl;
-}
-
-
-void get_connections_thread(ClusterIndex &cluster_index, std::vector<ClusterID> &cluster_indices, std::pair<int, int> range, KmerClusterIndex &kmer_cluster_index, std::vector<ClusterConnection> &accumulator){
+void ReadClusteringEngine::get_connections_thread(std::vector<ClusterID> &cluster_indices, std::pair<int, int> range, std::vector<ClusterConnection> &accumulator){
     for (int i = range.first; i < range.second; i++){
         ClusterID pivot_id = cluster_indices[i];
         std::map<ClusterID , ConnectionScore > shared_kmer_counts;
@@ -52,9 +29,7 @@ void get_connections_thread(ClusterIndex &cluster_index, std::vector<ClusterID> 
         connections_mut.lock();
         for (auto iter = begin(shared_kmer_counts); iter != end(shared_kmer_counts); iter++) {
             if (iter->second < MIN_SCORE) continue;
-
-            bool is_good = cluster_index[pivot_id]->categories == cluster_index[iter->first]->categories;
-            accumulator.push_back({iter->first, pivot_id, iter->second, is_good});
+            accumulator.push_back({iter->first, pivot_id, iter->second});
         }
         connections_mut.unlock();
     }
@@ -72,11 +47,10 @@ std::vector<ClusterConnection> ReadClusteringEngine::get_connections(){
     int clusters_per_thread = (int)ceil(cluster_ids.size() / (double)num_threads);
     for (int i = 0; i < num_threads; ++i) {
         t[i] = std::thread(
-                get_connections_thread,
-                std::ref(cluster_index),
+                &ReadClusteringEngine::get_connections_thread,
+                this,
                 std::ref(cluster_ids),
                 std::make_pair(i * clusters_per_thread, std::min((i + 1) * clusters_per_thread, (int)cluster_ids.size())),
-                std::ref(kmer_cluster_index),
                 std::ref(connections)
                 );
     }
@@ -97,7 +71,7 @@ ClusterID get_parent(ClusterID cluster_id, tsl::robin_map<ClusterID, ClusterID> 
 }
 
 
-void merge_clusters_thread(std::queue<IDComponent> &component_queue, ClusterIndex &cluster_index, KmerClusterIndex &kmer_cluster_index){
+void ReadClusteringEngine::merge_clusters_thread(std::queue<IDComponent> &component_queue){
     while (true){
         merge_mut.lock();
         if (component_queue.empty()){
@@ -141,7 +115,6 @@ int ReadClusteringEngine::clustering_round(){
     for (ClusterConnection &conn : cluster_connections){
         ClusterID parent_x = get_parent(conn.cluster_x_id, parents);
         ClusterID parent_y = get_parent(conn.cluster_y_id, parents);
-        if (!conn.is_good) continue;
         if (parent_x == parent_y) continue;
 
         ClusterID bigger, smaller;
@@ -173,7 +146,7 @@ int ReadClusteringEngine::clustering_round(){
     std::thread t[num_threads];
     std::cout << "Launching merging threads\n";
     for (int i = 0; i < num_threads; ++i) {
-        t[i] = std::thread(merge_clusters_thread, std::ref(component_queue), std::ref(cluster_index), std::ref(kmer_cluster_index));
+        t[i] = std::thread(&ReadClusteringEngine::merge_clusters_thread, this, std::ref(component_queue));
     }
     for (int i = 0; i < num_threads; ++i) t[i].join();
 
@@ -187,13 +160,11 @@ void ReadClusteringEngine::run_clustering(){
     int merge_operations;
     while ((merge_operations = clustering_round()) > 0){
         std::cout << fmt::format("Performed {} merge operations\n", merge_operations);
-        print_clusters(cluster_index, 200);
     }
-    print_clusters(cluster_index, 1000000);
 }
 
 
-void get_index_thread(ClusterIndex &cluster_index, ClusterID cluster_from, ClusterID cluster_to, KmerClusterIndex &full_index){
+void ReadClusteringEngine::kmer_cluster_index_thread(ClusterID cluster_from, ClusterID cluster_to){
     for (ClusterID cluster_id = cluster_from; cluster_id < cluster_to; cluster_id++){
         GenomeReadCluster* cluster = cluster_index[cluster_id];
         std::map<KmerID, std::set<ClusterID > > partial;
@@ -203,29 +174,27 @@ void get_index_thread(ClusterIndex &cluster_index, ClusterID cluster_from, Clust
 
         index_mut.lock();
         for (auto it = begin(partial); it != end(partial); it++){
-            full_index[it->first].insert(it->second.begin(), it->second.end());
+            kmer_cluster_index[it->first].insert(it->second.begin(), it->second.end());
         }
         index_mut.unlock();
     }
 }
 
 
-KmerClusterIndex ReadClusteringEngine::get_index(){
-    KmerClusterIndex index = KmerClusterIndex(kmer_index.size(), std::set<ClusterID>());
-    std::cout << fmt::format("KmerCluster index size {}\n", index.size());
+void ReadClusteringEngine::construct_kmer_cluster_index(){
+    kmer_cluster_index = KmerClusterIndex(kmer_index.size(), std::set<ClusterID>());
+
     int clusters_per_thread = (int)ceil(cluster_index.size() / (double)num_threads);
     std::thread t[num_threads];
     std::cout << "Launching index computing threads\n";
     for (int i = 0; i < num_threads; ++i) {
-        t[i] = std::thread(get_index_thread, std::ref(cluster_index), i * clusters_per_thread, std::min((i + 1) * clusters_per_thread, (int)cluster_index.size()), std::ref(index));
+        t[i] = std::thread(&ReadClusteringEngine::kmer_cluster_index_thread, this, i * clusters_per_thread, std::min((i + 1) * clusters_per_thread, (int) cluster_index.size()));
     }
     for (int i = 0; i < num_threads; ++i) t[i].join();
-
-    return index;
 }
 
 
-void get_initial_read_clusters_thread(SequenceRecordIterator &reader, const KmerIndex &kmer_index, int k, std::vector<GenomeReadCluster*> &result){
+void ReadClusteringEngine::cluster_index_thread(SequenceRecordIterator &reader, int k, std::vector<GenomeReadCluster*> &thread_result){
     std::optional<GenomeReadData> read;
     while ((read = reader.get_next_record()) != std::nullopt) {
         KmerIterator it = KmerIterator(read->sequence, k);
@@ -239,18 +208,17 @@ void get_initial_read_clusters_thread(SequenceRecordIterator &reader, const Kmer
         }
 
         if (!in_read_characteristic.empty()){
-            InClusterReadData data = {read->header, read->category_id};
-            result.push_back(new GenomeReadCluster(0, data, in_read_characteristic));
+            thread_result.push_back(new GenomeReadCluster(0, read->header, in_read_characteristic));
         }
     }
 }
 
 
-ClusterIndex ReadClusteringEngine::get_initial_read_clusters(SequenceRecordIterator &reader, KmerOccurrences &characteristic_kmers, int k) {
+void ReadClusteringEngine::construct_cluster_index(SequenceRecordIterator &reader, std::set<Kmer> &characteristic_kmers, int k) {
     // We will no longer be interested in the semantics of a kmer, so we can just convert it to an ID
     KmerID kmer_id = 0;
-    for (auto char_kmer_it = begin(characteristic_kmers); char_kmer_it != end(characteristic_kmers); char_kmer_it++){
-        kmer_index[char_kmer_it->first] = kmer_id++;
+    for (Kmer kmer : characteristic_kmers){
+        kmer_index[kmer] = kmer_id++;
     }
 
     std::cout << "Launching the calculation of initial clusters\n";
@@ -258,25 +226,23 @@ ClusterIndex ReadClusteringEngine::get_initial_read_clusters(SequenceRecordItera
     std::vector<std::vector<GenomeReadCluster*> >partial_results(num_threads, std::vector<GenomeReadCluster*>());
     reader.reset();
     for (int i = 0; i < num_threads; ++i) {
-        t[i] = std::thread(get_initial_read_clusters_thread, std::ref(reader), std::ref(kmer_index), k, std::ref(partial_results[i]));
+        t[i] = std::thread(&ReadClusteringEngine::cluster_index_thread, this, std::ref(reader), k, std::ref(partial_results[i]));
     }
 
     for (int i = 0; i < num_threads; ++i) t[i].join();
 
-    ClusterIndex c;
     ClusterID cluster_counter = 0;
     for (const auto& partial_clusters: partial_results){
         for (auto cluster : partial_clusters){
             cluster->reference_id = cluster_counter;
-            c[cluster_counter] = cluster;
+            cluster_index[cluster_counter] = cluster;
             cluster_counter++;
         }
     }
     std::cout << fmt::format("Created {} clusters\n", cluster_counter);
-    return c;
 }
 
-ReadClusteringEngine::ReadClusteringEngine(SequenceRecordIterator &read_iterator, KmerOccurrences &characteristic_kmers, int k) {
-    cluster_index = get_initial_read_clusters(read_iterator, characteristic_kmers, k);
-    kmer_cluster_index = get_index();
+ReadClusteringEngine::ReadClusteringEngine(SequenceRecordIterator &read_iterator, std::set<Kmer> &characteristic_kmers, int k) {
+    construct_cluster_index(read_iterator, characteristic_kmers, k);
+    construct_kmer_cluster_index();
 }

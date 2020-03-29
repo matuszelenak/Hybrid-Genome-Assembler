@@ -1,7 +1,8 @@
 #include <tsl/robin_map.h>
+#include <map>
+#include <queue>
 
-#include "../common/SequenceRecordIterator.h"
-#include "KmerAnalysis.h"
+#include "SequenceRecordIterator.h"
 #include "GenomeReadCluster.h"
 
 #ifndef SRC_READCLUSTERINGENGINE_H
@@ -21,7 +22,6 @@ struct ClusterConnection{
     ClusterID cluster_x_id;
     ClusterID cluster_y_id;
     ConnectionScore score;
-    bool is_good;
 
     bool operator < (const ClusterConnection& conn) const
     {
@@ -35,28 +35,26 @@ struct ClusterConnection{
 
 
 class ReadClusteringEngine {
-private:
+protected:
     ClusterIndex cluster_index;
     KmerIndex kmer_index;
     KmerClusterIndex kmer_cluster_index;
 
+    void get_connections_thread(std::vector<ClusterID> &cluster_indices, std::pair<int, int> range, std::vector<ClusterConnection> &accumulator);
     std::vector<ClusterConnection> get_connections();
-    KmerClusterIndex get_index();
-    ClusterIndex get_initial_read_clusters(SequenceRecordIterator &reader, KmerOccurrences &characteristic_kmers, int k);
+
+    void kmer_cluster_index_thread(ClusterID cluster_from, ClusterID cluster_to);
+    void construct_kmer_cluster_index();
+
+    void cluster_index_thread(SequenceRecordIterator &reader, int k, std::vector<GenomeReadCluster*> &thread_result);
+    void construct_cluster_index(SequenceRecordIterator &reader, std::set<Kmer> &characteristic_kmers, int k);
+
+    void merge_clusters_thread(std::queue<IDComponent> &component_queue);
     int clustering_round();
 public:
-    explicit ReadClusteringEngine(SequenceRecordIterator &read_iterator, KmerOccurrences &characteristic_kmers, int k);
-    void run_clustering();
-};
+    explicit ReadClusteringEngine(SequenceRecordIterator &read_iterator, std::set<Kmer> &characteristic_kmers, int k);
 
-
-struct InClusterKmerInfo {
-    uint32_t sum_of_qualities = 0;
-    uint32_t total_count = 0;
-
-    Quality avg_quality(){
-        return (Quality)(this->sum_of_qualities / this->total_count);
-    };
+    virtual void run_clustering();
 };
 
 

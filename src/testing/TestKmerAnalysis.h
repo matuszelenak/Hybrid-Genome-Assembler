@@ -1,15 +1,11 @@
-#include <vector>
 #include <set>
-#include <string>
 #include <map>
 #include <tsl/robin_map.h>
 
-#include "../common/Types.h"
 #include "../common/SequenceRecordIterator.h"
 
-
-#ifndef SRC_KMERANALYSIS_H
-#define SRC_KMERANALYSIS_H
+#ifndef SRC_TESTKMERANALYSIS_H
+#define SRC_TESTKMERANALYSIS_H
 
 typedef int UpperSpecificity;
 typedef int NumOfOccurrences;
@@ -41,10 +37,4 @@ KmerOccurrences kmer_occurrences(SequenceRecordIterator &read_iterator, int k, i
 
 std::vector<int> get_k_sizes(int max_genome_size);
 
-int get_coverage(std::vector<ReadFileMetaData> &read_meta_data, int genome_size);
-
-int get_genome_size(std::vector<ReadFileMetaData> &read_meta_data, int coverage);
-
-uint32_t get_num_of_expected_kmers(uint k, uint genome_size, uint coverage, uint read_length, double error_rate);
-
-#endif //SRC_KMERANALYSIS_H
+#endif //SRC_TESTKMERANALYSIS_H
