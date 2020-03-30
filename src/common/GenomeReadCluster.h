@@ -8,7 +8,7 @@
 
 class GenomeReadCluster {
 public:
-    explicit GenomeReadCluster(ClusterID id, std::string &read_header, std::set<KmerID> &characteristic_kmers);
+    explicit GenomeReadCluster(ClusterID id, std::string &read_header, std::set<KmerID> &characteristic_kmers, CategoryID category);
 
     ClusterID reference_id = 0;
     std::vector<std::string> read_headers;
@@ -16,6 +16,8 @@ public:
 
     void absorb(GenomeReadCluster &cluster);
     uint64_t size();
+
+    std::set<CategoryID> categories;
 };
 
 

@@ -10,8 +10,8 @@
 #include "../common/Utils.h"
 #include "../common/KmerAnalysis.h"
 
-#include "TestKmerAnalysis.h"
 #include "ReadClusteringEngine.h"
+#include "KmerAnalysis.h"
 
 
 namespace po = boost::program_options;
@@ -67,50 +67,14 @@ int main(int argc, char *argv[]) {
         throw std::invalid_argument("Please specify either the estimated genome size or coverage");
     }
 
-    std::vector<int>k_sizes;
-    if (vm.count("k-size")){
-        k_sizes = {vm["k-size"].as<int>()};
-    } else {
-        k_sizes = get_k_sizes(max_genome_size);
-    }
-
-    std::map<int, KmerSpecificity> per_k_specificities = {};
-    for (auto k_length : k_sizes) {
-        std::cout << fmt::format("\n ### Running testing for k-mer size {} ###\n", k_length);
-        KmerOccurrences occ = kmer_occurrences(read_iterator, k_length, max_genome_size, max_coverage);
-        per_k_specificities[k_length] = get_kmer_specificity(occ);
-    }
-
     int selected_k = 0, cov_lower = 0, cov_upper = 0;
     if (vm.count("k-size")) selected_k = vm["k-size"].as<int>();
     if (vm.count("cov-lower")) cov_lower = vm["cov-lower"].as<int>();
     if (vm.count("cov-upper")) cov_upper = vm["cov-upper"].as<int>();
 
-    if (!(selected_k && cov_lower && cov_upper)){
-        plot_kmer_specificity(read_iterator.meta, per_k_specificities, max_coverage * 2);
+    KmerCountingBloomFilter bf = kmer_occurrences(read_iterator, selected_k, max_genome_size, max_coverage);
 
-        if (!selected_k){
-            std::cout << "Enter the size of k-mer\n";
-            std::cin >> selected_k;
-        }
-
-        if (!(cov_lower && cov_upper)){
-            std::cout << "Enter the lower and upper bound for coverage of characteristic kmers\n";
-            std::cin >> cov_lower >> cov_upper;
-        }
-    }
-
-    KmerOccurrences selected_occurrences = kmer_occurrences(read_iterator, selected_k, max_genome_size, max_coverage);
-    std::cout << fmt::format("{} total kmers\n", selected_occurrences.size());
-    KmerOccurrences characteristic_kmers = filter_characteristic_kmers(selected_occurrences, cov_lower, cov_upper);
-
-    std::cout << fmt::format("{} characteristic kmers\n", characteristic_kmers.size());
-
-    std::set<Kmer> char_kmer_set;
-    for (auto it = begin(characteristic_kmers); it != end(characteristic_kmers); it++){
-        char_kmer_set.insert(it->first);
-    }
-    auto engine = ReadClusteringEngine(read_iterator, char_kmer_set, selected_k);
+    auto engine = ReadClusteringEngine(read_iterator, bf, selected_k, cov_lower, cov_upper);
     engine.run_clustering();
     return 0;
 }

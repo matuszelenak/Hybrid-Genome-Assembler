@@ -1,12 +1,10 @@
 #include "../common/Types.h"
 #include "../common/SequenceRecordIterator.h"
+#include "../common/KmerCountingBloomFilter.h"
 
-#ifndef SRC_KMERANALYSIS_H
-#define SRC_KMERANALYSIS_H
+#ifndef SRC_PRODUCTIONKMERANALYSIS_H
+#define SRC_PRODUCTIONKMERANALYSIS_H
 
+KmerCountingBloomFilter kmer_occurrences(SequenceRecordIterator &read_iterator, int k, int genome_size, int coverage);
 
-
-KmerOccurrences kmer_occurrences_bf(SequenceRecordIterator &read_iterator, int k, int genome_size, int coverage);
-
-
-#endif //SRC_KMERANALYSIS_H
+#endif //SRC_PRODUCTIONKMERANALYSIS_H
