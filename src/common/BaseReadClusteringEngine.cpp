@@ -2,15 +2,19 @@
 #include <boost/thread.hpp>
 #include <fmt/format.h>
 #include <queue>
+#include <numeric>
+#include <experimental/filesystem>
 
 #include "KmerIterator.h"
 #include "BaseReadClusteringEngine.h"
+
+namespace fs = std::experimental::filesystem;
 
 std::mutex connections_mut;
 std::mutex merge_mut;
 std::mutex component_erase_mut;
 
-uint64_t MIN_SCORE = 5;
+uint64_t MIN_SCORE = 1;
 
 
 void BaseReadClusteringEngine::get_connections_thread(std::vector<ClusterID> &cluster_indices, std::pair<int, int> range, std::vector<ClusterConnection> &accumulator){
@@ -150,4 +154,41 @@ int BaseReadClusteringEngine::clustering_round(){
     for (int i = 0; i < num_threads; ++i) t[i].join();
 
     return merge_operations;
+}
+
+void BaseReadClusteringEngine::dump_clusters_to_files(int min_size) {
+    tsl::robin_map<std::string, GenomeReadData> header_to_read;
+    for (auto cluster_it = begin(cluster_index); cluster_it != end(cluster_index); ++cluster_it){
+        if (cluster_it->second->size() >= min_size){
+            for (const auto& header : cluster_it->second->read_headers){
+                header_to_read[header] = {};
+            }
+        }
+    }
+
+    auto path_concat = [](std::string acc, ReadFileMetaData &m){
+        return std::move(acc) + std::string("__") +  std::move(m.filename);
+    };
+
+    std::string directory_name = "./clusters/" + std::accumulate(std::next(reader->meta.begin()), reader->meta.end(), reader->meta[0].filename, path_concat);
+    fs::create_directories(directory_name);
+
+    reader->reset();
+    std::optional<GenomeReadData> read;
+    while ((read = reader->get_next_record()) != std::nullopt) {
+        if (header_to_read.contains(read->header)){
+            header_to_read[read->header] = *read;
+        }
+    }
+
+    for (auto cluster_it = begin(cluster_index); cluster_it != end(cluster_index); ++cluster_it){
+        if (cluster_it->second->size() >= min_size){
+            std::ofstream cluster_file;
+            cluster_file.open(fmt::format("{}/{}_reads:cluster#{}.fq", directory_name, cluster_it->second->size(), cluster_it->second->reference_id));
+            for (const auto& header: cluster_it->second->read_headers){
+                cluster_file << header_to_read[header].fastq_string() << std::endl;
+            }
+            cluster_file.close();
+        }
+    }
 }

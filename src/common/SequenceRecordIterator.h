@@ -5,6 +5,7 @@
 #include <optional>
 #include <thread>
 #include <mutex>
+#include <fmt/format.h>
 
 #include "Types.h"
 
@@ -16,10 +17,14 @@ enum FileType {FASTA, FASTQ};
 
 
 struct GenomeReadData {
-    std::string header;
-    std::string sequence;
-    std::string qualities;
-    CategoryID category_id;
+    std::string header = "";
+    std::string sequence = "";
+    std::string qualities = "";
+    CategoryID category_id = 0;
+
+    std::string fastq_string(){
+        return fmt::format("{}\n{}\n+\n{}", this->header, this->sequence, this->qualities);
+    }
 };
 
 struct ReadFileMetaData {

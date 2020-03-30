@@ -51,6 +51,7 @@ protected:
     int clustering_round();
 public:
     virtual void run_clustering() = 0;
+    void dump_clusters_to_files(int min_size);
 };
 
 
