@@ -1,5 +1,4 @@
 #include <iostream>
-#include <boost/thread.hpp>
 #include <fmt/format.h>
 #include <queue>
 #include <numeric>
@@ -7,6 +6,7 @@
 
 #include "KmerIterator.h"
 #include "BaseReadClusteringEngine.h"
+#include "Utils.h"
 
 namespace fs = std::experimental::filesystem;
 
@@ -17,10 +17,11 @@ std::mutex component_erase_mut;
 uint64_t MIN_SCORE = 1;
 
 
-void BaseReadClusteringEngine::get_connections_thread(std::vector<ClusterID> &cluster_indices, std::pair<int, int> range, std::vector<ClusterConnection> &accumulator){
+void BaseReadClusteringEngine::get_connections_thread(std::vector<ClusterID> &cluster_indices, std::pair<int, int> range, std::vector<ClusterConnection> &accumulator, ProcessedClusters &processed){
     for (int i = range.first; i < range.second; i++){
         ClusterID pivot_id = cluster_indices[i];
         std::map<ClusterID , ConnectionScore > shared_kmer_counts;
+
         for (KmerID kmer_id : cluster_index[pivot_id]->characteristic_kmer_ids){
             for (ClusterID candidate_id : kmer_cluster_index[kmer_id]){
                 shared_kmer_counts.insert( std::map<ClusterID , ConnectionScore >::value_type(candidate_id, 0)).first->second += 1;
@@ -31,7 +32,16 @@ void BaseReadClusteringEngine::get_connections_thread(std::vector<ClusterID> &cl
         connections_mut.lock();
         for (auto iter = begin(shared_kmer_counts); iter != end(shared_kmer_counts); iter++) {
             if (iter->second < MIN_SCORE) continue;
-            accumulator.push_back({iter->first, pivot_id, iter->second, cluster_index[iter->first]->categories == cluster_index[pivot_id]->categories});
+
+            bool is_newly_processed;
+            if (pivot_id < iter->second){
+                is_newly_processed = processed.insert(ProcessedClusters::value_type({pivot_id, iter->second})).second;
+            } else {
+                is_newly_processed = processed.insert(ProcessedClusters::value_type({iter->second, pivot_id})).second;
+            }
+            if (is_newly_processed){
+                accumulator.push_back({iter->first, pivot_id, iter->second, cluster_index[iter->first]->categories == cluster_index[pivot_id]->categories});
+            }
         }
         connections_mut.unlock();
     }
@@ -46,6 +56,8 @@ std::vector<ClusterConnection> BaseReadClusteringEngine::get_connections(){
 
     unsigned int num_threads = std::thread::hardware_concurrency();
     std::thread t[num_threads];
+
+    ProcessedClusters processed;
     int clusters_per_thread = (int)ceil(cluster_ids.size() / (double)num_threads);
     for (int i = 0; i < num_threads; ++i) {
         t[i] = std::thread(
@@ -53,7 +65,8 @@ std::vector<ClusterConnection> BaseReadClusteringEngine::get_connections(){
                 this,
                 std::ref(cluster_ids),
                 std::make_pair(i * clusters_per_thread, std::min((i + 1) * clusters_per_thread, (int)cluster_ids.size())),
-                std::ref(connections)
+                std::ref(connections),
+                std::ref(processed)
                 );
     }
     for (int i = 0; i < num_threads; ++i) t[i].join();
@@ -91,7 +104,6 @@ void BaseReadClusteringEngine::merge_clusters_thread(std::queue<IDComponent> &co
 
         component_erase_mut.lock();
         for (int i = 1; i < component.size(); i++){
-
             for (KmerID kmer_id : cluster_index[component[i]]->characteristic_kmer_ids){
                 kmer_cluster_index[kmer_id].erase(component[i]);
                 kmer_cluster_index[kmer_id].insert(survivor->reference_id);
@@ -100,6 +112,25 @@ void BaseReadClusteringEngine::merge_clusters_thread(std::queue<IDComponent> &co
         }
         component_erase_mut.unlock();
     }
+}
+
+int BaseReadClusteringEngine::merge_clusters(const tsl::robin_map<ClusterID, IDComponent> &components){
+    // Now do the actual merging of clusters in threads
+    std::queue<IDComponent> component_queue;
+    for (auto component_it = begin(components); component_it != end(components); component_it++){
+        if (component_it->second.size() > 1){
+            component_queue.push(component_it->second);
+        }
+    }
+
+    unsigned int num_threads = std::thread::hardware_concurrency();
+    std::thread t[num_threads];
+    for (int i = 0; i < num_threads; ++i) {
+        t[i] = std::thread(&BaseReadClusteringEngine::merge_clusters_thread, this, std::ref(component_queue));
+    }
+    for (int i = 0; i < num_threads; ++i) t[i].join();
+
+    return 0;
 }
 
 
@@ -111,7 +142,8 @@ int BaseReadClusteringEngine::clustering_round(){
         components[cluster_iter->second->reference_id] = {cluster_iter->second->reference_id};
     }
 
-    std::vector<ClusterConnection> cluster_connections = get_connections();
+    std::vector<ClusterConnection> cluster_connections = timeMeasure(&BaseReadClusteringEngine::get_connections, this, "Cluster connections")();
+
     int merge_operations = 0;
     for (ClusterConnection &conn : cluster_connections){
         if (!conn.is_good) continue;
@@ -138,25 +170,12 @@ int BaseReadClusteringEngine::clustering_round(){
         merge_operations++;
     }
 
-    // Now do the actual merging of clusters in threads
-    std::queue<IDComponent> component_queue;
-    for (auto component_it = begin(components); component_it != end(components); component_it++){
-        if (component_it->second.size() > 1){
-            component_queue.push(component_it->second);
-        }
-    }
-
-    unsigned int num_threads = std::thread::hardware_concurrency();
-    std::thread t[num_threads];
-    for (int i = 0; i < num_threads; ++i) {
-        t[i] = std::thread(&BaseReadClusteringEngine::merge_clusters_thread, this, std::ref(component_queue));
-    }
-    for (int i = 0; i < num_threads; ++i) t[i].join();
+    timeMeasure(&BaseReadClusteringEngine::merge_clusters, this, "Merging of clusters")(components);
 
     return merge_operations;
 }
 
-void BaseReadClusteringEngine::dump_clusters_to_files(int min_size) {
+int BaseReadClusteringEngine::export_clusters(int min_size) {
     tsl::robin_map<std::string, GenomeReadData> header_to_read;
     for (auto cluster_it = begin(cluster_index); cluster_it != end(cluster_index); ++cluster_it){
         if (cluster_it->second->size() >= min_size){
@@ -181,6 +200,7 @@ void BaseReadClusteringEngine::dump_clusters_to_files(int min_size) {
         }
     }
 
+    int exported_clusters = 0;
     for (auto cluster_it = begin(cluster_index); cluster_it != end(cluster_index); ++cluster_it){
         if (cluster_it->second->size() >= min_size){
             std::ofstream cluster_file;
@@ -188,7 +208,10 @@ void BaseReadClusteringEngine::dump_clusters_to_files(int min_size) {
             for (const auto& header: cluster_it->second->read_headers){
                 cluster_file << header_to_read[header].fastq_string() << std::endl;
             }
+            exported_clusters++;
             cluster_file.close();
         }
     }
+
+    return exported_clusters;
 }

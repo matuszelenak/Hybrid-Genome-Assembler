@@ -11,7 +11,7 @@ protected:
     int k, lower_coverage, upper_coverage;
 
     void construct_indices_thread();
-    void construct_indices();
+    int construct_indices();
 public:
     void run_clustering() override;
 

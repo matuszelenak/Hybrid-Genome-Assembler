@@ -1,6 +1,7 @@
 #include <iostream>
 #include "ReadClusteringEngine.h"
 #include "../common/KmerIterator.h"
+#include "../common/Utils.h"
 
 std::mutex index_merge;
 
@@ -19,7 +20,7 @@ void ReadClusteringEngine::construct_indices_thread(){
             }
         }
 
-        if (in_read_characteristic.size() >= 1){
+        if (in_read_characteristic.size() >= 5){
             std::set<KmerID> in_read_characteristic_ids;
 
             index_merge.lock();
@@ -46,7 +47,7 @@ void ReadClusteringEngine::construct_indices_thread(){
 }
 
 
-void ReadClusteringEngine::construct_indices() {
+int ReadClusteringEngine::construct_indices() {
     reader->reset();
     unsigned int num_threads = std::thread::hardware_concurrency();
     std::thread t[num_threads];
@@ -54,11 +55,9 @@ void ReadClusteringEngine::construct_indices() {
     for (int i = 0; i < num_threads; ++i) {
         t[i] = std::thread(&ReadClusteringEngine::construct_indices_thread, this);
     }
-
     for (int i = 0; i < num_threads; ++i) t[i].join();
 
-    std::cout << fmt::format("Constructed {} clusters\n", cluster_index.size());
-    std::cout << fmt::format("Found {} characteristic kmers\n", kmer_index.size());
+    return 0;
 }
 
 ReadClusteringEngine::ReadClusteringEngine(SequenceRecordIterator &read_iterator, KmerCountingBloomFilter &bf, int k, int lower_coverage, int upper_coverage) {
@@ -68,10 +67,10 @@ ReadClusteringEngine::ReadClusteringEngine(SequenceRecordIterator &read_iterator
     this->lower_coverage = lower_coverage;
     this->upper_coverage = upper_coverage;
 
-    construct_indices();
+    auto r = timeMeasure(&ReadClusteringEngine::construct_indices, this, "Construct indices")();
 }
 
 void ReadClusteringEngine::run_clustering(){
     while (clustering_round() > 0){}
-    dump_clusters_to_files(10);
+    std::cout << fmt::format("Exported {} clusters\n", timeMeasure(&ReadClusteringEngine::export_clusters, this, "Exporting clusters")(10));
 }

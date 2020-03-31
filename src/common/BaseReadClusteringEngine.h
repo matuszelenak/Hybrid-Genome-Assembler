@@ -1,4 +1,6 @@
 #include <tsl/robin_map.h>
+#include <tsl/robin_set.h>
+#include <boost/functional/hash.hpp>
 #include <map>
 #include <queue>
 
@@ -16,6 +18,8 @@ typedef std::map<ClusterID, GenomeReadCluster*> ClusterIndex;
 
 typedef std::vector<std::set<ClusterID> > KmerClusterIndex;
 typedef std::vector<ClusterID > IDComponent;
+
+typedef tsl::robin_set<std::pair<ClusterID, ClusterID>, boost::hash<std::pair<ClusterID, ClusterID>>> ProcessedClusters;
 
 
 struct ClusterConnection{
@@ -44,14 +48,16 @@ protected:
     KmerIndex kmer_index;
     KmerClusterIndex kmer_cluster_index;
 
-    void get_connections_thread(std::vector<ClusterID> &cluster_indices, std::pair<int, int> range, std::vector<ClusterConnection> &accumulator);
+    void get_connections_thread(std::vector<ClusterID> &cluster_indices, std::pair<int, int> range, std::vector<ClusterConnection> &accumulator, ProcessedClusters &processed);
     std::vector<ClusterConnection> get_connections();
 
     void merge_clusters_thread(std::queue<IDComponent> &component_queue);
+    int merge_clusters(const tsl::robin_map<ClusterID, IDComponent> &components);
+
     int clustering_round();
 public:
     virtual void run_clustering() = 0;
-    void dump_clusters_to_files(int min_size);
+    int export_clusters(int min_size);
 };
 
 
