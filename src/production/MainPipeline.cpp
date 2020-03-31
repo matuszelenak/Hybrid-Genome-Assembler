@@ -73,6 +73,7 @@ int main(int argc, char *argv[]) {
     if (vm.count("cov-upper")) cov_upper = vm["cov-upper"].as<int>();
 
     KmerCountingBloomFilter bf = kmer_occurrences(read_iterator, selected_k, max_genome_size, max_coverage);
+    kmer_occurrence_histogram(bf);
 
     auto engine = ReadClusteringEngine(read_iterator, bf, selected_k, cov_lower, cov_upper);
     engine.run_clustering();

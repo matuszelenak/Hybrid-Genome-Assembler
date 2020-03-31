@@ -1,3 +1,4 @@
+#include <map>
 #include "MurmurHash3.h"
 #include "Types.h"
 
@@ -12,6 +13,7 @@
 
 typedef uint8_t KmerCount;
 typedef uint32_t BinIndex;
+typedef std::map<KmerCount, uint64_t> Histogram;
 
 
 class KmerCountingBloomFilter {
@@ -37,6 +39,8 @@ public:
     uint64_t cardinality();
 
     uint64_t get_kmer_count_in_count_range(KmerCount lower_bound, KmerCount upper_bound);
+
+    Histogram get_histogram();
 };
 
 

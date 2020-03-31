@@ -8,6 +8,7 @@
 #include "../common/KmerIterator.h"
 #include "../common/KmerCountingBloomFilter.h"
 #include "../common/KmerAnalysis.h"
+#include "../common/Utils.h"
 
 
 namespace algo = boost::algorithm;
@@ -28,19 +29,16 @@ void kmer_occurrences_first_pass(SequenceRecordIterator &read_iterator, KmerCoun
 }
 
 
-//void kmer_occurrences_second_pass(SequenceRecordIterator &read_iterator, KmerCountingBloomFilter &bf, int k, int lower_bound, int upper_bound, KmerOccurrences &occ){
-//    std::optional<GenomeReadData> read;
-//    while ((read = read_iterator.get_next_record()) != std::nullopt) {
-//        KmerIterator it = KmerIterator(read->sequence, k);
-//        while (it.next_kmer()) {
-//            if (bf.has_kmer_count_in_range(it.current_kmer, lower_bound, upper_bound)){
-//                mut.lock();
-//                occ.insert(KmerOccurrences::value_type(it.current_kmer, {bf.get_count(it.current_kmer), 0, 0}));
-//                mut.unlock();
-//            }
-//        }
-//    }
-//}
+void kmer_occurrence_histogram(KmerCountingBloomFilter &bf){
+    Histogram hist = bf.get_histogram();
+
+    std::vector<std::string> occurrence_strings;
+    std::transform(hist.begin(), hist.end(), std::back_inserter(occurrence_strings), [](Histogram::value_type occ) -> std::string {
+       return fmt::format("{}: {}", occ.first, occ.second);
+    });
+    std::string plot_input = fmt::format("{{{}}}", algo::join(occurrence_strings, ", "));
+    run_command_with_input("python common/python/plot.py", plot_input);
+}
 
 
 KmerCountingBloomFilter kmer_occurrences(SequenceRecordIterator &read_iterator, int k, int genome_size, int coverage){

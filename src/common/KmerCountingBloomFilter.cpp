@@ -108,3 +108,16 @@ KmerCountingBloomFilter::KmerCountingBloomFilter(uint64_t expected_items, double
 KmerCountingBloomFilter::~KmerCountingBloomFilter() {
     free(data);
 }
+
+Histogram KmerCountingBloomFilter::get_histogram() {
+    Histogram hist;
+    for (int i = 0; i < actual_size; i++) {
+        if (data[i] == 0) continue;
+
+        hist.insert(Histogram::value_type(data[i], 0)).first->second++;
+    }
+    for (auto it = begin(hist); it != end(hist); ++it){
+        it->second = (uint64_t) ((-(double) actual_size / (double) hash_count) * log(1 - ((double) it->second / (double) actual_size)));
+    }
+    return hist;
+}
