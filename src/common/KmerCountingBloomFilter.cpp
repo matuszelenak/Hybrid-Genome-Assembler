@@ -23,27 +23,11 @@ void KmerCountingBloomFilter::add(Kmer kmer) {
     void *hash_output = malloc(16);
     MurmurHash3_x64_128(&kmer, sizeof(Kmer), 0, hash_output);
     KmerCount *start_cell = data + (*((BinIndex *) hash_output) % bins) * BIN_SIZE;
-    uint8_t *remaining_hash_ptr = (uint8_t *) hash_output + sizeof(BinIndex);
+    InnerIndex *remaining_hash_ptr = (InnerIndex *)hash_output + sizeof(BinIndex);
     for (int i = 0; i < hash_count; i++) {
         ++*(start_cell + (*(remaining_hash_ptr + i) & INNER_INDEX_MASK));
     }
     free(hash_output);
-}
-
-bool KmerCountingBloomFilter::contains(Kmer kmer) {
-    void *hash_output = malloc(16);
-    MurmurHash3_x64_128(&kmer, sizeof(Kmer), 0, hash_output);
-    BinIndex bin_index = *((BinIndex *) hash_output) % bins;
-    bool contains = true;
-    for (int i = 0; i < hash_count; i++) {
-        uint8_t inner_index = *((uint8_t *) hash_output + i + sizeof(BinIndex)) & INNER_INDEX_MASK;
-        if (data[bin_index * BIN_SIZE + inner_index] == 0) {
-            contains = false;
-            break;
-        }
-    }
-    free(hash_output);
-    return contains;
 }
 
 KmerCount KmerCountingBloomFilter::get_count(Kmer kmer) {
@@ -52,7 +36,7 @@ KmerCount KmerCountingBloomFilter::get_count(Kmer kmer) {
     MurmurHash3_x64_128(&kmer, sizeof(Kmer), 0, hash_output);
     BinIndex bin_index = *((BinIndex *) hash_output) % bins;
     for (int i = 0; i < hash_count; i++) {
-        uint8_t inner_index = *((uint8_t *) hash_output + i + sizeof(BinIndex)) & INNER_INDEX_MASK;
+        InnerIndex inner_index = *((InnerIndex *) hash_output + i + sizeof(BinIndex)) & INNER_INDEX_MASK;
         if (data[bin_index * BIN_SIZE + inner_index] < count) {
             count = data[bin_index * BIN_SIZE + inner_index];
         }
@@ -61,35 +45,6 @@ KmerCount KmerCountingBloomFilter::get_count(Kmer kmer) {
     return count;
 }
 
-bool KmerCountingBloomFilter::has_kmer_count_in_range(Kmer kmer, int lower, int upper){
-    bool result = true;
-    void *hash_output = malloc(16);
-    MurmurHash3_x64_128(&kmer, sizeof(Kmer), 0, hash_output);
-    BinIndex bin_index = *((BinIndex *) hash_output) % bins;
-    for (int i = 0; i < hash_count; i++) {
-        uint8_t inner_index = *((uint8_t *) hash_output + i + sizeof(BinIndex)) & INNER_INDEX_MASK;
-        if (data[bin_index * BIN_SIZE + inner_index] < lower || data[bin_index * BIN_SIZE + inner_index] > upper){
-            result = false;
-            break;
-        }
-    }
-    free(hash_output);
-    return result;
-}
-
-// TODO figure out a better approximation
-uint64_t KmerCountingBloomFilter::cardinality() {
-    return get_kmer_count_in_count_range(1, KMER_COUNT_MAX);
-}
-
-
-uint64_t KmerCountingBloomFilter::get_kmer_count_in_count_range(KmerCount lower_bound, KmerCount upper_bound) {
-    uint64_t cells = 0;
-    for (int i = 0; i < actual_size; i++) {
-        cells += (data[i] >= lower_bound && data[i] <= upper_bound);
-    }
-    return (uint64_t) ((-(double) actual_size / (double) hash_count) * log(1 - ((double) cells / (double) actual_size)));
-}
 
 KmerCountingBloomFilter::KmerCountingBloomFilter(uint64_t expected_items, double fp_prob) {
     int bits_for_bin_index = sizeof(BinIndex) * 8;
@@ -103,21 +58,67 @@ KmerCountingBloomFilter::KmerCountingBloomFilter(uint64_t expected_items, double
     std::cout << fmt::format("Kmer bloom filter will take {:.2f}GB of memory\n", (double) actual_size * (double) sizeof(KmerCount) / (double) 1073741824);
 
     data = new KmerCount[actual_size];
+
+    //single_occurrence_bf = new KmerBloomFilter(expected_items, fp_prob);
 }
 
 KmerCountingBloomFilter::~KmerCountingBloomFilter() {
-    free(data);
+    delete [] data;
+    //delete single_occurrence_bf;
 }
 
-Histogram KmerCountingBloomFilter::get_histogram() {
+Histogram KmerCountingBloomFilter::get_histogram(int lower_coverage, int upper_coverage) {
     Histogram hist;
     for (int i = 0; i < actual_size; i++) {
-        if (data[i] == 0) continue;
-
+        if (data[i] < lower_coverage || data[i] > upper_coverage) continue;
         hist.insert(Histogram::value_type(data[i], 0)).first->second++;
     }
-    for (auto it = begin(hist); it != end(hist); ++it){
+    for (auto it = begin(hist); it != end(hist);){
+        // TODO this formula seems to consistently under-represent, FIX
         it->second = (uint64_t) ((-(double) actual_size / (double) hash_count) * log(1 - ((double) it->second / (double) actual_size)));
+        if (it->second == 0){
+            it = hist.erase(it);
+        } else ++it;
     }
     return hist;
 }
+
+//KmerBloomFilter::KmerBloomFilter(uint64_t expected_items, double fp_prob) {
+//    actual_size = get_size(expected_items, fp_prob);
+//    hash_count = get_hash_count(expected_items, actual_size);
+//    actual_size = (int)(actual_size / CACHE_LINE_SIZE) * CACHE_LINE_SIZE;
+//    bins = actual_size / CACHE_LINE_SIZE;
+//    data = new uint8_t[actual_size / 8];
+//}
+//
+//void KmerBloomFilter::add(Kmer kmer){
+//    auto hash_output = (uint8_t*)malloc(32);
+//    MurmurHash3_x64_128(&kmer, sizeof(Kmer), 0, hash_output);
+//    MurmurHash3_x64_128(&kmer, sizeof(Kmer), 1, hash_output + 16);
+//
+//    KmerCount *start_cell = data + (*((BinIndex *) hash_output) % bins) * BIN_SIZE;
+//    auto remaining_hash_ptr = (uint16_t *)(hash_output + sizeof(BinIndex));
+//    for (int i = 0; i < hash_count; i++) {
+//        *(start_cell + (*(remaining_hash_ptr + i) & 0b111111u)) |= (1u << ((*(remaining_hash_ptr + i) & 0b111000000u) >> 6u));
+//    }
+//    free(hash_output);
+//}
+//
+//bool KmerBloomFilter::contains(Kmer kmer){
+//    bool contains = true;
+//
+//    auto hash_output = (uint8_t*)malloc(32);
+//    MurmurHash3_x64_128(&kmer, sizeof(Kmer), 0, hash_output);
+//    MurmurHash3_x64_128(&kmer, sizeof(Kmer), 1, hash_output + 16);
+//
+//    KmerCount *start_cell = data + (*((BinIndex *) hash_output) % bins) * BIN_SIZE;
+//    auto remaining_hash_ptr = (uint16_t *)(hash_output + sizeof(BinIndex));
+//    for (int i = 0; i < hash_count; i++) {
+//        if(!(*(start_cell + (*(remaining_hash_ptr + i) & 0b111111u)) & (1u << ((*(remaining_hash_ptr + i) & 0b111000000u) >> 6u)))){
+//            contains = false;
+//            break;
+//        }
+//    }
+//    free(hash_output);
+//    return contains;
+//}

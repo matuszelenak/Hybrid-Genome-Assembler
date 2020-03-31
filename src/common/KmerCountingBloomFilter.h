@@ -13,12 +13,30 @@
 
 typedef uint8_t KmerCount;
 typedef uint32_t BinIndex;
+typedef uint8_t InnerIndex;
 typedef std::map<KmerCount, uint64_t> Histogram;
+
+
+//class KmerBloomFilter {
+//protected:
+//    uint32_t bins;
+//    uint8_t *data;
+//    uint64_t actual_size;
+//    int hash_count;
+//public:
+//    explicit KmerBloomFilter(uint64_t expected_items, double fp_prob);
+//    ~KmerBloomFilter(){delete [] data;};
+//
+//    void add(Kmer kmer);
+//    bool contains(Kmer kmer);
+//};
 
 
 class KmerCountingBloomFilter {
 private:
     uint32_t bins;
+    //KmerBloomFilter* single_occurrence_bf;
+
 public:
     explicit KmerCountingBloomFilter(uint64_t expected_items, double fp_prob);
 
@@ -30,17 +48,9 @@ public:
 
     void add(Kmer kmer);
 
-    bool contains(Kmer kmer);
-
     KmerCount get_count(Kmer kmer);
 
-    bool has_kmer_count_in_range(Kmer kmer, int lower, int upper);
-
-    uint64_t cardinality();
-
-    uint64_t get_kmer_count_in_count_range(KmerCount lower_bound, KmerCount upper_bound);
-
-    Histogram get_histogram();
+    Histogram get_histogram(int lower_coverage, int upper_coverage);
 };
 
 

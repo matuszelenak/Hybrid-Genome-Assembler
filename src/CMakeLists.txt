@@ -27,5 +27,3 @@ add_executable(pipeline ${COMMON_SRC_FILES} ${PRODUCTION_SRC_FILES})
 
 TARGET_LINK_LIBRARIES( pipeline LINK_PUBLIC ${Boost_LIBRARIES} stdc++fs pthread fmt)
 target_link_libraries( pipeline PRIVATE tsl::robin_map)
-
-add_executable(iter playground/iter.cpp)

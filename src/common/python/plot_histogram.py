@@ -23,8 +23,8 @@ def render_subplot(subplot, bound_specificities: List[BoundSpecificities], max_c
     bottoms = np.zeros((max_coverage,))
     for upper_bound, coverage_data in bound_specificities:
         coverage_dict = dict(coverage_data)
-        specificity_level_data = np.array([0] + [
-            coverage_dict.get(coverage, 0) for coverage in range(2, max_coverage + 1)
+        specificity_level_data = np.array([
+            coverage_dict.get(coverage, 0) for coverage in range(1, max_coverage + 1)
         ])
         bars.append(subplot.bar(indices, specificity_level_data, bottom=bottoms, width=0.8, color=get_color(upper_bound)))
         bottoms += specificity_level_data

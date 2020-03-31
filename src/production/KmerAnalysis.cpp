@@ -30,7 +30,7 @@ void kmer_occurrences_first_pass(SequenceRecordIterator &read_iterator, KmerCoun
 
 
 void kmer_occurrence_histogram(KmerCountingBloomFilter &bf){
-    Histogram hist = bf.get_histogram();
+    Histogram hist = bf.get_histogram(1, 50);
 
     std::vector<std::string> occurrence_strings;
     std::transform(hist.begin(), hist.end(), std::back_inserter(occurrence_strings), [](Histogram::value_type occ) -> std::string {
