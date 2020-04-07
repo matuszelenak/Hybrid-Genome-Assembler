@@ -1,13 +1,14 @@
 #include <fmt/format.h>
 #include <iostream>
-#include <numeric>
 
 #include "SequenceRecordIterator.h"
 #include "Utils.h"
 
-SequenceRecordIterator::SequenceRecordIterator(std::vector<std::string> &reads_paths) {
+SequenceRecordIterator::SequenceRecordIterator(std::vector<std::string> &reads_paths, bool annotate) {
+    _annotate = annotate;
     this->paths = reads_paths;
     load_meta_data();
+    categories = annotate ? file_meta.size() : 1;
     reset();
 }
 
@@ -70,11 +71,6 @@ bool SequenceRecordIterator::load_file_at_position(int pos) {
         throw std::invalid_argument(fmt::format("File with path \"{}\" does not exist", paths[pos]));
     }
 
-    //Measure the size of the file
-    current_file.seekg(0, std::ifstream::end);
-    current_file_size = current_file.tellg();
-    current_file.seekg(0, std::ifstream::beg);
-
     // Determine the file format
     std::string header = get_next_line();
     std::string sequence = get_next_line();
@@ -118,7 +114,7 @@ GenomeReadData SequenceRecordIterator::read_fastq_record() {
     comment = get_next_line();
     qualities = get_next_line();
 
-    return {header, sequence, qualities, current_file_index};
+    return {header, sequence, qualities, _annotate ? current_file_index : 0};
 }
 
 GenomeReadData SequenceRecordIterator::read_fasta_record() {
@@ -126,7 +122,7 @@ GenomeReadData SequenceRecordIterator::read_fasta_record() {
     header = get_next_line();
     sequence = get_next_line();
 
-    return {header, sequence, "", current_file_index};
+    return {header, sequence, "", _annotate ? current_file_index : 0};
 }
 
 std::optional<GenomeReadData> SequenceRecordIterator::get_next_record() {
@@ -145,8 +141,4 @@ std::optional<GenomeReadData> SequenceRecordIterator::get_next_record() {
 
 SequenceRecordIterator::~SequenceRecordIterator() {
     if (current_file.is_open()) current_file.close();
-}
-
-uint64_t SequenceRecordIterator::average_read_length() {
-    return std::accumulate(file_meta.begin(), file_meta.end(), 0, [](uint64_t acc, ReadFileMetaData &m) -> uint64_t { return acc + m.avg_read_length; }) / file_meta.size();
 }

@@ -47,10 +47,11 @@ private:
     std::vector<std::string> paths;
     std::mutex _read_mutex;
 
+    bool _annotate;
+
     std::ifstream current_file;
     int current_file_index = 0;
     FileType current_file_type = FASTQ;
-    uint64_t current_file_size = 0;
 
     uint32_t current_read_index = 1;
     uint32_t show_progress_step = 0;
@@ -68,15 +69,14 @@ private:
 
     void load_meta_data();
 public:
-    explicit SequenceRecordIterator(std::vector<std::string> &reads_paths);
+    explicit SequenceRecordIterator(std::vector<std::string> &reads_paths, bool annotate);
     ~SequenceRecordIterator();
 
     bool reset();
     std::optional<GenomeReadData> get_next_record();
     std::vector<ReadFileMetaData> file_meta;
     ReadFileMetaData meta = {};
-
-    uint64_t average_read_length();
+    uint8_t categories = 1;
 };
 
 

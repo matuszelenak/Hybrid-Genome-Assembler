@@ -9,9 +9,9 @@
 #include "../common/KmerIterator.h"
 #include "../common/Utils.h"
 #include "../common/KmerAnalysis.h"
+#include "../common/Plotting.h"
 
 #include "ReadClusteringEngine.h"
-#include "KmerAnalysis.h"
 
 
 namespace po = boost::program_options;
@@ -46,7 +46,7 @@ int main(int argc, char *argv[]) {
         throw std::invalid_argument("You need to specify paths to read files");
     }
 
-    SequenceRecordIterator read_iterator = SequenceRecordIterator(read_paths);
+    SequenceRecordIterator read_iterator = SequenceRecordIterator(read_paths, false);
 
     int max_genome_size = 0, max_coverage = 0;
     if (vm.count("coverage") || vm.count("genome")){
@@ -75,8 +75,9 @@ int main(int argc, char *argv[]) {
     auto expected_num_of_kmers = get_approximate_kmer_count(read_iterator, selected_k);
 
     std::cout << fmt::format("Expecting {} kmers\n", expected_num_of_kmers);
-    KmerCountingBloomFilter bf = kmer_occurrences(read_iterator, selected_k, expected_num_of_kmers);
-    kmer_occurrence_histogram(read_iterator, bf, selected_k, expected_num_of_kmers);
+    KmerCountingBloomFilter bf = kmer_occurrence_filter(read_iterator, selected_k, expected_num_of_kmers);
+    Histogram hist = kmer_occurrence_histogram(read_iterator, bf, selected_k);
+    plot_histogram(hist);
 
     auto engine = ReadClusteringEngine(read_iterator, bf, selected_k, cov_lower, cov_upper);
     engine.run_clustering();

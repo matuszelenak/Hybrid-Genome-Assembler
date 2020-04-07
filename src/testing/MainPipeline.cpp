@@ -9,6 +9,7 @@
 #include "../common/KmerIterator.h"
 #include "../common/Utils.h"
 #include "../common/KmerAnalysis.h"
+#include "../common/Plotting.h"
 
 #include "KmerAnalysis.h"
 #include "ReadClusteringEngine.h"
@@ -47,7 +48,7 @@ int main(int argc, char *argv[]) {
         throw std::invalid_argument("You need to specify paths to read files");
     }
 
-    SequenceRecordIterator read_iterator = SequenceRecordIterator(read_paths);
+    SequenceRecordIterator read_iterator = SequenceRecordIterator(read_paths, true);
 
     int max_genome_size = 0, max_coverage = 0;
     if (vm.count("coverage") || vm.count("genome")){
@@ -74,17 +75,13 @@ int main(int argc, char *argv[]) {
     } else {
         k_sizes = get_k_sizes(max_genome_size);
     }
-//    double platform_error_rate = 0;
-//    if (vm.count("error-rate")){
-//        platform_error_rate = vm["error-rate"].as<double>();
-//    }
 
     std::map<int, KmerSpecificity> per_k_specificities = {};
     for (auto k_length : k_sizes) {
         std::cout << fmt::format("\n ### Running testing for k-mer size {} ###\n", k_length);
         auto expected_num_of_kmers = get_approximate_kmer_count(read_iterator, k_length);
-        auto filters = kmer_occurrences(read_iterator, k_length, expected_num_of_kmers);
-        per_k_specificities[k_length] = timeMeasure(get_kmer_specificity, "Specificities")(read_iterator, filters, k_length, expected_num_of_kmers);
+        KmerCountingBloomFilter filter = kmer_occurrence_filter(read_iterator, k_length, expected_num_of_kmers);
+        per_k_specificities[k_length] = timeMeasure(get_kmer_specificity, "Specificities")(read_iterator, filter, k_length);
     }
 
     int selected_k = 0, cov_lower = 0, cov_upper = 0;
@@ -93,7 +90,7 @@ int main(int argc, char *argv[]) {
     if (vm.count("cov-upper")) cov_upper = vm["cov-upper"].as<int>();
 
     if (!(selected_k && cov_lower && cov_upper)){
-        plot_kmer_specificity(read_iterator.file_meta, per_k_specificities, max_coverage * 2);
+        plot_kmer_specificity(per_k_specificities, max_coverage * 2);
 
         if (!selected_k){
             std::cout << "Enter the size of k-mer\n";
@@ -106,7 +103,7 @@ int main(int argc, char *argv[]) {
         }
     }
 
-//    KmerOccurrences selected_occurrences = kmer_occurrences(read_iterator, selected_k, max_genome_size, max_coverage);
+//    KmerOccurrences selected_occurrences = kmer_occurrence_filter(read_iterator, selected_k, max_genome_size, max_coverage);
 //    std::cout << fmt::format("{} total kmers\n", selected_occurrences.size());
 //    KmerOccurrences characteristic_kmers = filter_characteristic_kmers(selected_occurrences, cov_lower, cov_upper);
 //

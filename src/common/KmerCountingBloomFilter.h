@@ -36,22 +36,24 @@ public:
 class KmerCountingBloomFilter {
 private:
     uint32_t inner_bf_count;
-    //KmerBloomFilter* single_occurrence_bf;
-
 public:
+    CategoryID categories = 1;
     explicit KmerCountingBloomFilter(uint64_t expected_items);
+
+    KmerCountingBloomFilter(uint64_t expected_items, int categories);
 
     ~KmerCountingBloomFilter();
 
+    uint64_t _expected_items;
     KmerCount *data;
     uint64_t actual_size;
     int hash_count;
 
+    void add(Kmer kmer, CategoryID category);
     void add(Kmer kmer);
 
+    KmerCount get_count(Kmer kmer, CategoryID category);
     KmerCount get_count(Kmer kmer);
-
-    uint64_t cardinality();
 };
 
 int get_hash_count(uint64_t expected_items, uint64_t actual_size);

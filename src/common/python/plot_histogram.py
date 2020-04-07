@@ -16,6 +16,8 @@ get_color = dict((
     (101, 'g')
 )).get
 
+skip_first = 5
+
 
 def render_subplot(subplot, bound_specificities: List[BoundSpecificities], max_coverage: int):
     bars = []
@@ -23,8 +25,8 @@ def render_subplot(subplot, bound_specificities: List[BoundSpecificities], max_c
     bottoms = np.zeros((max_coverage,))
     for upper_bound, coverage_data in bound_specificities:
         coverage_dict = dict(coverage_data)
-        specificity_level_data = np.array([
-            coverage_dict.get(coverage, 0) for coverage in range(1, max_coverage + 1)
+        specificity_level_data = np.array([0 for _ in range(skip_first)] + [
+            coverage_dict.get(coverage, 0) for coverage in range(skip_first + 1, max_coverage + 1)
         ])
         bars.append(subplot.bar(indices, specificity_level_data, bottom=bottoms, width=0.8, color=get_color(upper_bound)))
         bottoms += specificity_level_data
@@ -43,7 +45,6 @@ def plot_histograms(specificities: List[KmerSpecificities], max_coverage: int):
     plt.show()
 
 
-files = input().split('/')
 num_of_k, max_cov = [int(x) for x in input().split()]
 specs: List[KmerSpecificities] = [eval(input()) for _ in range(num_of_k)]  # FOR THE GLORY OF SATAN
 plot_histograms(specs, max_cov)
