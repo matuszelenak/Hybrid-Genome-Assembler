@@ -7,26 +7,30 @@
 
 SequenceRecordIterator::SequenceRecordIterator(std::vector<std::string> &reads_paths) {
     this->paths = reads_paths;
-    get_meta_data();
+    load_meta_data();
     reset();
 }
 
 bool SequenceRecordIterator::reset() {
     current_file_index = 0;
+    current_read_index = 1;
     return load_file_at_position(current_file_index);
 }
 
-void SequenceRecordIterator::get_meta_data() {
+void SequenceRecordIterator::load_meta_data() {
     reset();
-    meta.resize(paths.size());
+    file_meta.resize(paths.size());
 
     int previous_file_index = -1;
     ReadFileMetaData *current_meta = {};
     std::optional<GenomeReadData> read_record;
     while ((read_record = get_next_record()) != std::nullopt) {
         if (current_file_index != previous_file_index) {
-            meta[current_file_index] = {paths[current_file_index].substr(paths[current_file_index].find_last_of("/\\") + 1), current_file_type, 0, UINT64_MAX, 0, 0, 0};
-            current_meta = &meta[current_file_index];
+            file_meta[current_file_index] = {};
+            file_meta[current_file_index].filename = paths[current_file_index].substr(paths[current_file_index].find_last_of("/\\") + 1);
+            file_meta[current_file_index].file_type = current_file_type;
+
+            current_meta = &file_meta[current_file_index];
             previous_file_index = current_file_index;
         }
 
@@ -37,8 +41,17 @@ void SequenceRecordIterator::get_meta_data() {
         current_meta->max_read_length = std::max(current_meta->max_read_length, seq_length);
         current_meta->records++;
         current_meta->avg_read_length += seq_length;
+
+        meta.total_bases += seq_length;
+        meta.min_read_length = std::min(meta.min_read_length, seq_length);
+        meta.max_read_length = std::max(meta.max_read_length, seq_length);
+        meta.records++;
+        meta.avg_read_length += seq_length;
     }
-    for (auto &data : meta) {
+    meta.avg_read_length /= meta.records;
+    show_progress_step = std::max(1ul, meta.records / 1000);
+
+    for (auto &data : file_meta) {
         data.avg_read_length /= data.records;
         std::cout << fmt::format("{}:\n-{} reads\n- {} total bases\n- {} average read length\n- {} max read length\n- {} min read length\n\n",
                                  data.filename, data.records, data.total_bases, data.avg_read_length, data.max_read_length, data.min_read_length);
@@ -119,7 +132,12 @@ GenomeReadData SequenceRecordIterator::read_fasta_record() {
 std::optional<GenomeReadData> SequenceRecordIterator::get_next_record() {
     std::lock_guard<std::mutex> lock(_read_mutex);
     try {
-        return std::optional<GenomeReadData>{(this->*current_record_method)()};
+        auto result = std::optional<GenomeReadData>{(this->*current_record_method)()};
+        if (show_progress_step && (current_read_index % show_progress_step == 0 || current_read_index == meta.records)){
+            show_progress(current_read_index, meta.records, "Iterating reads...");
+        }
+        current_read_index++;
+        return result;
     } catch (const std::length_error &e){
         return std::nullopt;
     }
@@ -130,5 +148,5 @@ SequenceRecordIterator::~SequenceRecordIterator() {
 }
 
 uint64_t SequenceRecordIterator::average_read_length() {
-    return std::accumulate(meta.begin(), meta.end(), 0, [](uint64_t acc, ReadFileMetaData &m) -> uint64_t { return acc + m.avg_read_length; }) / meta.size();
+    return std::accumulate(file_meta.begin(), file_meta.end(), 0, [](uint64_t acc, ReadFileMetaData &m) -> uint64_t { return acc + m.avg_read_length; }) / file_meta.size();
 }

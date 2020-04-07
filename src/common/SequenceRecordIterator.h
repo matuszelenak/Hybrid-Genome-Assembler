@@ -27,14 +27,18 @@ struct GenomeReadData {
     }
 };
 
-struct ReadFileMetaData {
-    std::string filename;
-    FileType file_type;
-    uint64_t records;
-    uint64_t min_read_length;
-    uint64_t max_read_length;
-    uint64_t avg_read_length;
-    uint64_t total_bases;
+
+struct MetaData {
+    uint64_t records = 0;
+    uint64_t min_read_length = UINT64_MAX;
+    uint64_t max_read_length = 0;
+    uint64_t avg_read_length = 0;
+    uint64_t total_bases = 0;
+};
+
+struct ReadFileMetaData : MetaData {
+    std::string filename = "";
+    FileType file_type = FASTA;
 };
 
 
@@ -48,6 +52,9 @@ private:
     FileType current_file_type = FASTQ;
     uint64_t current_file_size = 0;
 
+    uint32_t current_read_index = 1;
+    uint32_t show_progress_step = 0;
+
 
     std::string get_next_line();
 
@@ -59,14 +66,15 @@ private:
 
     bool load_file_at_position(int pos);
 
-    void get_meta_data();
+    void load_meta_data();
 public:
     explicit SequenceRecordIterator(std::vector<std::string> &reads_paths);
     ~SequenceRecordIterator();
 
     bool reset();
     std::optional<GenomeReadData> get_next_record();
-    std::vector<ReadFileMetaData> meta;
+    std::vector<ReadFileMetaData> file_meta;
+    ReadFileMetaData meta = {};
 
     uint64_t average_read_length();
 };

@@ -53,13 +53,13 @@ int main(int argc, char *argv[]) {
         if (vm.count("coverage")){
             max_coverage = vm["coverage"].as<int>();
 
-            max_genome_size = get_genome_size(read_iterator.meta, max_coverage);
+            max_genome_size = get_genome_size(read_iterator.file_meta, max_coverage);
             std::cout << fmt::format("Determined genome size {}\n", max_genome_size);
         }
         if (vm.count("genome")){
             max_genome_size = vm["genome"].as<int>();
             if (max_coverage == 0){
-                max_coverage = get_coverage(read_iterator.meta, max_genome_size);
+                max_coverage = get_coverage(read_iterator.file_meta, max_genome_size);
             }
             std::cout << fmt::format("Determined coverage {}\n", max_coverage);
         }
@@ -72,8 +72,11 @@ int main(int argc, char *argv[]) {
     if (vm.count("cov-lower")) cov_lower = vm["cov-lower"].as<int>();
     if (vm.count("cov-upper")) cov_upper = vm["cov-upper"].as<int>();
 
-    KmerCountingBloomFilter bf = kmer_occurrences(read_iterator, selected_k, max_genome_size, max_coverage);
-    kmer_occurrence_histogram(bf);
+    auto expected_num_of_kmers = get_approximate_kmer_count(read_iterator, selected_k);
+
+    std::cout << fmt::format("Expecting {} kmers\n", expected_num_of_kmers);
+    KmerCountingBloomFilter bf = kmer_occurrences(read_iterator, selected_k, expected_num_of_kmers);
+    kmer_occurrence_histogram(read_iterator, bf, selected_k, expected_num_of_kmers);
 
     auto engine = ReadClusteringEngine(read_iterator, bf, selected_k, cov_lower, cov_upper);
     engine.run_clustering();

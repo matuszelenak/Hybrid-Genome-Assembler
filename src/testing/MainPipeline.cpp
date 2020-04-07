@@ -10,7 +10,7 @@
 #include "../common/Utils.h"
 #include "../common/KmerAnalysis.h"
 
-#include "TestKmerAnalysis.h"
+#include "KmerAnalysis.h"
 #include "ReadClusteringEngine.h"
 
 
@@ -30,7 +30,8 @@ int main(int argc, char *argv[]) {
             ("coverage,c", po::value<int >(), "Estimated coverage (for one read file)")
             ("k-size,k", po::value<int> (), "Size of kmer to analyze & select")
             ("cov-lower,l", po::value<int> (), "Lower bound for coverage of characteristic kmers")
-            ("cov-upper,u", po::value<int> (), "Upper bound for coverage of characteristic kmers");
+            ("cov-upper,u", po::value<int> (), "Upper bound for coverage of characteristic kmers")
+            ("error-rate,e", po::value<double> (), "Error rate of the sequencing platform");
 
     po::variables_map vm;
     po::store(po::command_line_parser(argc, argv).
@@ -53,13 +54,13 @@ int main(int argc, char *argv[]) {
         if (vm.count("coverage")){
             max_coverage = vm["coverage"].as<int>();
 
-            max_genome_size = get_genome_size(read_iterator.meta, max_coverage);
+            max_genome_size = get_genome_size(read_iterator.file_meta, max_coverage);
             std::cout << fmt::format("Determined genome size {}\n", max_genome_size);
         }
         if (vm.count("genome")){
             max_genome_size = vm["genome"].as<int>();
             if (max_coverage == 0){
-                max_coverage = get_coverage(read_iterator.meta, max_genome_size);
+                max_coverage = get_coverage(read_iterator.file_meta, max_genome_size);
             }
             std::cout << fmt::format("Determined coverage {}\n", max_coverage);
         }
@@ -67,18 +68,23 @@ int main(int argc, char *argv[]) {
         throw std::invalid_argument("Please specify either the estimated genome size or coverage");
     }
 
-    std::vector<int>k_sizes;
+    std::vector<uint8_t>k_sizes;
     if (vm.count("k-size")){
-        k_sizes = {vm["k-size"].as<int>()};
+        k_sizes = {vm["k-size"].as<uint8_t>()};
     } else {
         k_sizes = get_k_sizes(max_genome_size);
     }
+//    double platform_error_rate = 0;
+//    if (vm.count("error-rate")){
+//        platform_error_rate = vm["error-rate"].as<double>();
+//    }
 
     std::map<int, KmerSpecificity> per_k_specificities = {};
     for (auto k_length : k_sizes) {
         std::cout << fmt::format("\n ### Running testing for k-mer size {} ###\n", k_length);
-        KmerOccurrences occ = kmer_occurrences(read_iterator, k_length, max_genome_size, max_coverage);
-        per_k_specificities[k_length] = get_kmer_specificity(occ);
+        auto expected_num_of_kmers = get_approximate_kmer_count(read_iterator, k_length);
+        auto filters = kmer_occurrences(read_iterator, k_length, expected_num_of_kmers);
+        per_k_specificities[k_length] = timeMeasure(get_kmer_specificity, "Specificities")(read_iterator, filters, k_length, expected_num_of_kmers);
     }
 
     int selected_k = 0, cov_lower = 0, cov_upper = 0;
@@ -87,7 +93,7 @@ int main(int argc, char *argv[]) {
     if (vm.count("cov-upper")) cov_upper = vm["cov-upper"].as<int>();
 
     if (!(selected_k && cov_lower && cov_upper)){
-        plot_kmer_specificity(read_iterator.meta, per_k_specificities, max_coverage * 2);
+        plot_kmer_specificity(read_iterator.file_meta, per_k_specificities, max_coverage * 2);
 
         if (!selected_k){
             std::cout << "Enter the size of k-mer\n";
@@ -100,17 +106,17 @@ int main(int argc, char *argv[]) {
         }
     }
 
-    KmerOccurrences selected_occurrences = kmer_occurrences(read_iterator, selected_k, max_genome_size, max_coverage);
-    std::cout << fmt::format("{} total kmers\n", selected_occurrences.size());
-    KmerOccurrences characteristic_kmers = filter_characteristic_kmers(selected_occurrences, cov_lower, cov_upper);
-
-    std::cout << fmt::format("{} characteristic kmers\n", characteristic_kmers.size());
-
-    std::set<Kmer> char_kmer_set;
-    for (auto it = begin(characteristic_kmers); it != end(characteristic_kmers); it++){
-        char_kmer_set.insert(it->first);
-    }
-    auto engine = ReadClusteringEngine(read_iterator, char_kmer_set, selected_k);
-    engine.run_clustering();
+//    KmerOccurrences selected_occurrences = kmer_occurrences(read_iterator, selected_k, max_genome_size, max_coverage);
+//    std::cout << fmt::format("{} total kmers\n", selected_occurrences.size());
+//    KmerOccurrences characteristic_kmers = filter_characteristic_kmers(selected_occurrences, cov_lower, cov_upper);
+//
+//    std::cout << fmt::format("{} characteristic kmers\n", characteristic_kmers.size());
+//
+//    std::set<Kmer> char_kmer_set;
+//    for (auto it = begin(characteristic_kmers); it != end(characteristic_kmers); it++){
+//        char_kmer_set.insert(it->first);
+//    }
+//    auto engine = ReadClusteringEngine(read_iterator, char_kmer_set, selected_k);
+//    engine.run_clustering();
     return 0;
 }

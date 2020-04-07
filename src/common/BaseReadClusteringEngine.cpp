@@ -3,18 +3,37 @@
 #include <queue>
 #include <numeric>
 #include <experimental/filesystem>
+#include <boost/algorithm/string/join.hpp>
 
 #include "KmerIterator.h"
 #include "BaseReadClusteringEngine.h"
 #include "Utils.h"
 
 namespace fs = std::experimental::filesystem;
+namespace algo = boost::algorithm;
 
 std::mutex connections_mut;
 std::mutex merge_mut;
 std::mutex component_erase_mut;
 
-uint64_t MIN_SCORE = 1;
+uint64_t MIN_SCORE = 5;
+
+
+void plot_connection_quality(std::vector<ClusterConnection> &connections){
+    std::map<bool, std::map<ConnectionScore , int>>score_to_matching;
+    for (auto &conn : connections){
+        score_to_matching[conn.is_good].insert(std::map<ConnectionScore , int>::value_type(conn.score, 0)).first->second += 1;
+    }
+    std::vector<std::string>good_connections, bad_connections;
+    for (auto it = begin(score_to_matching[false]); it != end(score_to_matching[false]); it++){
+        bad_connections.push_back(fmt::format("{}: {}", it->first, it->second));
+    }
+    for (auto it = begin(score_to_matching[true]); it != end(score_to_matching[true]); it++){
+        good_connections.push_back(fmt::format("{}: {}", it->first, it->second));
+    }
+    std::string hist_input = fmt::format("{{{}}}\n{{{}}}", algo::join(good_connections, ", "), algo::join(bad_connections, ", "));
+    run_command_with_input("python3 common/python/plot_connections_histogram.py", hist_input);
+}
 
 
 void BaseReadClusteringEngine::get_connections_thread(std::vector<ClusterID> &cluster_indices, std::pair<int, int> range, std::vector<ClusterConnection> &accumulator, ProcessedClusters &processed){
@@ -142,10 +161,14 @@ int BaseReadClusteringEngine::clustering_round(){
         components[cluster_iter->second->reference_id] = {cluster_iter->second->reference_id};
     }
 
-    std::vector<ClusterConnection> cluster_connections = timeMeasure(&BaseReadClusteringEngine::get_connections, this, "Cluster connections")();
+    std::vector<ClusterConnection> cluster_connections = timeMeasureMemberFunc(&BaseReadClusteringEngine::get_connections, this, "Cluster connections")();
+    //plot_connection_quality(cluster_connections);
+//    ConnectionScore min_score;
+//    std::cin >> min_score;
 
     int merge_operations = 0;
     for (ClusterConnection &conn : cluster_connections){
+        //if (conn.score < min_score) continue;
         if (!conn.is_good) continue;
 
         ClusterID parent_x = get_parent(conn.cluster_x_id, parents);
@@ -170,7 +193,7 @@ int BaseReadClusteringEngine::clustering_round(){
         merge_operations++;
     }
 
-    timeMeasure(&BaseReadClusteringEngine::merge_clusters, this, "Merging of clusters")(components);
+    timeMeasureMemberFunc(&BaseReadClusteringEngine::merge_clusters, this, "Merging of clusters")(components);
 
     return merge_operations;
 }
@@ -189,8 +212,9 @@ int BaseReadClusteringEngine::export_clusters(int min_size) {
         return std::move(acc) + std::string("__") +  std::move(m.filename);
     };
 
-    std::string directory_name = "./clusters/" + std::accumulate(std::next(reader->meta.begin()), reader->meta.end(), reader->meta[0].filename, path_concat);
-    fs::create_directories(directory_name);
+    fs::path directory_path = "./clusters/" + std::accumulate(std::next(reader->file_meta.begin()), reader->file_meta.end(), reader->file_meta[0].filename, path_concat);
+    fs::remove_all(directory_path);
+    fs::create_directories(directory_path);
 
     reader->reset();
     std::optional<GenomeReadData> read;
@@ -204,7 +228,7 @@ int BaseReadClusteringEngine::export_clusters(int min_size) {
     for (auto cluster_it = begin(cluster_index); cluster_it != end(cluster_index); ++cluster_it){
         if (cluster_it->second->size() >= min_size){
             std::ofstream cluster_file;
-            cluster_file.open(fmt::format("{}/{}_reads:cluster#{}.fq", directory_name, cluster_it->second->size(), cluster_it->second->reference_id));
+            cluster_file.open(fmt::format("{}/{}_reads:cluster#{}.fq", directory_path.string(), cluster_it->second->size(), cluster_it->second->reference_id));
             for (const auto& header: cluster_it->second->read_headers){
                 cluster_file << header_to_read[header].fastq_string() << std::endl;
             }

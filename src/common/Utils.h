@@ -11,7 +11,7 @@ int run_command_with_input(const char *command, const std::string& in);
 
 
 template<typename F, typename T>
-auto timeMeasure(const F& func, const T& obj, const std::string& label) {
+auto timeMeasureMemberFunc(const F& func, const T& obj, const std::string& label) {
     return [func, obj, label](auto&&... args) {
         boost::posix_time::ptime ts_start = boost::posix_time::microsec_clock::local_time();
         auto result = (obj->*func)(std::forward<decltype(args)>(args)...);

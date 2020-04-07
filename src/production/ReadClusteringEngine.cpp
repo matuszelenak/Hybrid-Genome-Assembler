@@ -67,10 +67,10 @@ ReadClusteringEngine::ReadClusteringEngine(SequenceRecordIterator &read_iterator
     this->lower_coverage = lower_coverage;
     this->upper_coverage = upper_coverage;
 
-    auto r = timeMeasure(&ReadClusteringEngine::construct_indices, this, "Construct indices")();
+    auto r = timeMeasureMemberFunc(&ReadClusteringEngine::construct_indices, this, "Construct indices")();
 }
 
 void ReadClusteringEngine::run_clustering(){
     while (clustering_round() > 0){}
-    std::cout << fmt::format("Exported {} clusters\n", timeMeasure(&ReadClusteringEngine::export_clusters, this, "Exporting clusters")(10));
+    std::cout << fmt::format("Exported {} clusters\n", timeMeasureMemberFunc(&ReadClusteringEngine::export_clusters, this, "Exporting clusters")(10));
 }

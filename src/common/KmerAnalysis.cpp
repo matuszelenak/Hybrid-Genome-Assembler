@@ -1,6 +1,8 @@
 #include <cmath>
 
 #include "KmerAnalysis.h"
+#include "../lib/HyperLogLog.hpp"
+#include "KmerIterator.h"
 
 int _get_genome_size_or_coverage(std::vector<ReadFileMetaData> &read_meta_data, int known) {
     uint64_t unknown = 0;
@@ -20,6 +22,28 @@ int get_coverage(std::vector<ReadFileMetaData> &read_meta_data, int genome_size)
     return _get_genome_size_or_coverage(read_meta_data, genome_size);
 }
 
-uint32_t get_num_of_expected_kmers(uint k, uint genome_size, uint coverage, uint read_length, double error_rate) {
-    return genome_size * coverage * ((double) (read_length - k + 1) / (double) read_length) * (1 - pow(1 - error_rate, k));
+
+void approximate_kmer_count_thread(SequenceRecordIterator &read_iterator, int k, hll::HyperLogLog &hyper){
+    std::optional<GenomeReadData> read;
+    while ((read = read_iterator.get_next_record()) != std::nullopt) {
+        KmerIterator it = KmerIterator(read->sequence, k);
+        while (it.next_kmer()) {
+            hyper.add((void*)&it.current_kmer, sizeof(Kmer));
+        }
+    }
+}
+
+
+uint64_t get_approximate_kmer_count(SequenceRecordIterator &read_iterator, int k){
+    auto hyper = hll::HyperLogLog(10);
+    unsigned int num_threads = std::thread::hardware_concurrency();
+    std::thread t[num_threads];
+
+    read_iterator.reset();
+    for (int i = 0; i < num_threads; ++i) {
+        t[i] = std::thread(approximate_kmer_count_thread, std::ref(read_iterator), k, std::ref(hyper));
+    }
+    for (int i = 0; i < num_threads; ++i) t[i].join();
+
+    return hyper.estimate();
 }

@@ -5,8 +5,8 @@
 #ifndef SRC_PRODUCTIONKMERANALYSIS_H
 #define SRC_PRODUCTIONKMERANALYSIS_H
 
-void kmer_occurrence_histogram(KmerCountingBloomFilter &bf);
+void kmer_occurrence_histogram(SequenceRecordIterator &read_iterator, KmerCountingBloomFilter &bf, int k, uint32_t expected_num_of_kmers);
 
-KmerCountingBloomFilter kmer_occurrences(SequenceRecordIterator &read_iterator, int k, int genome_size, int coverage);
+KmerCountingBloomFilter kmer_occurrences(SequenceRecordIterator &read_iterator, int k, uint32_t expected_num_of_kmers);
 
 #endif //SRC_PRODUCTIONKMERANALYSIS_H
