@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<title>Title</title>
+	<script type="application/javascript" src="reads.js"></script>
+</head>
+<body style="background: #333333">
+<canvas id="grid">
+
+</canvas>
+<script type="text/javascript">
+    const kmer_size = ~~(1800 / reads[0].length);
+    const canvas = document.getElementById('grid');
+    canvas.height = 900;
+    canvas.width = 1800;
+    const ctx = canvas.getContext('2d');
+    const colorToCanvasColor = {'K': 'black', 'R': 'red', 'O': 'orange', 'Y': 'yellow', 'B': 'blue', 'G': 'green', 'U': 'grey'};
+    const readsPerBlock = Math.floor(canvas.height / (kmer_size + 1));
+    let currentIndex = 0;
+
+    function renderBlock(index) {
+        let rowIndex = 0;
+        reads.slice(index * readsPerBlock, (index + 1) * readsPerBlock).forEach((read) => {
+            let colIndex = 0;
+            [...read].forEach(color => {
+                ctx.fillStyle = colorToCanvasColor[color];
+                ctx.fillRect(colIndex * (kmer_size + 1), rowIndex * (kmer_size + 1), kmer_size, kmer_size);
+                colIndex++;
+            });
+            rowIndex++;
+        });
+    }
+
+    document.onkeydown = function (e) {
+        if (e.keyCode === 37){ currentIndex = Math.max(0, currentIndex - 1); renderBlock(currentIndex) }
+        if (e.keyCode === 39){ currentIndex++; ; renderBlock(currentIndex) }
+    };
+
+    renderBlock(currentIndex);
+
+
+</script>
+</body>
+</html>

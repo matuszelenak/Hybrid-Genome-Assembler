@@ -52,10 +52,10 @@ uint64_t get_approximate_kmer_count(SequenceRecordIterator &read_iterator, int k
 }
 
 
-std::vector<uint8_t> get_k_sizes(int max_genome_size) {
-    std::vector<uint8_t> k_sizes;
-    uint8_t k_guess = (uint8_t) ceil(log(max_genome_size) / log(4)) | 1u;
-    for (int k_value = k_guess; k_value <= 19; k_value += 2) {
+std::vector<unsigned int> get_k_sizes(int max_genome_size) {
+    std::vector<unsigned int> k_sizes;
+    unsigned int k_guess = (unsigned int) ceil(log(max_genome_size) / log(4)) | 1u;
+    for (unsigned int k_value = k_guess; k_value <= 19; k_value += 2) {
         k_sizes.push_back(k_value);
     }
     return k_sizes;

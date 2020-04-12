@@ -12,7 +12,7 @@
 class KmerIterator {
 private:
     int kmer_size;
-    std::string sequence;
+    std::string* sequence_ptr;
 
     uint64_t clearing_mask;
     uint8_t complement_shift_by;
@@ -34,12 +34,21 @@ public:
 struct KmerQuality {
     Quality min_quality;
     Quality avg_quality;
+
+    bool operator < (const KmerQuality& reference) const
+    {
+        return (this->min_quality < reference.min_quality || this->avg_quality < reference.avg_quality);
+    }
+    bool operator > (const KmerQuality& reference) const
+    {
+        return (this->min_quality > reference.min_quality && this->avg_quality > reference.avg_quality);
+    }
 };
 
 class KmerQualityIterator {
 private:
     int kmer_size;
-    std::string qualities;
+    std::string* qualities_ptr;
 
     unsigned long position_in_sequence = 0;
     std::deque<Quality> kmer_qualities_window;

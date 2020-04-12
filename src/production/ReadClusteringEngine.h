@@ -6,16 +6,9 @@
 
 
 class ReadClusteringEngine: public BaseReadClusteringEngine {
-protected:
-    KmerCountingBloomFilter* filter;
-    int k, lower_coverage, upper_coverage;
-
-    void construct_indices_thread();
-    int construct_indices();
 public:
     void run_clustering() override;
-
-    ReadClusteringEngine(SequenceRecordIterator &read_iterator, KmerCountingBloomFilter &bf, int k, int lower_coverage, int upper_coverage);
+    using BaseReadClusteringEngine::BaseReadClusteringEngine;
 };
 
 

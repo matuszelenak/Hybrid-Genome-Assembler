@@ -15,6 +15,7 @@ namespace algo = boost::algorithm;
 std::mutex connections_mut;
 std::mutex merge_mut;
 std::mutex component_erase_mut;
+std::mutex index_merge;
 
 uint64_t MIN_SCORE = 5;
 
@@ -33,6 +34,64 @@ void plot_connection_quality(std::vector<ClusterConnection> &connections){
     }
     std::string hist_input = fmt::format("{{{}}}\n{{{}}}", algo::join(good_connections, ", "), algo::join(bad_connections, ", "));
     run_command_with_input("python3 common/python/plot_connections_histogram.py", hist_input);
+}
+
+
+BaseReadClusteringEngine::BaseReadClusteringEngine(SequenceRecordIterator &read_iterator, KmerCountingBloomFilter &bf, int k, int lower_coverage, int upper_coverage) {
+    this->k = k;
+    this->reader = &read_iterator;
+    this->filter = &bf;
+    this->lower_coverage = lower_coverage;
+    this->upper_coverage = upper_coverage;
+
+    auto r = timeMeasureMemberFunc(&BaseReadClusteringEngine::construct_indices, this, "Construct indices")();
+}
+
+void BaseReadClusteringEngine::construct_indices_thread(){
+    std::optional<GenomeReadData> read;
+    while ((read = reader->get_next_record()) != std::nullopt) {
+        KmerIterator it = KmerIterator(read->sequence, k);
+
+        std::set<Kmer> in_read_characteristic;
+
+        while (it.next_kmer()) {
+            KmerCount count = filter->get_count(it.current_kmer);
+            if (lower_coverage <= count && count <= upper_coverage){
+                in_read_characteristic.insert(it.current_kmer);
+            }
+        }
+
+        if (in_read_characteristic.size() >= 5){
+            std::set<KmerID> in_read_characteristic_ids;
+
+            index_merge.lock();
+
+            ClusterID new_cluster_id = cluster_index.size();
+
+            std::pair<KmerIndex::iterator, bool> insert_result;
+            KmerID new_kmer_id = kmer_index.size();
+            for (Kmer kmer : in_read_characteristic){
+                insert_result = kmer_index.insert(KmerIndex::value_type(kmer, new_kmer_id));
+                if (insert_result.second){
+                    kmer_cluster_index.push_back({});
+                    ++new_kmer_id;
+                }
+                in_read_characteristic_ids.insert(insert_result.first->second);
+                kmer_cluster_index[insert_result.first->second].insert(new_cluster_id);
+            }
+
+            cluster_index.insert(ClusterIndex::value_type(new_cluster_id, new GenomeReadCluster(new_cluster_id, read->header, in_read_characteristic_ids, read->category_id)));
+
+            index_merge.unlock();
+        }
+    }
+}
+
+
+int BaseReadClusteringEngine::construct_indices() {
+    reader->reset();
+    auto runner = ThreadRunner(&BaseReadClusteringEngine::construct_indices_thread, this);
+    return 0;
 }
 
 
@@ -162,14 +221,14 @@ int BaseReadClusteringEngine::clustering_round(){
     }
 
     std::vector<ClusterConnection> cluster_connections = timeMeasureMemberFunc(&BaseReadClusteringEngine::get_connections, this, "Cluster connections")();
-    //plot_connection_quality(cluster_connections);
-//    ConnectionScore min_score;
-//    std::cin >> min_score;
+    plot_connection_quality(cluster_connections);
+    ConnectionScore min_score;
+    std::cin >> min_score;
 
     int merge_operations = 0;
     for (ClusterConnection &conn : cluster_connections){
-        //if (conn.score < min_score) continue;
-        if (!conn.is_good) continue;
+        if (conn.score < min_score) continue;
+        //if (!conn.is_good) continue;
 
         ClusterID parent_x = get_parent(conn.cluster_x_id, parents);
         ClusterID parent_y = get_parent(conn.cluster_y_id, parents);

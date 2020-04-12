@@ -13,6 +13,7 @@
 
 #include "KmerAnalysis.h"
 #include "ReadClusteringEngine.h"
+#include "KernighanLinClustering.h"
 
 
 namespace po = boost::program_options;
@@ -29,7 +30,7 @@ int main(int argc, char *argv[]) {
             ("read_paths", po::value<std::vector<std::string>>(&read_paths)->multitoken(), "Path to file with reads (FASTA or FASTQ)")
             ("genome,g", po::value<int >(), "Estimated size of the larger genome")
             ("coverage,c", po::value<int >(), "Estimated coverage (for one read file)")
-            ("k-size,k", po::value<int> (), "Size of kmer to analyze & select")
+            ("k-size,k", po::value<unsigned int> (), "Size of kmer to analyze & select")
             ("cov-lower,l", po::value<int> (), "Lower bound for coverage of characteristic kmers")
             ("cov-upper,u", po::value<int> (), "Upper bound for coverage of characteristic kmers")
             ("error-rate,e", po::value<double> (), "Error rate of the sequencing platform");
@@ -69,9 +70,9 @@ int main(int argc, char *argv[]) {
         throw std::invalid_argument("Please specify either the estimated genome size or coverage");
     }
 
-    std::vector<uint8_t>k_sizes;
+    std::vector<unsigned int>k_sizes;
     if (vm.count("k-size")){
-        k_sizes = {vm["k-size"].as<uint8_t>()};
+        k_sizes = {vm["k-size"].as<unsigned int>()};
     } else {
         k_sizes = get_k_sizes(max_genome_size);
     }
@@ -85,7 +86,7 @@ int main(int argc, char *argv[]) {
     }
 
     int selected_k = 0, cov_lower = 0, cov_upper = 0;
-    if (vm.count("k-size")) selected_k = vm["k-size"].as<int>();
+    if (vm.count("k-size")) selected_k = vm["k-size"].as<unsigned int>();
     if (vm.count("cov-lower")) cov_lower = vm["cov-lower"].as<int>();
     if (vm.count("cov-upper")) cov_upper = vm["cov-upper"].as<int>();
 
@@ -103,17 +104,11 @@ int main(int argc, char *argv[]) {
         }
     }
 
-//    KmerOccurrences selected_occurrences = kmer_occurrence_filter(read_iterator, selected_k, max_genome_size, max_coverage);
-//    std::cout << fmt::format("{} total kmers\n", selected_occurrences.size());
-//    KmerOccurrences characteristic_kmers = filter_characteristic_kmers(selected_occurrences, cov_lower, cov_upper);
-//
-//    std::cout << fmt::format("{} characteristic kmers\n", characteristic_kmers.size());
-//
-//    std::set<Kmer> char_kmer_set;
-//    for (auto it = begin(characteristic_kmers); it != end(characteristic_kmers); it++){
-//        char_kmer_set.insert(it->first);
-//    }
-//    auto engine = ReadClusteringEngine(read_iterator, char_kmer_set, selected_k);
-//    engine.run_clustering();
+    auto expected_num_of_kmers = get_approximate_kmer_count(read_iterator, selected_k);
+    KmerCountingBloomFilter bf = kmer_occurrence_filter(read_iterator, selected_k, expected_num_of_kmers);
+    visualize_kmer_positions(read_iterator, bf, selected_k, cov_lower, cov_upper);
+
+    auto engine = KernighanLinClustering(read_iterator, bf, selected_k, cov_lower, cov_upper);
+    engine.run_clustering();
     return 0;
 }

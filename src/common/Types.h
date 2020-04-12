@@ -6,7 +6,7 @@
 typedef uint64_t Kmer;
 typedef uint32_t KmerID;
 typedef int CategoryID;
-typedef int Quality;
+typedef uint8_t Quality;
 typedef uint32_t ClusterID;
 
 typedef int UpperSpecificity;
