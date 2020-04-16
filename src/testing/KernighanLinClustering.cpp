@@ -2,9 +2,11 @@
 #include <boost/algorithm/string/join.hpp>
 
 #include "../common/Utils.h"
-#include "../lib/KernighanLin.h"
+#include "../lib/QuickCut.h"
 
 namespace algo = boost::algorithm;
+
+using namespace quick_cut;
 
 std::string KernighanLinClustering::partition_consistency(std::set<VertexID> &vertex_ids) {
     std::map<CategoryID, int> category_counts;
@@ -32,46 +34,38 @@ void KernighanLinClustering::construct_cluster_category_map() {
 
 void KernighanLinClustering::run_clustering() {
     std::vector<ClusterConnection> cluster_connections = timeMeasureMemberFunc(&KernighanLinClustering::get_connections, this, "Cluster connections")();
-    plot_connection_quality(cluster_connections);
+    //plot_connection_quality(cluster_connections);
     construct_cluster_category_map();
 
-    tsl::robin_map<VertexID, Vertex*> vertex_map;
-    std::vector<Edge*> edges;
+    std::vector<Edge> edges;
 
     std::ofstream output;
     output.open("graph_pls");
 
     for (auto conn : cluster_connections){
-        if (!vertex_map.contains(conn.cluster_x_id)) vertex_map[conn.cluster_x_id] = new Vertex {conn.cluster_x_id, CategoryA, {}};
-        if (!vertex_map.contains(conn.cluster_y_id)) vertex_map[conn.cluster_y_id] = new Vertex {conn.cluster_y_id, CategoryA, {}};
-
-        Vertex* v_x = vertex_map[conn.cluster_x_id];
-        Vertex* v_y = vertex_map[conn.cluster_y_id];
-
-        Weight w = conn.score * conn.score;
-        edges.push_back(new Edge {v_x, v_y, w});
-
-        v_x->neighbors.insert({conn.cluster_y_id, w});
-        v_y->neighbors.insert({conn.cluster_y_id, w});
+        Cost w = conn.score * conn.score;
+        edges.push_back({conn.cluster_x_id, conn.cluster_y_id, w});
 
         output << fmt::format("{} {} {}\n", conn.cluster_x_id, conn.cluster_y_id, w);
     }
     output.close();
 
-    std::cout << fmt::format("{} edges\n{} nodes\n", edges.size(), vertex_map.size());
+    std::cout << fmt::format("{} edges\n", edges.size());
 
     std::vector<VertexID> a, b;
     for (auto it = begin(cluster_index); it != end(cluster_index); it++){
         if (*(it->second->categories.begin()) == 0) a.push_back(it->second->reference_id); else b.push_back(it->second->reference_id);
     }
+    std::cout << a.size() << " " << b.size() << std::endl;
     auto parts = std::make_pair(a, b);
-    auto p = KernighanLin(vertex_map, edges);
-    std::cout << p.cut_cost() << std::endl;
-    for (int iter = 0; iter < 10; iter++){
+    auto p = QuickCut(edges);
+    std::cout << "Initial cost " << p.cut_cost() << std::endl;
+    for (int iter = 0; iter < 100; iter++){
+        p.bisection_pass();
+
         std::cout << partition_consistency(p.partition_a) << std::endl;
         std::cout << partition_consistency(p.partition_b) << std::endl;
-        p.bisection_pass();
-        std::cout << p.cut_cost() << std::endl;
+        std::cout << "Cost after pass " << p.cut_cost() << std::endl << std::endl;
     }
-    std::cout << p.cut_cost() << std::endl;
+    std::cout << "Final cost" << p.cut_cost() << std::endl;
 }

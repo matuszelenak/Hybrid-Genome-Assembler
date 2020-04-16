@@ -37,6 +37,54 @@ void plot_connection_quality(std::vector<ClusterConnection> &connections){
 }
 
 
+std::string BaseReadClusteringEngine::cluster_consistency(GenomeReadCluster *cluster) {
+    std::map<CategoryID, int> category_counts;
+    for (const auto &read_header : cluster->read_headers) {
+        category_counts.insert(std::map<CategoryID, int>::value_type(read_category_map[read_header], 0)).first->second += 1;
+    }
+    std::vector<std::string> category_count_vector;
+    std::transform(
+            category_counts.begin(),
+            category_counts.end(),
+            std::back_inserter(category_count_vector),
+            [](std::pair<const CategoryID, int> &p) -> std::string { return fmt::format("{}", p.second); }
+    );
+    return algo::join(category_count_vector, "/");
+}
+
+
+void BaseReadClusteringEngine::print_clusters(int first_n) {
+    std::vector<GenomeReadCluster *> cluster_pointers;
+    std::transform(
+            cluster_index.begin(),
+            cluster_index.end(),
+            std::back_inserter(cluster_pointers),
+            [](std::pair<const ClusterID, GenomeReadCluster *> &p) -> GenomeReadCluster * { return p.second; }
+    );
+
+    sort(cluster_pointers.rbegin(), cluster_pointers.rend(), [](GenomeReadCluster *x, GenomeReadCluster *y) -> bool { return x->size() < y->size(); });
+
+    int iterate_first = first_n;
+    if (first_n == -1) iterate_first = cluster_pointers.size();
+    for (auto cluster : cluster_pointers) {
+        std::cout << cluster_consistency(cluster) << " ";
+
+        iterate_first--;
+        if (iterate_first == 0) break;
+    }
+    std::cout << std::endl;
+}
+
+void BaseReadClusteringEngine::construct_read_category_map() {
+    this->reader->rewind();
+    std::optional<GenomeReadData> read;
+    while ((read = this->reader->get_next_record()) != std::nullopt) {
+        read_category_map.insert(tsl::robin_map<std::string, CategoryID>::value_type(read->header, read->category_id));
+    }
+}
+
+
+
 BaseReadClusteringEngine::BaseReadClusteringEngine(SequenceRecordIterator &read_iterator, KmerCountingBloomFilter &bf, int k, int lower_coverage, int upper_coverage) {
     this->k = k;
     this->reader = &read_iterator;
@@ -45,6 +93,7 @@ BaseReadClusteringEngine::BaseReadClusteringEngine(SequenceRecordIterator &read_
     this->upper_coverage = upper_coverage;
 
     auto r = timeMeasureMemberFunc(&BaseReadClusteringEngine::construct_indices, this, "Construct indices")();
+    construct_read_category_map();
 }
 
 void BaseReadClusteringEngine::construct_indices_thread(){
@@ -61,7 +110,7 @@ void BaseReadClusteringEngine::construct_indices_thread(){
             }
         }
 
-        if (in_read_characteristic.size() >= 5){
+        if (in_read_characteristic.size() >= 50){
             std::set<KmerID> in_read_characteristic_ids;
 
             index_merge.lock();
@@ -89,7 +138,7 @@ void BaseReadClusteringEngine::construct_indices_thread(){
 
 
 int BaseReadClusteringEngine::construct_indices() {
-    reader->reset();
+    reader->rewind();
     auto runner = ThreadRunner(&BaseReadClusteringEngine::construct_indices_thread, this);
     return 0;
 }
@@ -275,7 +324,7 @@ int BaseReadClusteringEngine::export_clusters(int min_size) {
     fs::remove_all(directory_path);
     fs::create_directories(directory_path);
 
-    reader->reset();
+    reader->rewind();
     std::optional<GenomeReadData> read;
     while ((read = reader->get_next_record()) != std::nullopt) {
         if (header_to_read.contains(read->header)){
@@ -297,4 +346,12 @@ int BaseReadClusteringEngine::export_clusters(int min_size) {
     }
 
     return exported_clusters;
+}
+
+void BaseReadClusteringEngine::run_clustering(){
+    while (clustering_round() > 0){
+        print_clusters(100);
+    }
+    print_clusters(-1);
+    std::cout << fmt::format("Exported {} clusters\n", timeMeasureMemberFunc(&BaseReadClusteringEngine::export_clusters, this, "Exporting clusters")(10));
 }

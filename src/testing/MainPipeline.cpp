@@ -11,8 +11,6 @@
 #include "../common/KmerAnalysis.h"
 #include "../common/Plotting.h"
 
-#include "KmerAnalysis.h"
-#include "ReadClusteringEngine.h"
 #include "KernighanLinClustering.h"
 
 
@@ -32,8 +30,7 @@ int main(int argc, char *argv[]) {
             ("coverage,c", po::value<int >(), "Estimated coverage (for one read file)")
             ("k-size,k", po::value<unsigned int> (), "Size of kmer to analyze & select")
             ("cov-lower,l", po::value<int> (), "Lower bound for coverage of characteristic kmers")
-            ("cov-upper,u", po::value<int> (), "Upper bound for coverage of characteristic kmers")
-            ("error-rate,e", po::value<double> (), "Error rate of the sequencing platform");
+            ("cov-upper,u", po::value<int> (), "Upper bound for coverage of characteristic kmers");
 
     po::variables_map vm;
     po::store(po::command_line_parser(argc, argv).

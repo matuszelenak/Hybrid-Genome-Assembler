@@ -36,12 +36,16 @@ def render_subplot(subplot, bound_specificities: List[BoundSpecificities], max_c
 
 
 def plot_histograms(specificities: List[KmerSpecificities], max_coverage: int):
-    fig, axs = plt.subplots(len(specificities), sharex='col', sharey='row', num=None, figsize=(1920 // 80, 1080 // 80), dpi=80, facecolor='w', edgecolor='k')
+    if len(specificities) > 1:
+        fig, axs = plt.subplots(len(specificities), sharex='col', sharey='row', num=None, figsize=(1920 // 80, 1080 // 80), dpi=80, facecolor='w', edgecolor='k')
 
-    for row, (k_value, data) in enumerate(specificities):
-        axs[row].set_title(f'Occurrences of characteristic {k_value}-mers in reads')
-        render_subplot(axs[row], data, max_coverage)
-
+        for row, (k_value, data) in enumerate(specificities):
+            axs[row].set_title(f'Occurrences of characteristic {k_value}-mers in reads')
+            render_subplot(axs[row], data, max_coverage)
+    else:
+        for row, (k_value, data) in enumerate(specificities):
+            plt.title(f'Occurrences of characteristic {k_value}-mers in reads')
+            render_subplot(plt, data, max_coverage)
     plt.show()
 
 

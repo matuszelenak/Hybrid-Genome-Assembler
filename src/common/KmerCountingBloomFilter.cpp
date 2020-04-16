@@ -1,6 +1,7 @@
 #include <cmath>
 #include <iostream>
 #include <fmt/format.h>
+#include <fstream>
 
 #include "KmerCountingBloomFilter.h"
 
@@ -58,8 +59,8 @@ KmerCount KmerCountingBloomFilter::get_count(Kmer kmer, CategoryID category) {
 }
 
 
-KmerCountingBloomFilter::KmerCountingBloomFilter(uint64_t expected_items) {
-    _expected_items = expected_items;
+KmerCountingBloomFilter::KmerCountingBloomFilter(uint64_t expected_items, int k) {
+    this->k = k;
     uint8_t expected_for_nested = ((double)INNER_BF_SIZE / 64) * 8;
 
     inner_bf_count = ceil((double)expected_items / (double)expected_for_nested);
@@ -68,18 +69,46 @@ KmerCountingBloomFilter::KmerCountingBloomFilter(uint64_t expected_items) {
 
     hash_count = get_hash_count(expected_for_nested, INNER_BF_SIZE);
 
-    //std::cout << fmt::format("Kmer counting bloom filter will take {:.2f}GB of memory\n", (double) actual_size * (double) sizeof(KmerCount) / (double) 1073741824);
-
     data = new KmerCount[actual_size];
 }
 
 
-KmerCountingBloomFilter::KmerCountingBloomFilter(uint64_t expected_items, int categories) : KmerCountingBloomFilter(expected_items){
+KmerCountingBloomFilter::KmerCountingBloomFilter(uint64_t expected_items, int k, int categories) : KmerCountingBloomFilter(expected_items, k){
     this->categories = categories;
-    free(data);
-    data = new KmerCount[actual_size * 2];
+    delete [] data;
+    data = new KmerCount[actual_size * categories];
 }
 
+KmerCountingBloomFilter::KmerCountingBloomFilter(std::string &path){
+    auto in = std::ifstream(path, std::ios::in | std::ios::binary);
+
+    in.seekg (0, std::basic_ifstream<char>::end);
+    auto data_length = (int)in.tellg() - (sizeof(k) + sizeof(categories));
+    in.seekg (0, std::basic_ifstream<char>::beg);
+
+    data = new KmerCount[data_length / sizeof(KmerCount)];
+
+    in.read((char*)&k, sizeof(k));
+    in.read((char*)&categories, sizeof(categories));
+    in.read((char*)&data[0], data_length);
+    in.close();
+
+    actual_size = (data_length / categories) / sizeof(KmerCount);
+
+    inner_bf_count = actual_size / INNER_BF_SIZE;
+
+    uint8_t expected_for_nested = ((double)INNER_BF_SIZE / 64) * 8;
+    hash_count = get_hash_count(expected_for_nested, INNER_BF_SIZE);
+}
+
+void KmerCountingBloomFilter::dump(std::string &path) {
+    auto out = std::ofstream(path, std::ios::out | std::ios::binary);
+
+    out.write((char*)&k, sizeof(k));
+    out.write((char*)&categories, sizeof(categories));
+    out.write((char*)&data[0], actual_size * categories * sizeof(KmerCount));
+    out.close();
+}
 
 KmerCountingBloomFilter::~KmerCountingBloomFilter() {
     delete [] data;
@@ -87,14 +116,29 @@ KmerCountingBloomFilter::~KmerCountingBloomFilter() {
 
 
 
+KmerBloomFilter::KmerBloomFilter(uint64_t expected_items) {
+    bins = ceil((double)expected_items / (double)54); // We can fit ~54 items into 512 bits of memory with fp = 0.01
+    actual_size = bins * CACHE_LINE_SIZE;
+    hash_count = get_hash_count(54, CACHE_LINE_SIZE);
 
-KmerBloomFilter::KmerBloomFilter(uint64_t expected_items, double fp_prob) {
-    actual_size = get_size(expected_items, fp_prob);
-    hash_count = get_hash_count(expected_items, actual_size);
-    actual_size = (uint64_t)(actual_size / CACHE_LINE_SIZE) * CACHE_LINE_SIZE;
-    bins = actual_size / CACHE_LINE_SIZE;
     std::cout << fmt::format("Kmer bloom filter will take {:.2f}GB of memory\n", (double) actual_size / 8  / (double) 1073741824);
     data = new uint8_t[actual_size / 8];
+}
+
+KmerBloomFilter::KmerBloomFilter(std::string &path){
+    auto in = std::ifstream(path, std::ios::in | std::ios::binary);
+
+    in.seekg (0, std::basic_ifstream<char>::end);
+    auto data_length = in.tellg();
+    in.seekg (0, std::basic_ifstream<char>::beg);
+
+    actual_size = data_length * 8;
+    bins = actual_size / CACHE_LINE_SIZE;
+    hash_count = get_hash_count(54, CACHE_LINE_SIZE);
+    data = new uint8_t[data_length];
+
+    in.read((char*)&data[0], data_length);
+    in.close();
 }
 
 void KmerBloomFilter::add(Kmer kmer){
@@ -127,4 +171,10 @@ bool KmerBloomFilter::contains(Kmer kmer){
     }
     free(hash_output);
     return contains;
+}
+
+void KmerBloomFilter::dump(std::string &path) {
+    auto out = std::ofstream(path, std::ios::out | std::ios::binary);
+    out.write((char*)&data[0], actual_size / 8);
+    out.close();
 }

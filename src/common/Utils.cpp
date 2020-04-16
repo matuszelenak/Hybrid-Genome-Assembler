@@ -9,7 +9,7 @@
 #include "Utils.h"
 
 
-void show_progress(uint64_t curr, uint64_t total, const std::string& msg) {
+void progress_bar(uint64_t curr, uint64_t total, const std::string& msg) {
     double progress_percent = (double) curr / (double) total;
 
     std::cout << std::fixed << std::setprecision(2)

@@ -3,46 +3,65 @@
 #include <iostream>
 #include <climits>
 #include "KernighanLin.h"
-#include "../common/Utils.h"
 
-KernighanLin::KernighanLin(tsl::robin_map<VertexID, Vertex*> &_vertices, std::vector<Edge*> &_edges){
-    edges = _edges;
-    vertices = _vertices;
+using namespace kln;
 
-    auto rng = std::default_random_engine {0};
-    std::vector<VertexID>vertex_indices;
-    for (auto it = begin(vertices); it != end(vertices); it++){
-        vertex_indices.push_back(it->first);
+KernighanLin::KernighanLin(std::vector<Edge> &_edges){
+    edges = std::vector<Edge>(_edges);
+
+    for (auto edge : edges) {
+        auto required_slots = std::max(edge.x, edge.y) + 1;
+        if (required_slots > adjacencies.size()) {
+            vertices.resize(required_slots, {PartitionA});
+            adjacencies.resize(required_slots, {});
+        }
+        adjacencies[edge.x][edge.y] = edge.cost;
+        adjacencies[edge.y][edge.x] = edge.cost;
     }
-    std::shuffle(vertex_indices.begin(), vertex_indices.end(), rng);
 
-    for (auto i = 0; i < vertex_indices.size() / 2; i++){
-        partition_a.insert(vertex_indices[i]);
-        vertices[vertex_indices[i]]->category = CategoryA;
+    std::vector<VertexID> indices(vertices.size());
+    for (VertexID i = 0; i < vertices.size(); i++) indices[i] = i;
+
+    std::random_device dev;
+    std::mt19937 rng(dev());
+    std::shuffle(indices.begin(), indices.end(), rng);
+
+    for (auto i = 0; i < indices.size() / 2; i++) {
+        partition_a.insert(indices[i]);
+        vertices[indices[i]].partition = PartitionA;
     }
-    for (auto i = vertex_indices.size() / 2; i < vertices.size(); i++){
-        partition_b.insert(vertex_indices[i]);
-        vertices[vertex_indices[i]]->category = CategoryB;
+    for (auto i = indices.size() / 2; i < vertices.size(); i++) {
+        partition_b.insert(indices[i]);
+        vertices[indices[i]].partition = PartitionB;
     }
 }
 
-KernighanLin::KernighanLin(tsl::robin_map<VertexID, Vertex*> &_vertices, std::vector<Edge*> &_edges, std::pair<std::vector<VertexID>, std::vector<VertexID>> &partitions){
-    edges = _edges;
-    vertices = _vertices;
+KernighanLin::KernighanLin(std::vector<Edge> &_edges, std::pair<std::vector<VertexID>, std::vector<VertexID>> &partitions){
+    edges = std::vector<Edge>(_edges);
+
+    for (auto edge : edges) {
+        auto required_slots = std::max(edge.x, edge.y) + 1;
+        if (required_slots > adjacencies.size()) {
+            vertices.resize(required_slots, {PartitionA});
+            adjacencies.resize(required_slots, {});
+        }
+        adjacencies[edge.x][edge.y] = edge.cost;
+        adjacencies[edge.y][edge.x] = edge.cost;
+    }
 
     for (auto id : partitions.first){
         partition_a.insert(id);
-        vertices[id]->category = CategoryA;
+        vertices[id].partition = PartitionA;
     }
     for (auto id : partitions.second){
         partition_b.insert(id);
-        vertices[id]->category = CategoryB;
+        vertices[id].partition = PartitionB;
     }
 }
 
 Gain KernighanLin::get_gain(VertexID vertex_a_id, VertexID vertex_b_id){
-    auto weight_it = vertices[vertex_a_id]->neighbors.find(vertex_b_id);
-    Weight w = weight_it != vertices[vertex_a_id]->neighbors.end() ? (*weight_it).second : 0;
+    auto weight_it = adjacencies[vertex_a_id].find(vertex_b_id);
+    Cost w = weight_it != adjacencies[vertex_a_id].end() ? (*weight_it).second : 0;
     return deltas[vertex_a_id] + deltas[vertex_b_id] - 2 * w;
 }
 
@@ -64,43 +83,45 @@ SwapGain KernighanLin::get_best_gain(std::set<VertexID> &restricted) {
     return best_gain;
 }
 
-tsl::robin_map<VertexID, Delta> KernighanLin::compute_deltas() {
-    tsl::robin_map<VertexID, Delta> _deltas;
+void KernighanLin::compute_deltas() {
+    deltas.clear();
+    deltas.resize(vertices.size());
 
-    auto num_of_edges = edges.size();
-    uint32_t edge_cntr = 1;
     for (auto edge : edges) {
-        _deltas.insert({edge->vertex_a->id, 0});
-        _deltas.insert({edge->vertex_b->id, 0});
-
-        if (edge->vertex_a->category != edge->vertex_b->category) {
-            _deltas[edge->vertex_a->id] += edge->weight;
-            _deltas[edge->vertex_b->id] += edge->weight;
+        if (vertices[edge.x].partition != vertices[edge.y].partition){
+            deltas[edge.x] += edge.cost;
+            deltas[edge.y] += edge.cost;
         } else {
-            _deltas[edge->vertex_a->id] -= edge->weight;
-            _deltas[edge->vertex_b->id] -= edge->weight;
+            deltas[edge.x] -= edge.cost;
+            deltas[edge.y] -= edge.cost;
         }
-
-        show_progress(edge_cntr, num_of_edges, "Calculating deltas");
-        edge_cntr++;
     }
-    return _deltas;
 }
 
-void KernighanLin::update_deltas(tsl::robin_map<VertexID, Delta> &_deltas, Vertex *swapped_from_a, Vertex *swapped_from_b) {
-    for (auto it = begin(swapped_from_a->neighbors); it != end(swapped_from_a->neighbors); ++it) {
-        if (vertices[it->first]->category != swapped_from_a->category) {
-            _deltas[it->first] -= 2 * it->second;
-        } else {
-            _deltas[it->first] += 2 * it->second;
-        }
+void KernighanLin::print_deltas(){
+    for (VertexID v_id = 0; v_id < vertices.size(); v_id++){
+        std::cout << "Vertex " << v_id << " delta " << deltas[v_id] << std::endl;
     }
-    for (auto it = begin(swapped_from_b->neighbors); it != end(swapped_from_b->neighbors); ++it) {
-        if (vertices[it->first]->category != swapped_from_b->category) {
-            _deltas[it->first] -= 2 * it->second;
+}
+
+void KernighanLin::update_deltas(VertexID swapped_from_a, VertexID swapped_from_b) {
+    for (auto it = begin(adjacencies[swapped_from_a]); it != end(adjacencies[swapped_from_a]); ++it) {
+        if (vertices[it->first].partition != vertices[swapped_from_a].partition) {
+            deltas[it->first] -= 2 * it->second;
         } else {
-            _deltas[it->first] += 2 * it->second;
+            deltas[it->first] += 2 * it->second;
         }
+
+        std::cout << "Updated " << it->first << " to " << deltas[it->first] << std::endl;
+    }
+    for (auto it = begin(adjacencies[swapped_from_b]); it != end(adjacencies[swapped_from_b]); ++it) {
+        if (vertices[it->first].partition != vertices[swapped_from_b].partition) {
+            deltas[it->first] -= 2 * it->second;
+        } else {
+            deltas[it->first] += 2 * it->second;
+        }
+
+        std::cout << "Updated " << it->first << " to " << deltas[it->first] << std::endl;
     }
 }
 
@@ -108,15 +129,18 @@ bool KernighanLin::bisection_pass(){
     std::vector<SwapGain> best_gains;
     std::set<VertexID> swapped;
 
-    deltas = compute_deltas();
+    compute_deltas();
+
     while (swapped.size() < vertices.size()){
         auto best_gain = get_best_gain(swapped);
+        std::cout << "Best gain = " << best_gain.gain << " " <<  best_gain.vertex_a << " " << best_gain.vertex_b << std::endl;
+
         if (best_gain.gain == INT_MIN) break;
 
         swapped.insert(best_gain.vertex_a);
         swapped.insert(best_gain.vertex_b);
 
-        update_deltas(deltas, vertices[best_gain.vertex_a], vertices[best_gain.vertex_b]);
+        update_deltas(best_gain.vertex_a, best_gain.vertex_b);
 
         best_gains.push_back(best_gain);
     }
@@ -141,8 +165,8 @@ bool KernighanLin::bisection_pass(){
         partition_a.insert(swapped_from_b);
         partition_b.insert(swapped_from_a);
 
-        vertices[swapped_from_a]->category = CategoryB;
-        vertices[swapped_from_b]->category = CategoryA;
+        vertices[swapped_from_a].partition = PartitionB;
+        vertices[swapped_from_b].partition = PartitionA;
     }
     return true;
 }
@@ -161,8 +185,8 @@ void KernighanLin::print_partitions(){
 int KernighanLin::cut_cost(){
     int cost = 0;
     for (auto edge : edges){
-        if (edge->vertex_a->category != edge->vertex_b->category){
-            cost += edge->weight;
+        if (vertices[edge.x].partition != vertices[edge.y].partition){
+            cost += edge.cost;
         }
     }
     return cost;
@@ -171,7 +195,7 @@ int KernighanLin::cut_cost(){
 void KernighanLin::bisection(int max_iter){
     for (int iter_count = 0; iter_count < max_iter; iter_count++){
         std::cout << "Iteration " << iter_count + 1 << std::endl;
-        std::cout << fmt::format("Cut cost is {}\n", cut_cost());
+        std::cout << "Cut cost is " << cut_cost() << std::endl;
         if (!bisection_pass()) break;
     }
 }

@@ -9,17 +9,18 @@ SequenceRecordIterator::SequenceRecordIterator(std::vector<std::string> &reads_p
     this->paths = reads_paths;
     load_meta_data();
     categories = annotate ? file_meta.size() : 1;
-    reset();
+    rewind();
+    show_progress = true;
 }
 
-bool SequenceRecordIterator::reset() {
+bool SequenceRecordIterator::rewind() {
     current_file_index = 0;
     current_read_index = 1;
     return load_file_at_position(current_file_index);
 }
 
 void SequenceRecordIterator::load_meta_data() {
-    reset();
+    rewind();
     file_meta.resize(paths.size());
 
     int previous_file_index = -1;
@@ -129,8 +130,8 @@ std::optional<GenomeReadData> SequenceRecordIterator::get_next_record() {
     std::lock_guard<std::mutex> lock(_read_mutex);
     try {
         auto result = std::optional<GenomeReadData>{(this->*current_record_method)()};
-        if (show_progress_step && (current_read_index % show_progress_step == 0 || current_read_index == meta.records)){
-            show_progress(current_read_index, meta.records, "Iterating reads...");
+        if (show_progress && show_progress_step && (current_read_index % show_progress_step == 0 || current_read_index == meta.records)){
+            progress_bar(current_read_index, meta.records, "Iterating reads...");
         }
         current_read_index++;
         return result;

@@ -72,11 +72,13 @@ public:
     explicit SequenceRecordIterator(std::vector<std::string> &reads_paths, bool annotate);
     ~SequenceRecordIterator();
 
-    bool reset();
+    bool rewind();
     std::optional<GenomeReadData> get_next_record();
     std::vector<ReadFileMetaData> file_meta;
     ReadFileMetaData meta = {};
     uint8_t categories = 1;
+
+    bool show_progress = false;
 };
 
 

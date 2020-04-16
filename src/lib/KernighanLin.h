@@ -4,61 +4,68 @@
 #include <map>
 #include <set>
 #include <vector>
-#include <tsl/robin_map.h>
 
-typedef uint32_t VertexID;
-typedef uint64_t Weight;
-typedef int Delta;
-typedef int Gain;
-typedef tsl::robin_map<VertexID, Weight> NeighborMap;
+namespace kln {
 
-enum Category {
-    CategoryA, CategoryB
-};
+    typedef uint32_t VertexID;
+    typedef uint64_t Cost;
+    typedef int Gain;
+    typedef int Delta;
 
-struct Vertex {
-    VertexID id;
-    Category category;
-    NeighborMap neighbors;
-};
+    enum Partition {
+        PartitionA, PartitionB
+    };
 
-struct Edge {
-    Vertex *vertex_a;
-    Vertex *vertex_b;
-    Weight weight;
-};
+    struct Edge {
+        VertexID x;
+        VertexID y;
+        Cost cost;
+    };
 
-struct SwapGain {
-    Gain gain;
-    VertexID vertex_a;
-    VertexID vertex_b;
-};
+    struct Vertex {
+        Partition partition;
+    };
 
-class KernighanLin {
-private:
-    tsl::robin_map<VertexID, Delta> deltas;
-    tsl::robin_map<VertexID, Vertex *> vertices;
-    std::vector<Edge *> edges;
+    struct SwapGain {
+        Gain gain;
+        VertexID vertex_a;
+        VertexID vertex_b;
+    };
 
-    Gain get_gain(VertexID vertex_a_id, VertexID vertex_b_id);
-    SwapGain get_best_gain(std::set<VertexID> &restricted);
+    class KernighanLin {
+    private:
+        std::vector<Delta> deltas;
+        std::vector<Edge> edges;
+        std::vector<Vertex> vertices;
 
-    tsl::robin_map<VertexID, Delta> compute_deltas();
-    void update_deltas(tsl::robin_map<VertexID, Delta> &_deltas, Vertex *swapped_from_a, Vertex *swapped_from_b);
+        std::vector<std::map<VertexID, Cost>> adjacencies;
 
-public:
-    KernighanLin(tsl::robin_map<VertexID, Vertex *> &_vertices, std::vector<Edge *> &_edges);
-    KernighanLin(tsl::robin_map<VertexID, Vertex*> &_vertices, std::vector<Edge*> &_edges, std::pair<std::vector<VertexID>, std::vector<VertexID>> &partitions);
+        Gain get_gain(VertexID vertex_a_id, VertexID vertex_b_id);
 
-    std::set<VertexID> partition_a;
-    std::set<VertexID> partition_b;
+        SwapGain get_best_gain(std::set<VertexID> &restricted);
 
-    bool bisection_pass();
-    void bisection(int max_iter);
+        void compute_deltas();
 
-    void print_partitions();
-    int cut_cost();
-};
+        void update_deltas(VertexID swapped_from_a, VertexID swapped_from_b);
 
+    public:
+        explicit KernighanLin(std::vector<Edge> &edges);
+
+        KernighanLin(std::vector<Edge> &edges, std::pair<std::vector<VertexID>, std::vector<VertexID>> &partitions);
+
+        std::set<VertexID> partition_a;
+        std::set<VertexID> partition_b;
+
+        bool bisection_pass();
+
+        void bisection(int max_iter);
+
+        void print_partitions();
+
+        int cut_cost();
+
+        void print_deltas();
+    };
+}
 
 #endif //SRC_KERNIGHANLIN_H

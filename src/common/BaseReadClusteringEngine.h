@@ -52,6 +52,7 @@ protected:
     ClusterIndex cluster_index;
     KmerIndex kmer_index;
     KmerClusterIndex kmer_cluster_index;
+    tsl::robin_map<std::string, CategoryID> read_category_map;
 
     void get_connections_thread(std::vector<ClusterID> &cluster_indices, std::pair<int, int> range, std::vector<ClusterConnection> &accumulator, ProcessedClusters &processed);
     std::vector<ClusterConnection> get_connections();
@@ -61,10 +62,16 @@ protected:
 
     int clustering_round();
 public:
-    virtual void run_clustering() = 0;
+    void run_clustering();
     int export_clusters(int min_size);
 
     BaseReadClusteringEngine(SequenceRecordIterator &read_iterator, KmerCountingBloomFilter &bf, int k, int lower_coverage, int upper_coverage);
+
+    void print_clusters(int first_n);
+
+    std::string cluster_consistency(GenomeReadCluster *cluster);
+
+    void construct_read_category_map();
 };
 
 void plot_connection_quality(std::vector<ClusterConnection> &connections);
