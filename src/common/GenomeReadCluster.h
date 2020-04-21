@@ -8,16 +8,19 @@
 
 class GenomeReadCluster {
 public:
-    explicit GenomeReadCluster(ClusterID id, std::string &read_header, std::set<KmerID> &characteristic_kmers, CategoryID category);
+    GenomeReadCluster(ClusterID id, std::string &read_header, std::vector<KmerID> &discriminative_kmer_ids, CategoryID category){
+        reference_id = id;
+        read_headers.push_back(read_header);
+        this->discriminative_kmer_ids = discriminative_kmer_ids;
+        categories.insert(category);
+    };
 
     ClusterID reference_id = 0;
     std::vector<std::string> read_headers;
-    std::set<KmerID> characteristic_kmer_ids;
-
-    void absorb(GenomeReadCluster &cluster);
-    uint64_t size();
-
+    std::vector<KmerID> discriminative_kmer_ids;
     std::set<CategoryID> categories;
+
+    uint64_t size(){ return read_headers.size(); };
 };
 
 

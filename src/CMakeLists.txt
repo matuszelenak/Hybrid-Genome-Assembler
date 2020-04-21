@@ -40,3 +40,6 @@ target_link_libraries( locate PRIVATE tsl::robin_map)
 add_executable(playground playground/Playground.cpp ${COMMON_SRC_FILES} ${LIB_SRC_FILES})
 TARGET_LINK_LIBRARIES( playground LINK_PUBLIC ${Boost_LIBRARIES} stdc++fs pthread fmt)
 target_link_libraries( playground PRIVATE tsl::robin_map)
+
+
+add_executable(kmerge playground/kmerge.cpp)

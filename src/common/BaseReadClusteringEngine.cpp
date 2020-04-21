@@ -37,6 +37,56 @@ void plot_connection_quality(std::vector<ClusterConnection> &connections){
 }
 
 
+template<typename T>
+void merge_n_vectors(std::vector<std::vector<T> *> &arrays, std::vector<T> &result) {
+    std::priority_queue<std::pair<T, int>, std::vector<std::pair<T, int>>, std::greater<std::pair<T, int>>> q;
+
+    int non_exhausted = 0;
+    std::vector<int> next_index(arrays.size(), 1);
+    for (int i = 0; i < arrays.size(); i++) {
+        if (!arrays[i]->empty()) {
+            q.push({(*arrays[i])[0], i});
+            non_exhausted++;
+        }
+    }
+    if (q.empty()) return;
+
+    auto top_pair = q.top();
+    T arr_val = top_pair.first;
+    int arr_index = top_pair.second;
+    q.pop();
+
+    T previous_value = arr_val;
+    result.push_back(previous_value);
+
+    if (next_index[arr_index] == arrays[arr_index]->size()) {
+        non_exhausted--;
+    } else {
+        q.push({(*arrays[arr_index])[next_index[arr_index]], arr_index});
+        next_index[arr_index]++;
+    }
+
+    while (non_exhausted > 0) {
+        top_pair = q.top();
+        arr_val = top_pair.first;
+        arr_index = top_pair.second;
+        q.pop();
+
+        if (arr_val != previous_value) {
+            result.push_back(arr_val);
+            previous_value = arr_val;
+        }
+
+        if (next_index[arr_index] == arrays[arr_index]->size()) {
+            non_exhausted--;
+        } else {
+            q.push({(*arrays[arr_index])[next_index[arr_index]], arr_index});
+            next_index[arr_index]++;
+        }
+    }
+}
+
+
 std::string BaseReadClusteringEngine::cluster_consistency(GenomeReadCluster *cluster) {
     std::map<CategoryID, int> category_counts;
     for (const auto &read_header : cluster->read_headers) {
@@ -99,16 +149,15 @@ void BaseReadClusteringEngine::construct_indices_thread(){
     while ((read = reader->get_next_record()) != std::nullopt) {
         KmerIterator it = KmerIterator(read->sequence, k);
 
-        std::set<Kmer> in_read_characteristic;
-
+        tsl::robin_set<Kmer> in_read_discriminative;
         while (it.next_kmer()) {
             if (kmers->contains(it.current_kmer)){
-                in_read_characteristic.insert(it.current_kmer);
+                in_read_discriminative.insert(it.current_kmer);
             }
         }
 
-        if (in_read_characteristic.size() >= 50){
-            std::set<KmerID> in_read_characteristic_ids;
+        if (in_read_discriminative.size() >= 50){
+            std::vector<KmerID> in_read_discriminative_ids;
 
             index_merge.lock();
 
@@ -116,17 +165,18 @@ void BaseReadClusteringEngine::construct_indices_thread(){
 
             std::pair<KmerIndex::iterator, bool> insert_result;
             KmerID new_kmer_id = kmer_index.size();
-            for (Kmer kmer : in_read_characteristic){
+            for (Kmer kmer : in_read_discriminative){
                 insert_result = kmer_index.insert(KmerIndex::value_type(kmer, new_kmer_id));
                 if (insert_result.second){
                     kmer_cluster_index.push_back({});
                     ++new_kmer_id;
                 }
-                in_read_characteristic_ids.insert(insert_result.first->second);
+                in_read_discriminative_ids.push_back(insert_result.first->second);
                 kmer_cluster_index[insert_result.first->second].insert(new_cluster_id);
             }
 
-            cluster_index.insert(ClusterIndex::value_type(new_cluster_id, new GenomeReadCluster(new_cluster_id, read->header, in_read_characteristic_ids, read->category_id)));
+            std::sort(in_read_discriminative_ids.begin(), in_read_discriminative_ids.end());
+            cluster_index.insert(ClusterIndex::value_type(new_cluster_id, new GenomeReadCluster(new_cluster_id, read->header, in_read_discriminative_ids, read->category_id)));
 
             index_merge.unlock();
         }
@@ -146,7 +196,7 @@ void BaseReadClusteringEngine::get_connections_thread(std::vector<ClusterID> &cl
         ClusterID pivot_id = cluster_indices[i];
         std::map<ClusterID , ConnectionScore > shared_kmer_counts;
 
-        for (KmerID kmer_id : cluster_index[pivot_id]->characteristic_kmer_ids){
+        for (KmerID kmer_id : cluster_index[pivot_id]->discriminative_kmer_ids){
             for (ClusterID candidate_id : kmer_cluster_index[kmer_id]){
                 shared_kmer_counts.insert( std::map<ClusterID , ConnectionScore >::value_type(candidate_id, 0)).first->second += 1;
             }
@@ -222,13 +272,20 @@ void BaseReadClusteringEngine::merge_clusters_thread(std::queue<IDComponent> &co
 
         //TODO faster merging using minheap?
         GenomeReadCluster* survivor = cluster_index[component[0]];
+
+        std::vector<KmerID> merged_discriminative_ids;
+        std::vector<std::vector<KmerID>*> arrays_to_merge = {&survivor->discriminative_kmer_ids};
         for (int i = 1; i < component.size(); i++){
-            survivor->absorb(*cluster_index[component[i]]);
+            survivor->read_headers.insert(survivor->read_headers.end(), cluster_index[component[i]]->read_headers.begin(), cluster_index[component[i]]->read_headers.end());
+            survivor->categories.insert(cluster_index[component[i]]->categories.begin(), cluster_index[component[i]]->categories.end());
+            arrays_to_merge.push_back(&cluster_index[component[i]]->discriminative_kmer_ids);
         }
+        merge_n_vectors(arrays_to_merge, merged_discriminative_ids);
+        survivor->discriminative_kmer_ids = merged_discriminative_ids;
 
         component_erase_mut.lock();
         for (int i = 1; i < component.size(); i++){
-            for (KmerID kmer_id : cluster_index[component[i]]->characteristic_kmer_ids){
+            for (KmerID kmer_id : cluster_index[component[i]]->discriminative_kmer_ids){
                 kmer_cluster_index[kmer_id].erase(component[i]);
                 kmer_cluster_index[kmer_id].insert(survivor->reference_id);
             }
