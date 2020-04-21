@@ -17,7 +17,7 @@ std::mutex merge_mut;
 std::mutex component_erase_mut;
 std::mutex index_merge;
 
-uint64_t MIN_SCORE = 5;
+uint64_t MIN_SCORE = 65;
 
 
 void plot_connection_quality(std::vector<ClusterConnection> &connections){
@@ -85,14 +85,12 @@ void BaseReadClusteringEngine::construct_read_category_map() {
 
 
 
-BaseReadClusteringEngine::BaseReadClusteringEngine(SequenceRecordIterator &read_iterator, KmerCountingBloomFilter &bf, int k, int lower_coverage, int upper_coverage) {
+BaseReadClusteringEngine::BaseReadClusteringEngine(SequenceRecordIterator &read_iterator, int k, bloom::BloomFilter<Kmer> &kmers) {
     this->k = k;
     this->reader = &read_iterator;
-    this->filter = &bf;
-    this->lower_coverage = lower_coverage;
-    this->upper_coverage = upper_coverage;
+    this->kmers = &kmers;
 
-    auto r = timeMeasureMemberFunc(&BaseReadClusteringEngine::construct_indices, this, "Construct indices")();
+    timeMeasureMemberFunc(&BaseReadClusteringEngine::construct_indices, this, "Construct indices")();
     construct_read_category_map();
 }
 
@@ -104,8 +102,7 @@ void BaseReadClusteringEngine::construct_indices_thread(){
         std::set<Kmer> in_read_characteristic;
 
         while (it.next_kmer()) {
-            KmerCount count = filter->get_count(it.current_kmer);
-            if (lower_coverage <= count && count <= upper_coverage){
+            if (kmers->contains(it.current_kmer)){
                 in_read_characteristic.insert(it.current_kmer);
             }
         }
@@ -250,13 +247,7 @@ int BaseReadClusteringEngine::merge_clusters(const tsl::robin_map<ClusterID, IDC
         }
     }
 
-    unsigned int num_threads = std::thread::hardware_concurrency();
-    std::thread t[num_threads];
-    for (int i = 0; i < num_threads; ++i) {
-        t[i] = std::thread(&BaseReadClusteringEngine::merge_clusters_thread, this, std::ref(component_queue));
-    }
-    for (int i = 0; i < num_threads; ++i) t[i].join();
-
+    auto r = ThreadRunner(&BaseReadClusteringEngine::merge_clusters_thread, this, std::ref(component_queue));
     return 0;
 }
 
@@ -272,11 +263,11 @@ int BaseReadClusteringEngine::clustering_round(){
     std::vector<ClusterConnection> cluster_connections = timeMeasureMemberFunc(&BaseReadClusteringEngine::get_connections, this, "Cluster connections")();
     plot_connection_quality(cluster_connections);
     ConnectionScore min_score;
-    std::cin >> min_score;
+    //std::cin >> min_score;
 
     int merge_operations = 0;
     for (ClusterConnection &conn : cluster_connections){
-        if (conn.score < min_score) continue;
+        //if (conn.score < min_score) continue;
         //if (!conn.is_good) continue;
 
         ClusterID parent_x = get_parent(conn.cluster_x_id, parents);

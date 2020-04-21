@@ -9,7 +9,7 @@ typedef int CategoryID;
 typedef uint8_t Quality;
 typedef uint32_t ClusterID;
 
-typedef int UpperSpecificity;
+typedef double UpperSpecificity;
 typedef int NumOfOccurrences;
 typedef int UniqueKmerCount;
 typedef std::map<UpperSpecificity, std::map<NumOfOccurrences, UniqueKmerCount>> KmerSpecificity;

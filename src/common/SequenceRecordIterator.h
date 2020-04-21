@@ -29,6 +29,7 @@ struct GenomeReadData {
 
 
 struct MetaData {
+    std::string filename = "";
     uint64_t records = 0;
     uint64_t min_read_length = UINT64_MAX;
     uint64_t max_read_length = 0;
@@ -37,7 +38,6 @@ struct MetaData {
 };
 
 struct ReadFileMetaData : MetaData {
-    std::string filename = "";
     FileType file_type = FASTA;
 };
 
@@ -47,7 +47,7 @@ private:
     std::vector<std::string> paths;
     std::mutex _read_mutex;
 
-    bool _annotate;
+    bool _annotate = true;
 
     std::ifstream current_file;
     int current_file_index = 0;
@@ -69,13 +69,14 @@ private:
 
     void load_meta_data();
 public:
-    explicit SequenceRecordIterator(std::vector<std::string> &reads_paths, bool annotate);
+    explicit SequenceRecordIterator(std::string &path);
+    SequenceRecordIterator(std::vector<std::string> &reads_paths, bool annotate);
     ~SequenceRecordIterator();
 
     bool rewind();
     std::optional<GenomeReadData> get_next_record();
     std::vector<ReadFileMetaData> file_meta;
-    ReadFileMetaData meta = {};
+    ReadFileMetaData meta;
     uint8_t categories = 1;
 
     bool show_progress = false;

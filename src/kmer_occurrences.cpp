@@ -4,13 +4,13 @@
 #include <boost/program_options.hpp>
 #include <boost/program_options/options_description.hpp>
 #include <fmt/format.h>
-#include <boost/algorithm/string/join.hpp>
 
 #include "common/SequenceRecordIterator.h"
 #include "common/KmerIterator.h"
 #include "common/Utils.h"
 #include "common/KmerAnalysis.h"
 #include "common/Plotting.h"
+#include "common/KmerOccurrenceCounter.h"
 
 
 namespace po = boost::program_options;
@@ -43,33 +43,36 @@ int main(int argc, char *argv[]) {
     }
 
     SequenceRecordIterator read_iterator = SequenceRecordIterator(read_paths, true);
+    auto occurrence_counter = KmerOccurrenceCounter();
 
     int selected_k;
-    uint64_t expected_num_of_kmers;
     if (vm.count("k-size")){
-        selected_k = vm["k-size"].as<int>();
-        expected_num_of_kmers = get_approximate_kmer_count(read_iterator, selected_k);
+        occurrence_counter = KmerOccurrenceCounter(read_iterator, vm["k-size"].as<int>());
     } else {
-        auto k_and_count = get_unique_k_length(read_iterator);
-        selected_k = k_and_count.first;
-        expected_num_of_kmers = k_and_count.second;
+        occurrence_counter = KmerOccurrenceCounter(read_iterator);
     }
-
-    std::cout << fmt::format("Expecting {} kmers\n", expected_num_of_kmers);
-    KmerCountingBloomFilter bf = kmer_occurrence_filter(read_iterator, selected_k, expected_num_of_kmers);
-
-    Histogram hist = kmer_occurrence_histogram(read_iterator, bf, selected_k, expected_num_of_kmers);
-    plot_histogram(hist);
 
     std::string output_path;
     if (vm.count("output")) {
         output_path = vm["output"].as<std::string>();
     } else {
-        std::vector<std::string> filenames;
-        std::transform(read_iterator.file_meta.begin(), read_iterator.file_meta.end(), std::back_inserter(filenames), [](ReadFileMetaData &meta) -> std::string { return meta.filename; });
-        output_path = boost::algorithm::join(filenames, "__") + "__filter.bin";
+        output_path = read_iterator.meta.filename + "__kmers.bin";
     }
 
-    bf.dump(output_path);
+    if (read_iterator.categories == 1){
+        auto hist = occurrence_counter.get_histogram();
+        plot_histogram(hist);
+    } else {
+        std::vector<double> spec_thresholds = {70, 85, 90, 95, 99, 101};
+        KmerSpecificity spec = occurrence_counter.get_specificity(spec_thresholds);
+        std::map<int, KmerSpecificity> spec_map = {{selected_k, spec}};
+        plot_kmer_specificity(spec_map, 100);
+    }
+
+    int lower, upper;
+    std::cout << "Enter lower and upper bounds for exported kmers\n";
+    std::cin >> lower >> upper;
+
+    occurrence_counter.export_kmers_in_range(lower, upper, output_path);
     return 0;
 }

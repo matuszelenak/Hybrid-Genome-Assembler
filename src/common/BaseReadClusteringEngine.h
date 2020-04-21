@@ -6,7 +6,7 @@
 
 #include "SequenceRecordIterator.h"
 #include "GenomeReadCluster.h"
-#include "KmerCountingBloomFilter.h"
+#include "../lib/BloomFilter.h"
 
 #ifndef SRC_BASEREADCLUSTERINGENGINE_H
 #define SRC_BASEREADCLUSTERINGENGINE_H
@@ -43,8 +43,8 @@ struct ClusterConnection{
 class BaseReadClusteringEngine {
 protected:
     SequenceRecordIterator* reader;
-    KmerCountingBloomFilter* filter;
-    int k, lower_coverage, upper_coverage;
+    bloom::BloomFilter<Kmer>* kmers;
+    int k;
 
     void construct_indices_thread();
     int construct_indices();
@@ -65,7 +65,7 @@ public:
     void run_clustering();
     int export_clusters(int min_size);
 
-    BaseReadClusteringEngine(SequenceRecordIterator &read_iterator, KmerCountingBloomFilter &bf, int k, int lower_coverage, int upper_coverage);
+    BaseReadClusteringEngine(SequenceRecordIterator &read_iterator, int k, bloom::BloomFilter<Kmer> &kmers);
 
     void print_clusters(int first_n);
 

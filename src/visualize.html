@@ -2,42 +2,52 @@
 <html lang="en">
 <head>
 	<meta charset="UTF-8">
-	<title>Title</title>
-	<script type="application/javascript" src="reads.js"></script>
+    <title>Title</title>
+    <script type="application/javascript"> genomes = []; </script>
+    <script type="application/javascript" src="positions_in_reference.js"></script>
 </head>
 <body style="background: #333333">
-<canvas id="grid">
 
-</canvas>
+<canvas id="reference_1" height="450" width="1800"></canvas>
+<br>
+<br>
+<canvas id="reference_2" height="450" width="1800"></canvas>
+
 <script type="text/javascript">
-    const kmer_size = ~~(1800 / reads[0].length);
-    const canvas = document.getElementById('grid');
-    canvas.height = 900;
-    canvas.width = 1800;
-    const ctx = canvas.getContext('2d');
+    contexts = [...document.getElementsByTagName("canvas")].map(canvas => canvas.getContext('2d'));
+
+    const kmer_visual_size = 9
+
     const colorToCanvasColor = {'K': 'black', 'R': 'red', 'O': 'orange', 'Y': 'yellow', 'B': 'blue', 'G': 'green', 'U': 'grey'};
-    const readsPerBlock = Math.floor(canvas.height / (kmer_size + 1));
+    const kmersPerBlock = 45 * 180;
     let currentIndex = 0;
 
-    function renderBlock(index) {
-        let rowIndex = 0;
-        reads.slice(index * readsPerBlock, (index + 1) * readsPerBlock).forEach((read) => {
-            let colIndex = 0;
-            [...read].forEach(color => {
-                ctx.fillStyle = colorToCanvasColor[color];
-                ctx.fillRect(colIndex * (kmer_size + 1), rowIndex * (kmer_size + 1), kmer_size, kmer_size);
-                colIndex++;
-            });
-            rowIndex++;
+    function renderBlock(genome_index, index) {
+        let colIndex = 0, rowIndex = 0;
+        [...genomes[genome_index]].slice(index * kmersPerBlock, (index + 1) * kmersPerBlock).forEach(color => {
+            contexts[genome_index].fillStyle = colorToCanvasColor[color];
+            contexts[genome_index].fillRect(colIndex * (kmer_visual_size + 1), rowIndex * (kmer_visual_size + 1), kmer_visual_size, kmer_visual_size);
+            colIndex++;
+            if (colIndex == 180){
+                colIndex = 0;
+                rowIndex++;
+            }
         });
-    }
-
-    document.onkeydown = function (e) {
-        if (e.keyCode === 37){ currentIndex = Math.max(0, currentIndex - 1); renderBlock(currentIndex) }
-        if (e.keyCode === 39){ currentIndex++; ; renderBlock(currentIndex) }
     };
 
-    renderBlock(currentIndex);
+    function render(index){
+        let i;
+        for (i = 0; i < genomes.length; i++){
+            renderBlock(i, index);
+        }
+    };
+
+    document.onkeydown = function (e) {
+        if (e.keyCode === 37){ currentIndex = Math.max(0, currentIndex - 1); render(currentIndex) }
+        if (e.keyCode === 39){ currentIndex++; render(currentIndex); }
+    };
+
+    render(0);
 
 
 </script>

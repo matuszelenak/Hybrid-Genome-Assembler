@@ -1,8 +1,18 @@
 #include <fmt/format.h>
 #include <iostream>
+#include <boost/algorithm/string/join.hpp>
 
 #include "SequenceRecordIterator.h"
 #include "Utils.h"
+
+
+SequenceRecordIterator::SequenceRecordIterator(std::string &path) {
+    paths = {path};
+    load_meta_data();
+    rewind();
+    show_progress = true;
+}
+
 
 SequenceRecordIterator::SequenceRecordIterator(std::vector<std::string> &reads_paths, bool annotate) {
     _annotate = annotate;
@@ -24,6 +34,7 @@ void SequenceRecordIterator::load_meta_data() {
     file_meta.resize(paths.size());
 
     int previous_file_index = -1;
+    std::vector<std::string> filenames;
     ReadFileMetaData *current_meta = {};
     std::optional<GenomeReadData> read_record;
     while ((read_record = get_next_record()) != std::nullopt) {
@@ -34,6 +45,8 @@ void SequenceRecordIterator::load_meta_data() {
 
             current_meta = &file_meta[current_file_index];
             previous_file_index = current_file_index;
+
+            filenames.push_back(current_meta->filename);
         }
 
         uint64_t seq_length = read_record->sequence.length();
@@ -46,11 +59,11 @@ void SequenceRecordIterator::load_meta_data() {
 
         meta.total_bases += seq_length;
         meta.min_read_length = std::min(meta.min_read_length, seq_length);
-        meta.max_read_length = std::max(meta.max_read_length, seq_length);
         meta.records++;
         meta.avg_read_length += seq_length;
     }
     meta.avg_read_length /= meta.records;
+    meta.filename = boost::algorithm::join(filenames, "__");
     show_progress_step = std::max(1ul, meta.records / 1000);
 
     for (auto &data : file_meta) {

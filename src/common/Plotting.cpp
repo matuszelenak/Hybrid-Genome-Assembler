@@ -25,6 +25,7 @@ void plot_kmer_specificity(std::map<int, KmerSpecificity> &specificities, int ma
         for (const auto &bound_specs : k_specs.second) {
             std::vector<std::string> counts;
             for (const auto &coverage_counts : bound_specs.second) {
+                if (coverage_counts.second < 50) continue;
                 //if (coverage_counts.first < (double)max_coverage / 6.0) continue;
                 counts.push_back(fmt::format("({}, {})", coverage_counts.first, coverage_counts.second));
             }

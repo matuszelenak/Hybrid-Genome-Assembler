@@ -30,6 +30,11 @@ TARGET_LINK_LIBRARIES( clustering LINK_PUBLIC ${Boost_LIBRARIES} stdc++fs pthrea
 target_link_libraries( clustering PRIVATE tsl::robin_map)
 
 
+## Locating characteristic kmers in reference genome
+add_executable(locate locate_in_reference.cpp ${COMMON_SRC_FILES} ${LIB_SRC_FILES})
+TARGET_LINK_LIBRARIES( locate LINK_PUBLIC ${Boost_LIBRARIES} stdc++fs pthread fmt)
+target_link_libraries( locate PRIVATE tsl::robin_map)
+
 
 
 add_executable(playground playground/Playground.cpp ${COMMON_SRC_FILES} ${LIB_SRC_FILES})
