@@ -33,7 +33,7 @@ void plot_connection_quality(std::vector<ClusterConnection> &connections){
         good_connections.push_back(fmt::format("{}: {}", it->first, it->second));
     }
     std::string hist_input = fmt::format("{{{}}}\n{{{}}}", algo::join(good_connections, ", "), algo::join(bad_connections, ", "));
-    run_command_with_input("python3 common/python/plot_connections_histogram.py", hist_input);
+    run_command_with_input("python scripts/plotting.py --plot connection_histogram", hist_input);
 }
 
 
@@ -133,8 +133,6 @@ void BaseReadClusteringEngine::construct_read_category_map() {
     }
 }
 
-
-
 BaseReadClusteringEngine::BaseReadClusteringEngine(SequenceRecordIterator &read_iterator, int k, bloom::BloomFilter<Kmer> &kmers) {
     this->k = k;
     this->reader = &read_iterator;
@@ -156,7 +154,7 @@ void BaseReadClusteringEngine::construct_indices_thread(){
             }
         }
 
-        if (in_read_discriminative.size() >= 50){
+        if (in_read_discriminative.size() >= 5){
             std::vector<KmerID> in_read_discriminative_ids;
 
             index_merge.lock();
@@ -203,11 +201,12 @@ void BaseReadClusteringEngine::get_connections_thread(std::vector<ClusterID> &cl
         }
         shared_kmer_counts.erase(pivot_id);
 
-        connections_mut.lock();
         for (auto iter = begin(shared_kmer_counts); iter != end(shared_kmer_counts); iter++) {
             if (iter->second < MIN_SCORE) continue;
 
             bool is_newly_processed;
+
+            connections_mut.lock();
             if (pivot_id < iter->second){
                 is_newly_processed = processed.insert(ProcessedClusters::value_type({pivot_id, iter->second})).second;
             } else {
@@ -216,17 +215,13 @@ void BaseReadClusteringEngine::get_connections_thread(std::vector<ClusterID> &cl
             if (is_newly_processed){
                 accumulator.push_back({iter->first, pivot_id, iter->second, cluster_index[iter->first]->categories == cluster_index[pivot_id]->categories});
             }
+            connections_mut.unlock();
         }
-        connections_mut.unlock();
     }
 }
 
-
-std::vector<ClusterConnection> BaseReadClusteringEngine::get_connections(){
+std::vector<ClusterConnection> BaseReadClusteringEngine::get_connections(std::vector<ClusterID> &cluster_ids){
     std::vector<ClusterConnection> connections;
-
-    std::vector<ClusterID> cluster_ids;
-    std::transform(cluster_index.begin(), cluster_index.end(), std::back_inserter(cluster_ids), [](ClusterIndex::value_type &val) -> ClusterID { return val.first; });
 
     unsigned int num_threads = std::thread::hardware_concurrency();
     std::thread t[num_threads];
@@ -249,7 +244,6 @@ std::vector<ClusterConnection> BaseReadClusteringEngine::get_connections(){
     return connections;
 }
 
-
 ClusterID get_parent(ClusterID cluster_id, tsl::robin_map<ClusterID, ClusterID> &parents){
     if (cluster_id == parents[cluster_id]){
         return cluster_id;
@@ -257,7 +251,6 @@ ClusterID get_parent(ClusterID cluster_id, tsl::robin_map<ClusterID, ClusterID> 
     parents[cluster_id] = get_parent(parents[cluster_id], parents);
     return parents[cluster_id];
 }
-
 
 void BaseReadClusteringEngine::merge_clusters_thread(std::queue<IDComponent> &component_queue){
     while (true){
@@ -270,7 +263,6 @@ void BaseReadClusteringEngine::merge_clusters_thread(std::queue<IDComponent> &co
         component_queue.pop();
         merge_mut.unlock();
 
-        //TODO faster merging using minheap?
         GenomeReadCluster* survivor = cluster_index[component[0]];
 
         std::vector<KmerID> merged_discriminative_ids;
@@ -296,7 +288,6 @@ void BaseReadClusteringEngine::merge_clusters_thread(std::queue<IDComponent> &co
 }
 
 int BaseReadClusteringEngine::merge_clusters(const tsl::robin_map<ClusterID, IDComponent> &components){
-    // Now do the actual merging of clusters in threads
     std::queue<IDComponent> component_queue;
     for (auto component_it = begin(components); component_it != end(components); component_it++){
         if (component_it->second.size() > 1){
@@ -308,7 +299,6 @@ int BaseReadClusteringEngine::merge_clusters(const tsl::robin_map<ClusterID, IDC
     return 0;
 }
 
-
 int BaseReadClusteringEngine::clustering_round(){
     tsl::robin_map<ClusterID, ClusterID>parents;
     tsl::robin_map<ClusterID, IDComponent> components;
@@ -317,15 +307,14 @@ int BaseReadClusteringEngine::clustering_round(){
         components[cluster_iter->second->reference_id] = {cluster_iter->second->reference_id};
     }
 
-    std::vector<ClusterConnection> cluster_connections = timeMeasureMemberFunc(&BaseReadClusteringEngine::get_connections, this, "Cluster connections")();
+    std::vector<ClusterID> cluster_ids;
+    std::transform(cluster_index.begin(), cluster_index.end(), std::back_inserter(cluster_ids), [](ClusterIndex::value_type &val) -> ClusterID { return val.first; });
+
+    std::vector<ClusterConnection> cluster_connections = timeMeasureMemberFunc(&BaseReadClusteringEngine::get_connections, this, "Cluster connections")(cluster_ids);
     plot_connection_quality(cluster_connections);
-    ConnectionScore min_score;
-    //std::cin >> min_score;
 
     int merge_operations = 0;
     for (ClusterConnection &conn : cluster_connections){
-        //if (conn.score < min_score) continue;
-        //if (!conn.is_good) continue;
 
         ClusterID parent_x = get_parent(conn.cluster_x_id, parents);
         ClusterID parent_y = get_parent(conn.cluster_y_id, parents);
@@ -396,10 +385,36 @@ int BaseReadClusteringEngine::export_clusters(int min_size) {
     return exported_clusters;
 }
 
-void BaseReadClusteringEngine::run_clustering(){
-    while (clustering_round() > 0){
-        print_clusters(100);
+void BaseReadClusteringEngine::export_connections(std::vector<ClusterID> &cluster_ids){
+    MIN_SCORE = 10;
+    std::vector<ClusterConnection> connections = timeMeasureMemberFunc(&BaseReadClusteringEngine::get_connections, this, "Cluster connections")(cluster_ids);
+
+    std::ofstream conn_file;
+    conn_file.open("connections");
+
+    conn_file << cluster_ids.size() << "\n";
+    for (ClusterID id : cluster_ids){
+        conn_file << id << " " << *begin(cluster_index[id]->categories) << "\n";
     }
+
+    conn_file << connections.size() << "\n";
+    for (auto conn : connections){
+        conn_file << conn.cluster_x_id << " " << conn.cluster_y_id << " " << conn.score << " " << (int)conn.is_good << "\n";
+    }
+
+    conn_file.close();
+}
+
+void BaseReadClusteringEngine::run_clustering(){
+    clustering_round();
     print_clusters(-1);
+
+    std::vector<ClusterID> cluster_ids;
+    for (auto it = begin(cluster_index); it != end(cluster_index); ++it){
+        if (it->second->size() == 1 && it->second->discriminative_kmer_ids.size() > 5) cluster_ids.push_back(it->first);
+    }
+
+    export_connections(cluster_ids);
+
     std::cout << fmt::format("Exported {} clusters\n", timeMeasureMemberFunc(&BaseReadClusteringEngine::export_clusters, this, "Exporting clusters")(10));
 }

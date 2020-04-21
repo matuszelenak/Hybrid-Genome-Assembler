@@ -8,8 +8,8 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3 -march=native -fconcepts")
 FIND_PACKAGE( Boost 1.65 COMPONENTS program_options date_time system REQUIRED )
 INCLUDE_DIRECTORIES( ${Boost_INCLUDE_DIR} )
 
-add_subdirectory(fmt EXCLUDE_FROM_ALL)
-add_subdirectory(robin-map EXCLUDE_FROM_ALL)
+add_subdirectory(lib/fmt EXCLUDE_FROM_ALL)
+add_subdirectory(lib/robin-map EXCLUDE_FROM_ALL)
 
 
 file(GLOB COMMON_SRC_FILES ${PROJECT_SOURCE_DIR}/common/*.cpp)
@@ -34,12 +34,3 @@ target_link_libraries( clustering PRIVATE tsl::robin_map)
 add_executable(locate locate_in_reference.cpp ${COMMON_SRC_FILES} ${LIB_SRC_FILES})
 TARGET_LINK_LIBRARIES( locate LINK_PUBLIC ${Boost_LIBRARIES} stdc++fs pthread fmt)
 target_link_libraries( locate PRIVATE tsl::robin_map)
-
-
-
-add_executable(playground playground/Playground.cpp ${COMMON_SRC_FILES} ${LIB_SRC_FILES})
-TARGET_LINK_LIBRARIES( playground LINK_PUBLIC ${Boost_LIBRARIES} stdc++fs pthread fmt)
-target_link_libraries( playground PRIVATE tsl::robin_map)
-
-
-add_executable(kmerge playground/kmerge.cpp)

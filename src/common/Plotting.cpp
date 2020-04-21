@@ -13,7 +13,7 @@ void plot_histogram(Histogram &hist){
         return fmt::format("{}: {}", occ.first, occ.second);
     });
     std::string plot_input = fmt::format("{{{}}}", algo::join(occurrence_strings, ", "));
-    run_command_with_input("python common/python/plot.py", plot_input);
+    run_command_with_input("python scripts/plotting.py --plot kmer_histogram", plot_input);
 }
 
 
@@ -34,5 +34,5 @@ void plot_kmer_specificity(std::map<int, KmerSpecificity> &specificities, int ma
         k_spec_strings.push_back(fmt::format("({}, [{}])", k_specs.first, algo::join(bound_strings, ", ")));
     }
     std::string plot_input = fmt::format("{} {}\n{}", specificities.size(), max_coverage, algo::join(k_spec_strings, "\n"));
-    std::cout << run_command_with_input("python3 common/python/plot_histogram.py", plot_input) << std::endl;
+    std::cout << run_command_with_input("python scripts/plotting.py --plot kmer_histogram_with_spec", plot_input) << std::endl;
 }

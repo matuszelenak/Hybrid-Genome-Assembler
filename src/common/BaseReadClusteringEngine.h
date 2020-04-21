@@ -55,7 +55,7 @@ protected:
     tsl::robin_map<std::string, CategoryID> read_category_map;
 
     void get_connections_thread(std::vector<ClusterID> &cluster_indices, std::pair<int, int> range, std::vector<ClusterConnection> &accumulator, ProcessedClusters &processed);
-    std::vector<ClusterConnection> get_connections();
+    std::vector<ClusterConnection> get_connections(std::vector<ClusterID> &cluster_ids);
 
     void merge_clusters_thread(std::queue<IDComponent> &component_queue);
     int merge_clusters(const tsl::robin_map<ClusterID, IDComponent> &components);
@@ -72,6 +72,8 @@ public:
     std::string cluster_consistency(GenomeReadCluster *cluster);
 
     void construct_read_category_map();
+
+    void export_connections(std::vector<ClusterID> &cluster_ids);
 };
 
 void plot_connection_quality(std::vector<ClusterConnection> &connections);
