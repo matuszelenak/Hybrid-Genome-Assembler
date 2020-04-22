@@ -1,6 +1,7 @@
 #include <tsl/robin_map.h>
 #include <tsl/robin_set.h>
 #include <boost/functional/hash.hpp>
+#include <experimental/filesystem>
 #include <map>
 #include <queue>
 
@@ -63,7 +64,7 @@ protected:
     int clustering_round();
 public:
     void run_clustering();
-    int export_clusters(int min_size);
+    std::map<ClusterID, std::string> export_clusters(std::vector<ClusterID> &cluster_ids, std::experimental::filesystem::path &directory_path);
 
     BaseReadClusteringEngine(SequenceRecordIterator &read_iterator, int k, bloom::BloomFilter<Kmer> &kmers);
 
@@ -74,6 +75,8 @@ public:
     void construct_read_category_map();
 
     void export_connections(std::vector<ClusterID> &cluster_ids);
+
+    void assemble_clusters(std::vector<ClusterID> &cluster_ids);
 };
 
 void plot_connection_quality(std::vector<ClusterConnection> &connections);

@@ -68,8 +68,6 @@ void SequenceRecordIterator::load_meta_data() {
 
     for (auto &data : file_meta) {
         data.avg_read_length /= data.records;
-        std::cout << fmt::format("{}:\n-{} reads\n- {} total bases\n- {} average read length\n- {} max read length\n- {} min read length\n\n",
-                                 data.filename, data.records, data.total_bases, data.avg_read_length, data.max_read_length, data.min_read_length);
     }
 }
 
@@ -86,23 +84,25 @@ bool SequenceRecordIterator::load_file_at_position(int pos) {
     }
 
     // Determine the file format
-    std::string header = get_next_line();
-    std::string sequence = get_next_line();
-    if (header.empty()) {
+    try{
+        std::string header = get_next_line();
+        std::string sequence = get_next_line();
+
+        if (header[0] == '@') {
+            std::string comment = get_next_line();
+            if (!comment.empty() && comment[0] == '+') {
+                this->current_record_method = &SequenceRecordIterator::read_fastq_record;
+                this->current_file_type = FASTQ;
+            }
+        } else if (header[0] == '>') {
+            this->current_record_method = &SequenceRecordIterator::read_fasta_record;
+            this->current_file_type = FASTA;
+        } else
+            throw std::logic_error("Unrecognized file format");
+
+    } catch (const std::length_error &e) {
         throw std::logic_error("File is empty");
     }
-
-    if (header[0] == '@') {
-        std::string comment = get_next_line();
-        if (!comment.empty() && comment[0] == '+') {
-            this->current_record_method = &SequenceRecordIterator::read_fastq_record;
-            this->current_file_type = FASTQ;
-        }
-    } else if (header[0] == '>') {
-        this->current_record_method = &SequenceRecordIterator::read_fasta_record;
-        this->current_file_type = FASTA;
-    } else
-        throw std::logic_error("Unrecognized file format");
 
     current_file.seekg(0, std::ifstream::beg);
     current_file_index = pos;

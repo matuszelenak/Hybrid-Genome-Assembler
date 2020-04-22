@@ -1,4 +1,5 @@
 #include <set>
+#include <fmt/format.h>
 
 #include "Types.h"
 
@@ -20,7 +21,17 @@ public:
     std::vector<KmerID> discriminative_kmer_ids;
     std::set<CategoryID> categories;
 
-    uint64_t size(){ return read_headers.size(); };
+    [[nodiscard]] uint64_t size() const{ return read_headers.size(); };
+
+    std::string repr(){
+        std::string cats;
+        for (auto cat : categories){
+            cats += std::to_string(cat);
+            cats += " ";
+        }
+
+        return fmt::format("#{} size {} categories {}", reference_id, size(), cats);
+    }
 };
 
 

@@ -13,7 +13,9 @@
 #define SRC_SEQUENCERECORDITERATOR_H
 
 
-enum FileType {FASTA, FASTQ};
+enum FileType {
+    FASTA, FASTQ, UNKNOWN
+};
 
 
 struct GenomeReadData {
@@ -22,7 +24,7 @@ struct GenomeReadData {
     std::string qualities = "";
     CategoryID category_id = 0;
 
-    std::string fastq_string(){
+    std::string fastq_string() {
         return fmt::format("{}\n{}\n+\n{}", this->header, this->sequence, this->qualities);
     }
 };
@@ -35,10 +37,15 @@ struct MetaData {
     uint64_t max_read_length = 0;
     uint64_t avg_read_length = 0;
     uint64_t total_bases = 0;
+
+    std::string repr() {
+        return fmt::format("{}:\n-{} reads\n- {} total bases\n- {} average read length\n- {} max read length\n- {} min read length\n\n",
+                           this->filename, this->records, this->total_bases, this->avg_read_length, this->max_read_length, this->min_read_length);
+    }
 };
 
 struct ReadFileMetaData : MetaData {
-    FileType file_type = FASTA;
+    FileType file_type = UNKNOWN;
 };
 
 
@@ -68,13 +75,18 @@ private:
     bool load_file_at_position(int pos);
 
     void load_meta_data();
+
 public:
     explicit SequenceRecordIterator(std::string &path);
+
     SequenceRecordIterator(std::vector<std::string> &reads_paths, bool annotate);
+
     ~SequenceRecordIterator();
 
     bool rewind();
+
     std::optional<GenomeReadData> get_next_record();
+
     std::vector<ReadFileMetaData> file_meta;
     ReadFileMetaData meta;
     uint8_t categories = 1;
