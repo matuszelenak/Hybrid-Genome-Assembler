@@ -110,6 +110,11 @@ bool SequenceRecordIterator::load_file_at_position(int pos) {
             this->parse_header_method = &SequenceRecordIterator::parse_nanosimh_header;
         }
 
+        position_and_length = parse_PaSS_header(header);
+        if (position_and_length.second != 0){
+            this->parse_header_method = &SequenceRecordIterator::parse_PaSS_header;
+        }
+
     } catch (const std::length_error &e) {
         throw std::logic_error("File is empty");
     }
@@ -187,6 +192,16 @@ std::pair<uint32_t, uint32_t> SequenceRecordIterator::parse_nanosimh_header(std:
     if (boost::regex_search(header, match, nanosimh_header_regex))
     {
         return {std::stoul(match[1].str()), std::stoul(match[2].str())};
+    }
+    return {0, 0};
+}
+
+std::pair<uint32_t, uint32_t> SequenceRecordIterator::parse_PaSS_header(std::string &header) {
+    boost::smatch match;
+    if (boost::regex_search(header, match, PaSS_header_regex))
+    {
+        auto length = std::stoul(match[2].str()) - std::stoul(match[1].str());
+        return {std::stoul(match[3].str()), length};
     }
     return {0, 0};
 }

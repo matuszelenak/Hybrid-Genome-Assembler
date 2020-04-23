@@ -88,6 +88,9 @@ private:
     boost::regex nanosimh_header_regex{"_([0-9]+)_[^_]+_[^_]+_[^_]+_[^_]+_([0-9]+)_"};
     std::pair<uint32_t, uint32_t> parse_nanosimh_header(std::string &header);
 
+    boost::regex PaSS_header_regex{"([0-9]+)_([0-9]+)\\|([0-9]+)\\|"};
+    std::pair<uint32_t, uint32_t> parse_PaSS_header(std::string &header);
+
     std::pair<uint32_t, uint32_t> parse_unknown_header(std::string &header){ return {0, 0}; };
 
     std::pair<uint32_t, uint32_t> (SequenceRecordIterator::*parse_header_method)(std::string &header) = &SequenceRecordIterator::parse_unknown_header;

@@ -24,19 +24,20 @@ KmerIterator::KmerIterator(std::string &sequence, int k) {
     if (k > 32) {
         throw std::invalid_argument("Kmer size is too big");
     }
-    if (sequence.length() < k){
-        throw std::invalid_argument("Sequence shorter than specified k");
-    }
-    kmer_size = k;
 
+    kmer_size = k;
     sequence_ptr = &sequence;
     clearing_mask = 0xFFFFFFFFFFFFFFFF >> (sizeof(uint64_t) * 8 - (k * BITS_PER_BASE));
     complement_shift_by = (((uint8_t) (k - 1) * BITS_PER_BASE));
 
-    for (int i = 0; i < k - 1; i++) {
-        roll_forward_strand();
-        roll_complementary_strand();
-        position_in_sequence++;
+    if (sequence.length() < k){
+        position_in_sequence = sequence.length();
+    } else {
+        for (int i = 0; i < k - 1; i++) {
+            roll_forward_strand();
+            roll_complementary_strand();
+            position_in_sequence++;
+        }
     }
 }
 
