@@ -9,6 +9,7 @@ from scipy.signal import find_peaks
 BoundSpecificities = Tuple[int, List[Tuple[int, int]]]
 KmerSpecificities = Tuple[int, List[BoundSpecificities]]
 
+
 class Unimplemented:
     def __init__(self):
         raise NotImplementedError
@@ -21,7 +22,6 @@ class KmerHistogram:
             if i not in occurrences:
                 occurrences[i] = 0
 
-        plt.figure(num=None, figsize=(1920 // 80, 1080 // 80), dpi=80, facecolor='w', edgecolor='k')
         indices = np.arange(max(occurrences.keys()))
         data = np.array([occurrences[coverage] for coverage in indices])
         bars = plt.bar(indices, data, width=0.8, color='r')
@@ -96,7 +96,6 @@ class ConnectionHistogram:
 
         strengths = sorted(list(list(good_conns.keys()) + list(bad_conns.keys())), reverse=True)
 
-        plt.figure(num=None, figsize=(1920 // 80, 1080 // 80), dpi=80, facecolor='w', edgecolor='k')
         indices = np.array(strengths)
         good_data = np.array([(math.sqrt(good_conns[strength]) if strength in good_conns else 0) for strength in strengths])
         plt.bar(indices, good_data, width=0.8, color='g')
@@ -106,14 +105,34 @@ class ConnectionHistogram:
 
         plt.show()
 
+
+class ClusterCoverage:
+    def __init__(self):
+        a_intervals = sorted(eval(input()))
+        b_intervals = sorted(eval(input()))
+
+        def plot_intervals(intervals, y):
+            for start, stop in intervals:
+                plt.hlines(y, start, stop, (0.0, 1.0, 0.0, 0.3), lw=20)
+                plt.vlines(start, y+0.03, y-0.03, 'g')
+                plt.vlines(stop, y+0.03, y-0.03, 'r')
+
+        plot_intervals(a_intervals, -0.1)
+        plot_intervals(b_intervals, 0.1)
+
+        plt.show()
+
+
 SUPPORTED_PLOTS = {
     'kmer_histogram': KmerHistogram,
     'kmer_histogram_with_spec': KmerHistogramWithSpec,
-    'connection_histogram': ConnectionHistogram
+    'connection_histogram': ConnectionHistogram,
+    'cluster_coverage': ClusterCoverage
 }
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--plot', dest='plot_choice', type=str, choices=SUPPORTED_PLOTS, required=True)
 args = parser.parse_args()
 
+plt.figure(num=None, figsize=(1920 // 80, 1080 // 80), dpi=80, facecolor='w', edgecolor='k')
 SUPPORTED_PLOTS.get(args.plot_choice, Unimplemented)()

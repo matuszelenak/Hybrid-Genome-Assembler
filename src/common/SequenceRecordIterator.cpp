@@ -100,6 +100,16 @@ bool SequenceRecordIterator::load_file_at_position(int pos) {
         } else
             throw std::logic_error("Unrecognized file format");
 
+        auto position_and_length = parse_simlord_header(header);
+        if (position_and_length.second != 0){
+            this->parse_header_method = &SequenceRecordIterator::parse_simlord_header;
+        }
+
+        position_and_length = parse_nanosimh_header(header);
+        if (position_and_length.second != 0){
+            this->parse_header_method = &SequenceRecordIterator::parse_nanosimh_header;
+        }
+
     } catch (const std::length_error &e) {
         throw std::logic_error("File is empty");
     }
@@ -143,10 +153,10 @@ std::optional<GenomeReadData> SequenceRecordIterator::get_next_record() {
     std::lock_guard<std::mutex> lock(_read_mutex);
     try {
         auto result = std::optional<GenomeReadData>{(this->*current_record_method)()};
-        auto parsed = parse_header(result->header);
-        if (parsed.first != 0){
-            result->start = parsed.second;
-            result->end = parsed.second + parsed.first;
+        auto position_and_length = (this->*parse_header_method)(result->header);
+        if (position_and_length.first != 0){
+            result->start = position_and_length.first;
+            result->end = position_and_length.first + position_and_length.second;
         }
 
         if (show_progress && show_progress_step && (current_read_index % show_progress_step == 0 || current_read_index == meta.records)){
@@ -163,9 +173,18 @@ SequenceRecordIterator::~SequenceRecordIterator() {
     if (current_file.is_open()) current_file.close();
 }
 
-std::pair<uint32_t, uint32_t> SequenceRecordIterator::parse_header(std::string &header) {
+std::pair<uint32_t, uint32_t> SequenceRecordIterator::parse_simlord_header(std::string &header) {
     boost::smatch match;
-    if (boost::regex_search(header, match, header_regex))
+    if (boost::regex_search(header, match, simlord_header_regex))
+    {
+        return {std::stoul(match[2].str()), std::stoul(match[1].str())};
+    }
+    return {0, 0};
+}
+
+std::pair<uint32_t, uint32_t> SequenceRecordIterator::parse_nanosimh_header(std::string &header) {
+    boost::smatch match;
+    if (boost::regex_search(header, match, nanosimh_header_regex))
     {
         return {std::stoul(match[1].str()), std::stoul(match[2].str())};
     }

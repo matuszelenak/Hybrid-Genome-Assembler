@@ -21,8 +21,6 @@ typedef std::map<ClusterID, GenomeReadCluster*> ClusterIndex;
 typedef std::vector<std::set<ClusterID> > KmerClusterIndex;
 typedef std::vector<ClusterID > IDComponent;
 
-typedef tsl::robin_set<std::pair<ClusterID, ClusterID>, boost::hash<std::pair<ClusterID, ClusterID>>> ProcessedClusters;
-
 
 struct ClusterConnection{
     ClusterID cluster_x_id;
@@ -55,7 +53,7 @@ protected:
     KmerClusterIndex kmer_cluster_index;
     tsl::robin_map<std::string, CategoryID> read_category_map;
 
-    void get_connections_thread(std::vector<ClusterID> &cluster_indices, std::pair<int, int> range, std::vector<ClusterConnection> &accumulator, ProcessedClusters &processed);
+    void get_connections_thread(std::vector<ClusterID> &cluster_indices, std::vector<ClusterConnection> &accumulator, int &index);
     std::vector<ClusterConnection> get_connections(std::vector<ClusterID> &cluster_ids);
 
     void merge_clusters_thread(std::queue<IDComponent> &component_queue);

@@ -27,7 +27,10 @@ struct GenomeReadData {
     uint32_t start = 0;
     uint32_t end = 0;
 
-    std::string fastq_string() {
+    std::string fastX_string() {
+        if (this->qualities.empty()){
+            return fmt::format("{}\n{}", this->header, this->sequence);
+        }
         return fmt::format("{}\n{}\n+\n{}", this->header, this->sequence, this->qualities);
     }
 };
@@ -42,7 +45,7 @@ struct MetaData {
     uint64_t total_bases = 0;
 
     std::string repr() {
-        return fmt::format("{}:\n-{} reads\n- {} total bases\n- {} average read length\n- {} max read length\n- {} min read length\n\n",
+        return fmt::format("{}:\n- {} reads\n- {} total bases\n- {} average read length\n- {} max read length\n- {} min read length\n\n",
                            this->filename, this->records, this->total_bases, this->avg_read_length, this->max_read_length, this->min_read_length);
     }
 };
@@ -79,8 +82,15 @@ private:
 
     void load_meta_data();
 
-    boost::regex header_regex{";length=([0-9]+)bp;startpos=([0-9]+);"};
-    std::pair<uint32_t, uint32_t> parse_header(std::string &header);
+    boost::regex simlord_header_regex{";length=([0-9]+)bp;startpos=([0-9]+);"};
+    std::pair<uint32_t, uint32_t> parse_simlord_header(std::string &header);
+
+    boost::regex nanosimh_header_regex{"_([0-9]+)_[^_]+_[^_]+_[^_]+_[^_]+_([0-9]+)_"};
+    std::pair<uint32_t, uint32_t> parse_nanosimh_header(std::string &header);
+
+    std::pair<uint32_t, uint32_t> parse_unknown_header(std::string &header){ return {0, 0}; };
+
+    std::pair<uint32_t, uint32_t> (SequenceRecordIterator::*parse_header_method)(std::string &header) = &SequenceRecordIterator::parse_unknown_header;
 
 public:
     explicit SequenceRecordIterator(std::string &path);

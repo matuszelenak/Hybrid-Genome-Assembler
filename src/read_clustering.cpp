@@ -42,6 +42,9 @@ int main(int argc, char *argv[]) {
     if (!vm.count("kmers")) throw std::invalid_argument("You need to specify path to kmers");
 
     SequenceRecordIterator read_iterator = SequenceRecordIterator(read_paths, true);
+    for (auto meta: read_iterator.file_meta){
+        std::cout << meta.repr();
+    }
 
     auto in = std::ifstream(vm["kmers"].as<std::string>(), std::ios::in | std::ios::binary);
     int k;

@@ -48,7 +48,7 @@ int main(int argc, char *argv[]) {
     std::optional<GenomeReadData> read;
     while ((read = reader.get_next_record()) != std::nullopt){
         if (dis(rng) < percentage){
-            subsampled_file << read->fastq_string() << std::endl;
+            subsampled_file << read->fastX_string() << std::endl;
         }
     }
     subsampled_file.close();

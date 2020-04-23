@@ -16,8 +16,9 @@ std::mutex connections_mut;
 std::mutex merge_mut;
 std::mutex component_erase_mut;
 std::mutex index_merge;
+std::mutex conn_index_mut;
 
-uint64_t MIN_SCORE = 60;
+uint64_t MIN_SCORE = 1;
 
 
 void plot_connection_quality(std::vector<ClusterConnection> &connections) {
@@ -35,6 +36,22 @@ void plot_connection_quality(std::vector<ClusterConnection> &connections) {
     std::string hist_input = fmt::format("{{{}}}\n{{{}}}", algo::join(good_connections, ", "), algo::join(bad_connections, ", "));
     run_command_with_input("python scripts/plotting.py --plot connection_histogram", hist_input);
 }
+
+
+void plot_cluster_coverage(std::vector<GenomeReadCluster*> &clusters){
+    std::map<CategoryID, std::vector<std::string> > category_intervals = {{0, {}}, {1, {}}};
+    for (auto cluster : clusters){
+        for (int i = 0; i < cluster->endpoints.size(); i += 2){
+            category_intervals[*cluster->categories.begin()].push_back(fmt::format("({}, {})", cluster->endpoints[i].first, cluster->endpoints[i + 1].first));
+        }
+    }
+    std::string input;
+    for (const auto& k_v : category_intervals){
+        input += ("[" + algo::join(k_v.second, ", ") + "]\n");
+    }
+    run_command_with_input("python scripts/plotting.py --plot cluster_coverage", input);
+}
+
 
 std::string BaseReadClusteringEngine::cluster_consistency(GenomeReadCluster *cluster) {
     std::map<CategoryID, int> category_counts = {{0, 0}, {1, 0}};
@@ -112,7 +129,7 @@ void BaseReadClusteringEngine::construct_indices_thread() {
             }
         }
 
-        if (in_read_discriminative.size() >= 60) {
+        if (in_read_discriminative.size() >= 5) {
             std::vector<KmerID> in_read_discriminative_ids;
 
             index_merge.lock();
@@ -147,57 +164,42 @@ int BaseReadClusteringEngine::construct_indices() {
 }
 
 
-void BaseReadClusteringEngine::get_connections_thread(std::vector<ClusterID> &cluster_indices, std::pair<int, int> range, std::vector<ClusterConnection> &accumulator,
-                                                      ProcessedClusters &processed) {
-    for (int i = range.first; i < range.second; i++) {
-        ClusterID pivot_id = cluster_indices[i];
+void BaseReadClusteringEngine::get_connections_thread(std::vector<ClusterID> &cluster_indices, std::vector<ClusterConnection> &accumulator, int &index) {
+    uint64_t total_calculated = 0;
+    while (true){
+        conn_index_mut.lock();
+        int pivot_index = index++;
+        conn_index_mut.unlock();
+
+        if (pivot_index >= cluster_indices.size()) break;
+        ClusterID pivot_id = cluster_indices[pivot_index];
+
         std::map<ClusterID, ConnectionScore> shared_kmer_counts;
 
         for (KmerID kmer_id : cluster_index[pivot_id]->discriminative_kmer_ids) {
-            for (ClusterID candidate_id : kmer_cluster_index[kmer_id]) {
-                shared_kmer_counts.insert(std::map<ClusterID, ConnectionScore>::value_type(candidate_id, 0)).first->second += 1;
+            for (auto candidate_it = kmer_cluster_index[kmer_id].begin(); candidate_it != kmer_cluster_index[kmer_id].lower_bound(pivot_id); ++candidate_it){
+                shared_kmer_counts.insert(std::map<ClusterID, ConnectionScore>::value_type(*candidate_it, 0)).first->second += 1;
             }
         }
         shared_kmer_counts.erase(pivot_id);
 
+        total_calculated += shared_kmer_counts.size();
+
         for (auto iter = begin(shared_kmer_counts); iter != end(shared_kmer_counts); iter++) {
             if (iter->second < MIN_SCORE) continue;
-
-            bool is_newly_processed;
-
             connections_mut.lock();
-            if (pivot_id < iter->second) {
-                is_newly_processed = processed.insert(ProcessedClusters::value_type({pivot_id, iter->second})).second;
-            } else {
-                is_newly_processed = processed.insert(ProcessedClusters::value_type({iter->second, pivot_id})).second;
-            }
-            if (is_newly_processed) {
-                accumulator.push_back({iter->first, pivot_id, iter->second, cluster_index[iter->first]->categories == cluster_index[pivot_id]->categories});
-            }
+            accumulator.push_back({iter->first, pivot_id, iter->second, cluster_index[iter->first]->categories == cluster_index[pivot_id]->categories});
             connections_mut.unlock();
         }
     }
+    std::cout << total_calculated << std::endl;
 }
 
 std::vector<ClusterConnection> BaseReadClusteringEngine::get_connections(std::vector<ClusterID> &cluster_ids) {
     std::vector<ClusterConnection> connections;
 
-    unsigned int num_threads = std::thread::hardware_concurrency();
-    std::thread t[num_threads];
-
-    ProcessedClusters processed;
-    int clusters_per_thread = (int) ceil(cluster_ids.size() / (double) num_threads);
-    for (int i = 0; i < num_threads; ++i) {
-        t[i] = std::thread(
-                &BaseReadClusteringEngine::get_connections_thread,
-                this,
-                std::ref(cluster_ids),
-                std::make_pair(i * clusters_per_thread, std::min((i + 1) * clusters_per_thread, (int) cluster_ids.size())),
-                std::ref(connections),
-                std::ref(processed)
-        );
-    }
-    for (int i = 0; i < num_threads; ++i) t[i].join();
+    int index = 0;
+    auto r = ThreadRunner(&BaseReadClusteringEngine::get_connections_thread, this, std::ref(cluster_ids), std::ref(connections), std::ref(index));
 
     std::sort(connections.rbegin(), connections.rend());
     return connections;
@@ -359,7 +361,7 @@ std::map<ClusterID, std::string> BaseReadClusteringEngine::export_clusters(std::
 
         cluster_file.open(cluster_file_path);
         for (const auto &header : cluster_index[id]->read_headers) {
-            cluster_file << header_to_read[header].fastq_string() << std::endl;
+            cluster_file << header_to_read[header].fastX_string() << std::endl;
         }
         cluster_file.close();
 
@@ -419,12 +421,21 @@ void BaseReadClusteringEngine::assemble_clusters(std::vector<ClusterID> &cluster
 void BaseReadClusteringEngine::run_clustering() {
     while (clustering_round() > 0){
         print_clusters(-1);
+
+        std::vector<GenomeReadCluster*> clusters_for_display;
+        for (auto it = begin(cluster_index); it != end(cluster_index); ++it) {
+            if (it->second->size() > 5){
+                clusters_for_display.push_back(it->second);
+            }
+        }
+        plot_cluster_coverage(clusters_for_display);
     };
 
     print_clusters(-1);
 
     std::vector<ClusterID> cluster_ids;
     std::vector<ClusterID> clusters_for_assembly;
+    std::vector<GenomeReadCluster*> clusters_for_display;
 
     for (auto it = begin(cluster_index); it != end(cluster_index); ++it) {
         if (it->second->size() == 1 && it->second->discriminative_kmer_ids.size() > 5) cluster_ids.push_back(it->first);
