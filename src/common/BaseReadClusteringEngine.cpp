@@ -36,59 +36,8 @@ void plot_connection_quality(std::vector<ClusterConnection> &connections) {
     run_command_with_input("python scripts/plotting.py --plot connection_histogram", hist_input);
 }
 
-
-template<typename T>
-void merge_n_vectors(std::vector<std::vector<T> *> &arrays, std::vector<T> &result) {
-    std::priority_queue<std::pair<T, int>, std::vector<std::pair<T, int>>, std::greater<std::pair<T, int>>> q;
-
-    int non_exhausted = 0;
-    std::vector<int> next_index(arrays.size(), 1);
-    for (int i = 0; i < arrays.size(); i++) {
-        if (!arrays[i]->empty()) {
-            q.push({(*arrays[i])[0], i});
-            non_exhausted++;
-        }
-    }
-    if (q.empty()) return;
-
-    auto top_pair = q.top();
-    T arr_val = top_pair.first;
-    int arr_index = top_pair.second;
-    q.pop();
-
-    T previous_value = arr_val;
-    result.push_back(previous_value);
-
-    if (next_index[arr_index] == arrays[arr_index]->size()) {
-        non_exhausted--;
-    } else {
-        q.push({(*arrays[arr_index])[next_index[arr_index]], arr_index});
-        next_index[arr_index]++;
-    }
-
-    while (non_exhausted > 0) {
-        top_pair = q.top();
-        arr_val = top_pair.first;
-        arr_index = top_pair.second;
-        q.pop();
-
-        if (arr_val != previous_value) {
-            result.push_back(arr_val);
-            previous_value = arr_val;
-        }
-
-        if (next_index[arr_index] == arrays[arr_index]->size()) {
-            non_exhausted--;
-        } else {
-            q.push({(*arrays[arr_index])[next_index[arr_index]], arr_index});
-            next_index[arr_index]++;
-        }
-    }
-}
-
-
 std::string BaseReadClusteringEngine::cluster_consistency(GenomeReadCluster *cluster) {
-    std::map<CategoryID, int> category_counts;
+    std::map<CategoryID, int> category_counts = {{0, 0}, {1, 0}};
     for (const auto &read_header : cluster->read_headers) {
         category_counts.insert(std::map<CategoryID, int>::value_type(read_category_map[read_header], 0)).first->second += 1;
     }
@@ -120,7 +69,7 @@ void BaseReadClusteringEngine::print_clusters(int first_n) {
     int size_one_clusters = 0;
     for (auto cluster : cluster_pointers) {
         if (cluster->size() > 1){
-            std::cout << cluster_consistency(cluster) << " ";
+            std::cout << cluster_consistency(cluster) << " " << cluster->intervals() << std::endl;
         } else {
             size_one_clusters++;
         }
@@ -183,7 +132,7 @@ void BaseReadClusteringEngine::construct_indices_thread() {
             }
 
             std::sort(in_read_discriminative_ids.begin(), in_read_discriminative_ids.end());
-            cluster_index.insert(ClusterIndex::value_type(new_cluster_id, new GenomeReadCluster(new_cluster_id, read->header, in_read_discriminative_ids, read->category_id)));
+            cluster_index.insert(ClusterIndex::value_type(new_cluster_id, new GenomeReadCluster(new_cluster_id, *read, in_read_discriminative_ids, read->category_id)));
 
             index_merge.unlock();
         }
@@ -275,14 +224,39 @@ void BaseReadClusteringEngine::merge_clusters_thread(std::queue<IDComponent> &co
 
         GenomeReadCluster *survivor = cluster_index[component[0]];
 
-        std::vector<KmerID> merged_discriminative_ids;
         std::vector<std::vector<KmerID> *> arrays_to_merge = {&survivor->discriminative_kmer_ids};
+        std::vector<std::vector<Endpoint>* > endpoints_to_merge = {&survivor->endpoints};
         for (int i = 1; i < component.size(); i++) {
             survivor->read_headers.insert(survivor->read_headers.end(), cluster_index[component[i]]->read_headers.begin(), cluster_index[component[i]]->read_headers.end());
             survivor->categories.insert(cluster_index[component[i]]->categories.begin(), cluster_index[component[i]]->categories.end());
+
             arrays_to_merge.push_back(&cluster_index[component[i]]->discriminative_kmer_ids);
+            endpoints_to_merge.push_back(&cluster_index[component[i]]->endpoints);
         }
-        merge_n_vectors(arrays_to_merge, merged_discriminative_ids);
+
+        std::vector<KmerID> merged_discriminative_ids;
+        merge_n_vectors(arrays_to_merge, merged_discriminative_ids, true);
+
+        std::vector<Endpoint> merged_endpoints;
+        merge_n_vectors(endpoints_to_merge, merged_endpoints, false);
+
+        std::vector<Endpoint> final_endpoints;
+        int opened_intervals = 0;
+        for (auto endpoint : merged_endpoints){
+            if (endpoint.second){
+                opened_intervals++;
+                if (opened_intervals == 1){
+                    final_endpoints.push_back(endpoint);
+                }
+            } else {
+                opened_intervals--;
+                if (opened_intervals == 0){
+                    final_endpoints.push_back(endpoint);
+                }
+            }
+        }
+
+        survivor->endpoints = final_endpoints;
         survivor->discriminative_kmer_ids = merged_discriminative_ids;
 
         component_erase_mut.lock();

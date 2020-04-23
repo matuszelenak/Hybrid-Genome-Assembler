@@ -6,6 +6,7 @@
 #include <thread>
 #include <mutex>
 #include <fmt/format.h>
+#include <boost/regex.hpp>
 
 #include "Types.h"
 
@@ -23,6 +24,8 @@ struct GenomeReadData {
     std::string sequence = "";
     std::string qualities = "";
     CategoryID category_id = 0;
+    uint32_t start = 0;
+    uint32_t end = 0;
 
     std::string fastq_string() {
         return fmt::format("{}\n{}\n+\n{}", this->header, this->sequence, this->qualities);
@@ -75,6 +78,9 @@ private:
     bool load_file_at_position(int pos);
 
     void load_meta_data();
+
+    boost::regex header_regex{";length=([0-9]+)bp;startpos=([0-9]+);"};
+    std::pair<uint32_t, uint32_t> parse_header(std::string &header);
 
 public:
     explicit SequenceRecordIterator(std::string &path);

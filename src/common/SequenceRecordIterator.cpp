@@ -128,7 +128,7 @@ GenomeReadData SequenceRecordIterator::read_fastq_record() {
     comment = get_next_line();
     qualities = get_next_line();
 
-    return {header, sequence, qualities, _annotate ? current_file_index : 0};
+    return {header, sequence, qualities, _annotate ? current_file_index : 0, 0, 0};
 }
 
 GenomeReadData SequenceRecordIterator::read_fasta_record() {
@@ -136,13 +136,19 @@ GenomeReadData SequenceRecordIterator::read_fasta_record() {
     header = get_next_line();
     sequence = get_next_line();
 
-    return {header, sequence, "", _annotate ? current_file_index : 0};
+    return {header, sequence, "", _annotate ? current_file_index : 0, 0, 0};
 }
 
 std::optional<GenomeReadData> SequenceRecordIterator::get_next_record() {
     std::lock_guard<std::mutex> lock(_read_mutex);
     try {
         auto result = std::optional<GenomeReadData>{(this->*current_record_method)()};
+        auto parsed = parse_header(result->header);
+        if (parsed.first != 0){
+            result->start = parsed.second;
+            result->end = parsed.second + parsed.first;
+        }
+
         if (show_progress && show_progress_step && (current_read_index % show_progress_step == 0 || current_read_index == meta.records)){
             progress_bar(current_read_index, meta.records, "Iterating reads...");
         }
@@ -155,4 +161,13 @@ std::optional<GenomeReadData> SequenceRecordIterator::get_next_record() {
 
 SequenceRecordIterator::~SequenceRecordIterator() {
     if (current_file.is_open()) current_file.close();
+}
+
+std::pair<uint32_t, uint32_t> SequenceRecordIterator::parse_header(std::string &header) {
+    boost::smatch match;
+    if (boost::regex_search(header, match, header_regex))
+    {
+        return {std::stoul(match[1].str()), std::stoul(match[2].str())};
+    }
+    return {0, 0};
 }

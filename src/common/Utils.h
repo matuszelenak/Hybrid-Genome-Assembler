@@ -1,8 +1,10 @@
 #include <string>
+#include <vector>
 #include <fmt/format.h>
 #include <iostream>
 #include <boost/thread.hpp>
 #include <thread>
+#include <queue>
 
 #ifndef SRC_UTILS_H
 #define SRC_UTILS_H
@@ -46,7 +48,7 @@ public:
         for (auto thread: threads) free(thread);
     }
 
-    ThreadRunner(auto &&... args) : ThreadRunner() {
+    explicit ThreadRunner(auto &&... args) : ThreadRunner() {
         for (int i = 0; i < num_of_threads; i++) {
             add_thread(std::forward<decltype(args)>(args)...);
         }
@@ -61,5 +63,54 @@ public:
 
     void run() { for (auto thread : threads) thread->join(); };
 };
+
+template<typename T>
+void merge_n_vectors(std::vector<std::vector<T> *> &arrays, std::vector<T> &result, bool unique) {
+    std::priority_queue<std::pair<T, int>, std::vector<std::pair<T, int>>, std::greater<std::pair<T, int>>> q;
+
+    int non_exhausted = 0;
+    std::vector<int> next_index(arrays.size(), 1);
+    for (int i = 0; i < arrays.size(); i++) {
+        if (!arrays[i]->empty()) {
+            q.push({(*arrays[i])[0], i});
+            non_exhausted++;
+        }
+    }
+    if (q.empty()) return;
+
+    auto top_pair = q.top();
+    T arr_val = top_pair.first;
+    int arr_index = top_pair.second;
+    q.pop();
+
+    T previous_value = arr_val;
+    result.push_back(previous_value);
+
+    if (next_index[arr_index] == arrays[arr_index]->size()) {
+        non_exhausted--;
+    } else {
+        q.push({(*arrays[arr_index])[next_index[arr_index]], arr_index});
+        next_index[arr_index]++;
+    }
+
+    while (non_exhausted > 0) {
+        top_pair = q.top();
+        arr_val = top_pair.first;
+        arr_index = top_pair.second;
+        q.pop();
+
+        if (!unique || arr_val != previous_value) {
+            result.push_back(arr_val);
+            previous_value = arr_val;
+        }
+
+        if (next_index[arr_index] == arrays[arr_index]->size()) {
+            non_exhausted--;
+        } else {
+            q.push({(*arrays[arr_index])[next_index[arr_index]], arr_index});
+            next_index[arr_index]++;
+        }
+    }
+}
 
 #endif //SRC_UTILS_H
