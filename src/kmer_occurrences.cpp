@@ -43,6 +43,10 @@ int main(int argc, char *argv[]) {
     }
 
     SequenceRecordIterator read_iterator = SequenceRecordIterator(read_paths, true);
+    for (auto meta: read_iterator.file_meta){
+        std::cout << meta.repr();
+    }
+
     auto occurrence_counter = KmerOccurrenceCounter();
 
     int selected_k;

@@ -29,6 +29,9 @@ int main(int argc, char *argv[]) {
 
     std::string s = vm["input"].as<std::string>();
     auto reader = SequenceRecordIterator(s);
+    for (auto meta: reader.file_meta){
+        std::cout << meta.repr();
+    }
 
     std::cout << "Enter the approximate number of reads you want\n";
     int wanted_reads;

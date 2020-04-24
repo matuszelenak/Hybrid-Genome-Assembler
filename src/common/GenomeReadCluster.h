@@ -16,7 +16,9 @@ public:
         read_headers.push_back(initial_read.header);
         this->discriminative_kmer_ids = discriminative_kmer_ids;
         categories.insert(category);
-        endpoints = {{initial_read.start, true}, {initial_read.end, false}};
+        if (initial_read.start != 0 || initial_read.end != 0){
+            endpoints = {{initial_read.start, true}, {initial_read.end, false}};
+        }
     };
 
     ClusterID reference_id = 0;
