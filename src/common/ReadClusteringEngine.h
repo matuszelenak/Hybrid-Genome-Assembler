@@ -9,8 +9,8 @@
 #include "GenomeReadCluster.h"
 #include "../lib/BloomFilter.h"
 
-#ifndef SRC_BASEREADCLUSTERINGENGINE_H
-#define SRC_BASEREADCLUSTERINGENGINE_H
+#ifndef SRC_READCLUSTERINGENGINE_H
+#define SRC_READCLUSTERINGENGINE_H
 
 typedef uint32_t KmerID;
 typedef tsl::robin_map<Kmer, KmerID> KmerIndex;
@@ -18,7 +18,6 @@ typedef tsl::robin_map<Kmer, KmerID> KmerIndex;
 typedef uint64_t ConnectionScore;
 typedef std::map<ClusterID, GenomeReadCluster*> ClusterIndex;
 
-//typedef std::vector<std::set<ClusterID> > KmerClusterIndex;
 typedef std::vector<std::vector<ClusterID>> KmerClusterIndex;
 typedef tsl::robin_map<KmerID, std::vector<ClusterID>> IndexRemovalMap;
 typedef std::vector<ClusterID > IDComponent;
@@ -41,7 +40,7 @@ struct ClusterConnection{
 };
 
 
-class BaseReadClusteringEngine {
+class ReadClusteringEngine {
 protected:
     SequenceRecordIterator* reader;
     bloom::BloomFilter<Kmer>* kmers;
@@ -68,7 +67,7 @@ public:
     void run_clustering();
     std::map<ClusterID, std::string> export_clusters(std::vector<ClusterID> &cluster_ids, std::experimental::filesystem::path &directory_path);
 
-    BaseReadClusteringEngine(SequenceRecordIterator &read_iterator, int k, bloom::BloomFilter<Kmer> &kmers);
+    ReadClusteringEngine(SequenceRecordIterator &read_iterator, int k, bloom::BloomFilter<Kmer> &kmers);
 
     void print_clusters(int first_n);
 
@@ -84,4 +83,4 @@ public:
 void plot_connection_quality(std::vector<ClusterConnection> &connections);
 
 
-#endif //SRC_BASEREADCLUSTERINGENGINE_H
+#endif //SRC_READCLUSTERINGENGINE_H

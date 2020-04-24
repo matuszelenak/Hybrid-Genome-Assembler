@@ -6,7 +6,7 @@
 #include <boost/algorithm/string/join.hpp>
 
 #include "KmerIterator.h"
-#include "BaseReadClusteringEngine.h"
+#include "ReadClusteringEngine.h"
 #include "Utils.h"
 
 namespace fs = std::experimental::filesystem;
@@ -55,7 +55,7 @@ void plot_cluster_coverage(std::vector<GenomeReadCluster *> &clusters) {
 }
 
 
-std::string BaseReadClusteringEngine::cluster_consistency(GenomeReadCluster *cluster) {
+std::string ReadClusteringEngine::cluster_consistency(GenomeReadCluster *cluster) {
     std::map<CategoryID, int> category_counts = {{0, 0},
                                                  {1, 0}};
     for (const auto &read_header : cluster->read_headers) {
@@ -72,7 +72,7 @@ std::string BaseReadClusteringEngine::cluster_consistency(GenomeReadCluster *clu
 }
 
 
-void BaseReadClusteringEngine::print_clusters(int first_n) {
+void ReadClusteringEngine::print_clusters(int first_n) {
     std::vector<GenomeReadCluster *> cluster_pointers;
     std::transform(
             cluster_index.begin(),
@@ -100,7 +100,7 @@ void BaseReadClusteringEngine::print_clusters(int first_n) {
     std::cout << fmt::format("As well as {} clusters of size 1\n", size_one_clusters);
 }
 
-void BaseReadClusteringEngine::construct_read_category_map() {
+void ReadClusteringEngine::construct_read_category_map() {
     this->reader->rewind();
     std::optional<GenomeReadData> read;
     while ((read = this->reader->get_next_record()) != std::nullopt) {
@@ -108,18 +108,18 @@ void BaseReadClusteringEngine::construct_read_category_map() {
     }
 }
 
-BaseReadClusteringEngine::BaseReadClusteringEngine(SequenceRecordIterator &read_iterator, int k, bloom::BloomFilter<Kmer> &kmers) {
+ReadClusteringEngine::ReadClusteringEngine(SequenceRecordIterator &read_iterator, int k, bloom::BloomFilter<Kmer> &kmers) {
     this->k = k;
     this->reader = &read_iterator;
     this->kmers = &kmers;
 
-    timeMeasureMemberFunc(&BaseReadClusteringEngine::construct_indices, this, "Construct indices")();
+    timeMeasureMemberFunc(&ReadClusteringEngine::construct_indices, this, "Construct indices")();
     std::cout << fmt::format("{}/{} reads converted to clusters\n", cluster_index.size(), reader->meta.records);
 
     construct_read_category_map();
 }
 
-void BaseReadClusteringEngine::construct_indices_thread() {
+void ReadClusteringEngine::construct_indices_thread() {
     std::optional<GenomeReadData> read;
     while ((read = reader->get_next_record()) != std::nullopt) {
         KmerIterator it = KmerIterator(read->sequence, k);
@@ -159,9 +159,9 @@ void BaseReadClusteringEngine::construct_indices_thread() {
 }
 
 
-int BaseReadClusteringEngine::construct_indices() {
+int ReadClusteringEngine::construct_indices() {
     reader->rewind();
-    auto runner = ThreadRunner(&BaseReadClusteringEngine::construct_indices_thread, this);
+    auto runner = ThreadRunner(&ReadClusteringEngine::construct_indices_thread, this);
 
     uint64_t entries = 0;
     for (auto& arr : kmer_cluster_index){
@@ -174,7 +174,7 @@ int BaseReadClusteringEngine::construct_indices() {
 }
 
 
-ClusterConnection BaseReadClusteringEngine::get_connection(GenomeReadCluster *x, GenomeReadCluster *y) {
+ClusterConnection ReadClusteringEngine::get_connection(GenomeReadCluster *x, GenomeReadCluster *y) {
     int i = 0, j = 0;
     ConnectionScore score = 0;
     while (i < x->discriminative_kmer_ids.size() && j < y->discriminative_kmer_ids.size()) {
@@ -193,8 +193,8 @@ ClusterConnection BaseReadClusteringEngine::get_connection(GenomeReadCluster *x,
 }
 
 
-void BaseReadClusteringEngine::get_connections_thread(std::vector<ClusterID> &cluster_indices, std::vector<ClusterConnection> &accumulator, tsl::robin_set<ClusterID> &restricted,
-                                                      int &index) {
+void ReadClusteringEngine::get_connections_thread(std::vector<ClusterID> &cluster_indices, std::vector<ClusterConnection> &accumulator, tsl::robin_set<ClusterID> &restricted,
+                                                  int &index) {
     while (true) {
         conn_index_mut.lock();
         int pivot_index = index++;
@@ -224,17 +224,17 @@ void BaseReadClusteringEngine::get_connections_thread(std::vector<ClusterID> &cl
     }
 }
 
-std::vector<ClusterConnection> BaseReadClusteringEngine::get_connections(std::vector<ClusterID> &cluster_ids, tsl::robin_set<ClusterID> &restricted) {
+std::vector<ClusterConnection> ReadClusteringEngine::get_connections(std::vector<ClusterID> &cluster_ids, tsl::robin_set<ClusterID> &restricted) {
     std::vector<ClusterConnection> connections;
 
     int index = 0;
-    auto r = ThreadRunner(&BaseReadClusteringEngine::get_connections_thread, this, std::ref(cluster_ids), std::ref(connections), std::ref(restricted), std::ref(index));
+    auto r = ThreadRunner(&ReadClusteringEngine::get_connections_thread, this, std::ref(cluster_ids), std::ref(connections), std::ref(restricted), std::ref(index));
 
     std::sort(connections.rbegin(), connections.rend());
     return connections;
 }
 
-void BaseReadClusteringEngine::merge_clusters_thread(std::queue<IDComponent> &component_queue, IndexRemovalMap &for_removal) {
+void ReadClusteringEngine::merge_clusters_thread(std::queue<IDComponent> &component_queue, IndexRemovalMap &for_removal) {
     while (true) {
         merge_mut.lock();
         if (component_queue.empty()) {
@@ -294,7 +294,7 @@ void BaseReadClusteringEngine::merge_clusters_thread(std::queue<IDComponent> &co
     }
 }
 
-void BaseReadClusteringEngine::kmer_cluster_index_update(IndexRemovalMap::iterator &removal_it, IndexRemovalMap::iterator &removal_end){
+void ReadClusteringEngine::kmer_cluster_index_update(IndexRemovalMap::iterator &removal_it, IndexRemovalMap::iterator &removal_end){
     while (true){
         IndexRemovalMap::iterator it;
 
@@ -331,7 +331,7 @@ void BaseReadClusteringEngine::kmer_cluster_index_update(IndexRemovalMap::iterat
 }
 
 
-int BaseReadClusteringEngine::merge_clusters(const tsl::robin_map<ClusterID, IDComponent> &components) {
+int ReadClusteringEngine::merge_clusters(const tsl::robin_map<ClusterID, IDComponent> &components) {
     std::queue<IDComponent> component_queue;
     for (auto component_it = begin(components); component_it != end(components); component_it++) {
         if (component_it->second.size() > 1) {
@@ -339,11 +339,11 @@ int BaseReadClusteringEngine::merge_clusters(const tsl::robin_map<ClusterID, IDC
         }
     }
     IndexRemovalMap for_removal;
-    auto r = ThreadRunner(&BaseReadClusteringEngine::merge_clusters_thread, this, std::ref(component_queue), std::ref(for_removal));
+    auto r = ThreadRunner(&ReadClusteringEngine::merge_clusters_thread, this, std::ref(component_queue), std::ref(for_removal));
 
     auto removal_it = for_removal.begin();
     auto removal_end = for_removal.end();
-    auto r2 = ThreadRunner(&BaseReadClusteringEngine::kmer_cluster_index_update, this, std::ref(removal_it), std::ref(removal_end));
+    auto r2 = ThreadRunner(&ReadClusteringEngine::kmer_cluster_index_update, this, std::ref(removal_it), std::ref(removal_end));
     return 0;
 }
 
@@ -355,7 +355,7 @@ ClusterID get_parent(ClusterID cluster_id, tsl::robin_map<ClusterID, ClusterID> 
     return parents[cluster_id];
 }
 
-int BaseReadClusteringEngine::clustering_round() {
+int ReadClusteringEngine::clustering_round() {
     std::vector<ClusterID> cluster_ids;
     std::transform(cluster_index.begin(), cluster_index.end(), std::back_inserter(cluster_ids), [](ClusterIndex::value_type &val) -> ClusterID { return val.first; });
 
@@ -363,7 +363,7 @@ int BaseReadClusteringEngine::clustering_round() {
     return clustering_round(cluster_ids, restricted);
 }
 
-int BaseReadClusteringEngine::clustering_round(std::vector<ClusterID> &cluster_ids, tsl::robin_set<ClusterID> &restricted) {
+int ReadClusteringEngine::clustering_round(std::vector<ClusterID> &cluster_ids, tsl::robin_set<ClusterID> &restricted) {
     tsl::robin_map<ClusterID, ClusterID> parents;
     tsl::robin_map<ClusterID, IDComponent> components;
     for (auto cluster_iter = begin(cluster_index); cluster_iter != end(cluster_index); cluster_iter++) {
@@ -371,7 +371,7 @@ int BaseReadClusteringEngine::clustering_round(std::vector<ClusterID> &cluster_i
         components[cluster_iter->second->reference_id] = {cluster_iter->second->reference_id};
     }
 
-    std::vector<ClusterConnection> cluster_connections = timeMeasureMemberFunc(&BaseReadClusteringEngine::get_connections, this, "Cluster connections")(cluster_ids, restricted);
+    std::vector<ClusterConnection> cluster_connections = timeMeasureMemberFunc(&ReadClusteringEngine::get_connections, this, "Cluster connections")(cluster_ids, restricted);
     plot_connection_quality(cluster_connections);
 
     ConnectionScore min_score;
@@ -405,12 +405,12 @@ int BaseReadClusteringEngine::clustering_round(std::vector<ClusterID> &cluster_i
         merge_operations++;
     }
 
-    timeMeasureMemberFunc(&BaseReadClusteringEngine::merge_clusters, this, "Merging of clusters")(components);
+    timeMeasureMemberFunc(&ReadClusteringEngine::merge_clusters, this, "Merging of clusters")(components);
 
     return merge_operations;
 }
 
-std::map<ClusterID, std::string> BaseReadClusteringEngine::export_clusters(std::vector<ClusterID> &cluster_ids, fs::path &directory_path) {
+std::map<ClusterID, std::string> ReadClusteringEngine::export_clusters(std::vector<ClusterID> &cluster_ids, fs::path &directory_path) {
     tsl::robin_map<std::string, GenomeReadData> header_to_read;
     for (auto id : cluster_ids) {
         for (const auto &header : cluster_index[id]->read_headers) {
@@ -446,7 +446,7 @@ std::map<ClusterID, std::string> BaseReadClusteringEngine::export_clusters(std::
     return mapping;
 }
 
-void BaseReadClusteringEngine::assemble_clusters(std::vector<ClusterID> &cluster_ids) {
+void ReadClusteringEngine::assemble_clusters(std::vector<ClusterID> &cluster_ids) {
     sort(cluster_ids.rbegin(), cluster_ids.rend(), [this](ClusterID x, ClusterID y) -> bool { return cluster_index[x]->size() < cluster_index[y]->size(); });
 
     fs::path export_path = "./data/assembly_" + reader->meta.filename;
@@ -473,7 +473,7 @@ void BaseReadClusteringEngine::assemble_clusters(std::vector<ClusterID> &cluster
     }
 }
 
-void BaseReadClusteringEngine::run_clustering() {
+void ReadClusteringEngine::run_clustering() {
     clustering_round();
 
     std::vector<ClusterID> chain_ids;

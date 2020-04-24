@@ -2,7 +2,7 @@
 #define SRC_KERNIGHANLINCLUSTERING_H
 
 
-#include "../common/BaseReadClusteringEngine.h"
+#include "../common/ReadClusteringEngine.h"
 #include "../lib/QuickCut.h"
 
 class KernighanLinClustering : public BaseReadClusteringEngine {

@@ -9,7 +9,7 @@
 #include "common/Utils.h"
 #include "common/KmerAnalysis.h"
 #include "common/Plotting.h"
-#include "common/BaseReadClusteringEngine.h"
+#include "common/ReadClusteringEngine.h"
 #include "lib/BloomFilter.h"
 
 
@@ -51,7 +51,7 @@ int main(int argc, char *argv[]) {
     in.read((char *) &k, sizeof(k));
     auto kmers = bloom::BloomFilter<Kmer>(in);
 
-    auto engine = BaseReadClusteringEngine(read_iterator, k, kmers);
+    auto engine = ReadClusteringEngine(read_iterator, k, kmers);
     engine.run_clustering();
     return 0;
 }
