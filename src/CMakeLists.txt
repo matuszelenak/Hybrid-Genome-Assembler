@@ -11,16 +11,16 @@ INCLUDE_DIRECTORIES( ${Boost_INCLUDE_DIR} )
 add_subdirectory(lib/fmt EXCLUDE_FROM_ALL)
 add_subdirectory(lib/robin-map EXCLUDE_FROM_ALL)
 
-
 file(GLOB COMMON_SRC_FILES ${PROJECT_SOURCE_DIR}/common/*.cpp)
 file(GLOB LIB_SRC_FILES ${PROJECT_SOURCE_DIR}/lib/*.*pp)
+
+
 
 # Kmer occurrence executable
 add_executable(occurrences kmer_occurrences.cpp ${COMMON_SRC_FILES} ${LIB_SRC_FILES})
 
 TARGET_LINK_LIBRARIES( occurrences LINK_PUBLIC ${Boost_LIBRARIES} stdc++fs pthread fmt)
 target_link_libraries( occurrences PRIVATE tsl::robin_map)
-
 
 
 ## Clustering executable
@@ -36,5 +36,6 @@ TARGET_LINK_LIBRARIES( locate LINK_PUBLIC ${Boost_LIBRARIES} stdc++fs pthread fm
 target_link_libraries( locate PRIVATE tsl::robin_map)
 
 
+## Subsampling reads
 add_executable(subsample subsample.cpp common/SequenceRecordIterator.cpp common/Utils.cpp)
 TARGET_LINK_LIBRARIES( subsample LINK_PUBLIC ${Boost_LIBRARIES} stdc++fs pthread fmt)

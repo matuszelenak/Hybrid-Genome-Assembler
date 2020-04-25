@@ -13,6 +13,8 @@
 #ifndef SRC_SEQUENCERECORDITERATOR_H
 #define SRC_SEQUENCERECORDITERATOR_H
 
+typedef uint32_t ReadID;
+
 
 enum FileType {
     FASTA, FASTQ, UNKNOWN
@@ -20,9 +22,11 @@ enum FileType {
 
 
 struct GenomeReadData {
+    ReadID id = 0;
     std::string header = "";
     std::string sequence = "";
     std::string qualities = "";
+
     CategoryID category_id = 0;
     uint32_t start = 0;
     uint32_t end = 0;

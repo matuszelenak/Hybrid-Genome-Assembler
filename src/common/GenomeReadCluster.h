@@ -11,23 +11,24 @@ typedef std::pair<uint32_t, bool> Endpoint;
 
 class GenomeReadCluster {
 public:
-    GenomeReadCluster(ClusterID id, GenomeReadData &initial_read, std::vector<KmerID> &discriminative_kmer_ids, CategoryID category){
-        reference_id = id;
-        read_headers.push_back(initial_read.header);
+    GenomeReadCluster(GenomeReadData &initial_read, std::vector<KmerID> &discriminative_kmer_ids){
+        this->id = initial_read.id;
         this->discriminative_kmer_ids = discriminative_kmer_ids;
-        categories.insert(category);
+        this->read_ids = {initial_read.id};
+        this->categories = {initial_read.category_id};
+
         if (initial_read.start != 0 || initial_read.end != 0){
             endpoints = {{initial_read.start, true}, {initial_read.end, false}};
         }
     };
 
-    ClusterID reference_id = 0;
-    std::vector<std::string> read_headers;
+    ClusterID id = 0;
+    std::vector<ReadID> read_ids;
     std::vector<KmerID> discriminative_kmer_ids;
     std::set<CategoryID> categories;
     std::vector<Endpoint> endpoints;
 
-    [[nodiscard]] uint64_t size() const{ return read_headers.size(); };
+    [[nodiscard]] uint64_t size() const{ return read_ids.size(); };
 
     std::string repr(){
         std::string cats;
@@ -35,7 +36,7 @@ public:
             cats += std::to_string(cat);
             cats += " ";
         }
-        return fmt::format("#{} size {} categories {}", reference_id, size(), cats);
+        return fmt::format("#{} size {} categories {}", id, size(), cats);
     }
 
     std::string intervals(){

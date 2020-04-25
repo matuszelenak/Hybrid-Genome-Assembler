@@ -60,7 +60,7 @@ int main(int argc, char *argv[]) {
     if (vm.count("output")) {
         output_path = vm["output"].as<std::string>();
     } else {
-        output_path = read_iterator.meta.filename + "__kmers.bin";
+        output_path = "./data/kmers/" + read_iterator.meta.filename + "__kmers.bin";
     }
 
     if (read_iterator.categories == 1){

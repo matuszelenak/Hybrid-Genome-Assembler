@@ -52,7 +52,7 @@ protected:
     ClusterIndex cluster_index;
     KmerIndex kmer_index;
     KmerClusterIndex kmer_cluster_index;
-    tsl::robin_map<std::string, CategoryID> read_category_map;
+    tsl::robin_map<ReadID, CategoryID> read_category_map;
 
     void get_connections_thread(std::vector<ClusterID> &cluster_indices, std::vector<ClusterConnection> &accumulator, tsl::robin_set<ClusterID> &restricted, int &index);
     std::vector<ClusterConnection> get_connections(std::vector<ClusterID> &cluster_ids, tsl::robin_set<ClusterID> &restricted);

@@ -18,12 +18,14 @@ class Unimplemented:
 class KmerHistogram:
     def __init__(self):
         occurrences: Dict[int, int] = eval(input())
+        print(occurrences)
+
         for i in range(max(occurrences.keys())):
             if i not in occurrences:
                 occurrences[i] = 0
 
-        indices = np.arange(max(occurrences.keys()))
-        data = np.array([occurrences[coverage] for coverage in indices])
+        indices = np.arange(1, max(occurrences.keys()) + 1)
+        data = np.array([occurrences.get(coverage, 0) for coverage in indices])
         bars = plt.bar(indices, data, width=0.8, color='r')
 
         peak_indices = self.find_peak_positions(occurrences)

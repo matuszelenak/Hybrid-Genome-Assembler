@@ -58,8 +58,8 @@ void plot_cluster_coverage(std::vector<GenomeReadCluster *> &clusters) {
 std::string ReadClusteringEngine::cluster_consistency(GenomeReadCluster *cluster) {
     std::map<CategoryID, int> category_counts = {{0, 0},
                                                  {1, 0}};
-    for (const auto &read_header : cluster->read_headers) {
-        category_counts.insert(std::map<CategoryID, int>::value_type(read_category_map[read_header], 0)).first->second += 1;
+    for (auto read_id : cluster->read_ids) {
+        category_counts.insert({read_category_map[read_id], 0}).first->second += 1;
     }
     std::vector<std::string> category_count_vector;
     std::transform(
@@ -89,7 +89,7 @@ void ReadClusteringEngine::print_clusters(int first_n) {
     int size_one_clusters = 0;
     for (auto cluster : cluster_pointers) {
         if (cluster->size() > 1) {
-            std::cout << fmt::format("#{} {} {} {} disc. kmers\n", cluster->reference_id, cluster_consistency(cluster), cluster->intervals(), cluster->discriminative_kmer_ids.size());
+            std::cout << fmt::format("#{} {} {} {} disc. kmers\n", cluster->id, cluster_consistency(cluster), cluster->intervals(), cluster->discriminative_kmer_ids.size());
         } else {
             size_one_clusters++;
         }
@@ -104,7 +104,7 @@ void ReadClusteringEngine::construct_read_category_map() {
     this->reader->rewind();
     std::optional<GenomeReadData> read;
     while ((read = this->reader->get_next_record()) != std::nullopt) {
-        read_category_map.insert(tsl::robin_map<std::string, CategoryID>::value_type(read->header, read->category_id));
+        read_category_map.insert({read->id, read->category_id});
     }
 }
 
@@ -133,10 +133,9 @@ void ReadClusteringEngine::construct_indices_thread() {
 
         if (in_read_discriminative.size() >= 5) {
             std::vector<KmerID> in_read_discriminative_ids;
+            ClusterID cluster_id = read->id;
 
             index_merge.lock();
-
-            ClusterID new_cluster_id = cluster_index.size();
 
             std::pair<KmerIndex::iterator, bool> insert_result;
             KmerID new_kmer_id = kmer_index.size();
@@ -147,11 +146,11 @@ void ReadClusteringEngine::construct_indices_thread() {
                     ++new_kmer_id;
                 }
                 in_read_discriminative_ids.push_back(insert_result.first->second);
-                kmer_cluster_index[insert_result.first->second].push_back(new_cluster_id);
+                kmer_cluster_index[insert_result.first->second].push_back(cluster_id);
             }
 
             std::sort(in_read_discriminative_ids.begin(), in_read_discriminative_ids.end());
-            cluster_index.insert(ClusterIndex::value_type(new_cluster_id, new GenomeReadCluster(new_cluster_id, *read, in_read_discriminative_ids, read->category_id)));
+            cluster_index.insert(ClusterIndex::value_type(cluster_id, new GenomeReadCluster(*read, in_read_discriminative_ids)));
 
             index_merge.unlock();
         }
@@ -189,7 +188,7 @@ ClusterConnection ReadClusteringEngine::get_connection(GenomeReadCluster *x, Gen
             j++;
         }
     }
-    return {x->reference_id, y->reference_id, score, x->categories == y->categories};
+    return {x->id, y->id, score, x->categories == y->categories};
 }
 
 
@@ -250,7 +249,7 @@ void ReadClusteringEngine::merge_clusters_thread(std::queue<IDComponent> &compon
         std::vector<std::vector<KmerID> *> arrays_to_merge = {&survivor->discriminative_kmer_ids};
         std::vector<std::vector<Endpoint> *> endpoints_to_merge = {&survivor->endpoints};
         for (int i = 1; i < component.size(); i++) {
-            survivor->read_headers.insert(survivor->read_headers.end(), cluster_index[component[i]]->read_headers.begin(), cluster_index[component[i]]->read_headers.end());
+            survivor->read_ids.insert(survivor->read_ids.end(), cluster_index[component[i]]->read_ids.begin(), cluster_index[component[i]]->read_ids.end());
             survivor->categories.insert(cluster_index[component[i]]->categories.begin(), cluster_index[component[i]]->categories.end());
 
             arrays_to_merge.push_back(&cluster_index[component[i]]->discriminative_kmer_ids);
@@ -367,8 +366,8 @@ int ReadClusteringEngine::clustering_round(std::vector<ClusterID> &cluster_ids, 
     tsl::robin_map<ClusterID, ClusterID> parents;
     tsl::robin_map<ClusterID, IDComponent> components;
     for (auto cluster_iter = begin(cluster_index); cluster_iter != end(cluster_index); cluster_iter++) {
-        parents[cluster_iter->second->reference_id] = cluster_iter->second->reference_id;
-        components[cluster_iter->second->reference_id] = {cluster_iter->second->reference_id};
+        parents[cluster_iter->second->id] = cluster_iter->second->id;
+        components[cluster_iter->second->id] = {cluster_iter->second->id};
     }
 
     std::vector<ClusterConnection> cluster_connections = timeMeasureMemberFunc(&ReadClusteringEngine::get_connections, this, "Cluster connections")(cluster_ids, restricted);
@@ -411,10 +410,10 @@ int ReadClusteringEngine::clustering_round(std::vector<ClusterID> &cluster_ids, 
 }
 
 std::map<ClusterID, std::string> ReadClusteringEngine::export_clusters(std::vector<ClusterID> &cluster_ids, fs::path &directory_path) {
-    tsl::robin_map<std::string, GenomeReadData> header_to_read;
-    for (auto id : cluster_ids) {
-        for (const auto &header : cluster_index[id]->read_headers) {
-            header_to_read[header] = {};
+    tsl::robin_map<ReadID, GenomeReadData> id_to_read;
+    for (auto cluster_id : cluster_ids) {
+        for (auto read_id: cluster_index[cluster_id]->read_ids) {
+            id_to_read[read_id] = {};
         }
     }
 
@@ -424,8 +423,8 @@ std::map<ClusterID, std::string> ReadClusteringEngine::export_clusters(std::vect
     reader->rewind();
     std::optional<GenomeReadData> read;
     while ((read = reader->get_next_record()) != std::nullopt) {
-        if (header_to_read.contains(read->header)) {
-            header_to_read[read->header] = *read;
+        if (id_to_read.contains(read->id)) {
+            id_to_read[read->id] = *read;
         }
     }
 
@@ -435,8 +434,8 @@ std::map<ClusterID, std::string> ReadClusteringEngine::export_clusters(std::vect
         std::string cluster_file_path = fmt::format("{}/#{}.fq", directory_path.string(), id);
 
         cluster_file.open(cluster_file_path);
-        for (const auto &header : cluster_index[id]->read_headers) {
-            cluster_file << header_to_read[header].fastX_string() << std::endl;
+        for (auto read_id : cluster_index[id]->read_ids) {
+            cluster_file << id_to_read[read_id].fastX_string() << std::endl;
         }
         cluster_file.close();
 
