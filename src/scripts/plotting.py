@@ -18,7 +18,6 @@ class Unimplemented:
 class KmerHistogram:
     def __init__(self):
         occurrences: Dict[int, int] = eval(input())
-        print(occurrences)
 
         for i in range(max(occurrences.keys())):
             if i not in occurrences:

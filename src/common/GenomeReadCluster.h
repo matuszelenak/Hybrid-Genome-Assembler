@@ -1,6 +1,7 @@
 #include <set>
 #include <fmt/format.h>
 
+#include "Utils.h"
 #include "Types.h"
 
 #ifndef SRC_GENOMEREADCLUSTER_H
@@ -47,6 +48,5 @@ public:
         return result;
     }
 };
-
 
 #endif //SRC_GENOMEREADCLUSTER_H

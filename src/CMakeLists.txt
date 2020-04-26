@@ -39,3 +39,9 @@ target_link_libraries( locate PRIVATE tsl::robin_map)
 ## Subsampling reads
 add_executable(subsample subsample.cpp common/SequenceRecordIterator.cpp common/Utils.cpp)
 TARGET_LINK_LIBRARIES( subsample LINK_PUBLIC ${Boost_LIBRARIES} stdc++fs pthread fmt)
+
+
+## Locating discriminative kmers in reference
+add_executable(find_in_reference find_in_reference.cpp ${COMMON_SRC_FILES} ${LIB_SRC_FILES})
+TARGET_LINK_LIBRARIES( find_in_reference LINK_PUBLIC ${Boost_LIBRARIES} stdc++fs pthread fmt)
+target_link_libraries( find_in_reference PRIVATE tsl::robin_map)

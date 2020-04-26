@@ -5,6 +5,7 @@
 #include <boost/thread.hpp>
 #include <thread>
 #include <queue>
+#include <mutex>
 
 #ifndef SRC_UTILS_H
 #define SRC_UTILS_H
@@ -64,8 +65,33 @@ public:
     void run() { for (auto thread : threads) thread->join(); };
 };
 
+
 template<typename T>
-void merge_n_vectors(std::vector<std::vector<T> *> &arrays, std::vector<T> &result, bool unique) {
+class ConcurrentQueue {
+    std::mutex mut;
+public:
+    std::queue<T> queue;
+    ConcurrentQueue() = default;;
+
+    explicit ConcurrentQueue(std::vector<T> &vec){
+        for (auto elem : vec){
+            queue.push(elem);
+        }
+    }
+
+    std::optional<T> pop(){
+        std::lock_guard<std::mutex> lock(mut);
+        if (!queue.empty()){
+            auto result = std::optional<T>{queue.front()};
+            queue.pop();
+            return result;
+        }
+        return std::nullopt;
+    }
+};
+
+template<typename T>
+std::vector<T> merge_n_vectors(std::vector<std::vector<T> *> &arrays, bool unique) {
     std::priority_queue<std::pair<T, int>, std::vector<std::pair<T, int>>, std::greater<std::pair<T, int>>> q;
 
     int non_exhausted = 0;
@@ -76,13 +102,14 @@ void merge_n_vectors(std::vector<std::vector<T> *> &arrays, std::vector<T> &resu
             non_exhausted++;
         }
     }
-    if (q.empty()) return;
+    if (q.empty()) return {};
 
     auto top_pair = q.top();
     T arr_val = top_pair.first;
     int arr_index = top_pair.second;
     q.pop();
 
+    std::vector<T> result;
     T previous_value = arr_val;
     result.push_back(previous_value);
 
@@ -111,6 +138,26 @@ void merge_n_vectors(std::vector<std::vector<T> *> &arrays, std::vector<T> &resu
             next_index[arr_index]++;
         }
     }
+    return result;
+}
+
+template<typename T>
+std::vector<T> get_vectors_intersection(std::vector<T> &x, std::vector<T> &y){
+    std::vector<T> result;
+    int i = 0, j = 0;
+    while (i < x.size() && j < y.size()) {
+        if (x[i] < y[j])
+            i++;
+        else if (y[j] < x[i])
+            j++;
+        else
+        {
+            result.push_back(x[i]);
+            i++;
+            j++;
+        }
+    }
+    return result;
 }
 
 #endif //SRC_UTILS_H
