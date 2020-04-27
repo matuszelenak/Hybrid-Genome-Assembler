@@ -35,7 +35,7 @@ void KmerOccurrenceCounter::compute_filters() {
         filters.push_back(new counting_bloom::CountingBloomFilter<Kmer, uint16_t>(expected_num_of_kmers, 0.05));
     }
     reader->rewind();
-    auto runner = ThreadRunner(&KmerOccurrenceCounter::compute_filters_thread, this);
+    run_in_threads(&KmerOccurrenceCounter::compute_filters_thread, this);
 }
 
 void KmerOccurrenceCounter::specificity_thread(bloom::BloomFilter<Kmer> &processed, std::mutex &mut) {
@@ -79,7 +79,7 @@ KmerSpecificity KmerOccurrenceCounter::get_specificity(std::vector<double> &thre
     bloom::BloomFilter<Kmer> processed(expected_num_of_kmers, 0.01);
     std::mutex mut;
     reader->rewind();
-    auto runner = ThreadRunner(&KmerOccurrenceCounter::specificity_thread, this, std::ref(processed), std::ref(mut));
+    run_in_threads(&KmerOccurrenceCounter::specificity_thread, this, std::ref(processed), std::ref(mut));
     return specificity;
 }
 
@@ -108,7 +108,7 @@ Histogram KmerOccurrenceCounter::get_histogram() {
     std::mutex mut;
 
     reader->rewind();
-    auto runner = ThreadRunner(&KmerOccurrenceCounter::get_histogram_thread, this, counts, std::ref(processed), std::ref(mut));
+    run_in_threads(&KmerOccurrenceCounter::get_histogram_thread, this, counts, std::ref(processed), std::ref(mut));
 
     histogram.clear();
     for (int i = 1; i <= KMER_COUNT_MAX; i++) {
@@ -150,7 +150,7 @@ void KmerOccurrenceCounter::export_kmers_in_range(int lower_bound, int upper_bou
     bloom::BloomFilter<Kmer> exported_kmers(exported_kmer_count, 0.01);
     bloom::BloomFilter<Kmer> processed(expected_num_of_kmers, 0.01);
     reader->rewind();
-    auto runner = ThreadRunner(&KmerOccurrenceCounter::export_kmers_thread, this, std::ref(exported_kmers), std::ref(processed), lower_bound, upper_bound);
+    run_in_threads(&KmerOccurrenceCounter::export_kmers_thread, this, std::ref(exported_kmers), std::ref(processed), lower_bound, upper_bound);
 
     auto out = std::ofstream(path, std::ios::out | std::ios::binary);
     out.write((char*)&k, sizeof(k));

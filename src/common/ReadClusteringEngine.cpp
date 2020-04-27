@@ -13,7 +13,6 @@ namespace algo = boost::algorithm;
 std::mutex connections_mut;
 std::mutex component_erase_mut;
 std::mutex index_merge;
-std::mutex index_update;
 
 
 void plot_connection_quality(std::vector<ClusterConnection> &connections) {
@@ -34,68 +33,35 @@ void plot_connection_quality(std::vector<ClusterConnection> &connections) {
 
 
 void plot_cluster_coverage( std::vector<GenomeReadCluster *> &clusters) {
-    std::map<CategoryID, std::vector<std::string> > category_intervals = {{0, {}},
-                                                                          {1, {}}};
-    for (auto cluster : clusters) {
-        for (int i = 0; i < cluster->endpoints.size(); i += 2) {
-            category_intervals[*cluster->categories.begin()].push_back(fmt::format("({}, {})", cluster->endpoints[i].first, cluster->endpoints[i + 1].first));
-        }
+//    std::map<CategoryID, std::vector<std::string> > category_intervals = {{0, {}},
+//                                                                          {1, {}}};
+//    for (auto cluster : clusters) {
+//        for (int i = 0; i < cluster->endpoints.size(); i += 2) {
+//            category_intervals[*cluster->categories.begin()].push_back(fmt::format("({}, {})", cluster->endpoints[i].first, cluster->endpoints[i + 1].first));
+//        }
+//    }
+//    std::string input;
+//    for (const auto &k_v : category_intervals) {
+//        input += ("[" + algo::join(k_v.second, ", ") + "]\n");
+//    }
+//    run_command_with_input("python scripts/plotting.py --plot cluster_coverage", input);
+}
+
+std::vector<ClusterConnection> filter_connections(std::vector<ClusterConnection> &original, const std::function<bool(ClusterConnection&)>& func){
+    std::vector<ClusterConnection> result;
+    for (auto conn : original){
+        if (func(conn)) result.push_back(conn);
     }
-    std::string input;
-    for (const auto &k_v : category_intervals) {
-        input += ("[" + algo::join(k_v.second, ", ") + "]\n");
-    }
-    run_command_with_input("python scripts/plotting.py --plot cluster_coverage", input);
+    return result;
 }
 
 ClusterIDPair get_cluster_id_pair(ClusterID x, ClusterID y){
     if (x < y){
-        return (((ClusterIDPair)x) << 32u) || y;
+        return (((ClusterIDPair)x) << 32u) | y;
     } else {
-        return (((ClusterIDPair)y) << 32u) || x;
+        return (((ClusterIDPair)y) << 32u) | x;
     }
 }
-
-std::vector<Endpoint> overlap_endpoint_intervals(std::vector<std::vector<Endpoint> *> &endpoints_arrays){
-    std::vector<Endpoint> merged_endpoints = merge_n_vectors(endpoints_arrays, false);
-
-    std::set<Endpoint> final_endpoints;
-    std::vector<Endpoint> result;
-    int opened_intervals = 0;
-    for (auto endpoint : merged_endpoints) {
-        if (endpoint.second) {
-            opened_intervals++;
-            if (opened_intervals == 1) {
-                final_endpoints.insert(endpoint);
-            }
-        } else {
-            opened_intervals--;
-            if (opened_intervals == 0) {
-                final_endpoints.insert(endpoint);
-            }
-        }
-    }
-    result.insert(result.end(), final_endpoints.begin(), final_endpoints.end());
-    return result;
-}
-
-
-std::string ReadClusteringEngine::cluster_consistency(GenomeReadCluster *cluster) {
-    std::map<CategoryID, int> category_counts = {{0, 0},
-                                                 {1, 0}};
-    for (auto read_id : cluster->read_ids) {
-        category_counts.insert({read_category_map[read_id], 0}).first->second += 1;
-    }
-    std::vector<std::string> category_count_vector;
-    std::transform(
-            category_counts.begin(),
-            category_counts.end(),
-            std::back_inserter(category_count_vector),
-            [](std::pair<const CategoryID, int> &p) -> std::string { return fmt::format("{}", p.second); }
-    );
-    return algo::join(category_count_vector, "/");
-}
-
 
 void ReadClusteringEngine::print_clusters(int first_n) {
     std::vector<GenomeReadCluster *> cluster_pointers;
@@ -114,7 +80,7 @@ void ReadClusteringEngine::print_clusters(int first_n) {
     int size_one_clusters = 0;
     for (auto cluster : cluster_pointers) {
         if (cluster->size() > 1) {
-            std::cout << fmt::format("#{} {} {} {} disc. kmers\n", cluster->id, cluster_consistency(cluster), cluster->intervals(), cluster->discriminative_kmer_ids.size());
+            std::cout << cluster->to_string() << std::endl;
         } else {
             size_one_clusters++;
         }
@@ -125,14 +91,6 @@ void ReadClusteringEngine::print_clusters(int first_n) {
     std::cout << fmt::format("As well as {} clusters of size 1\n", size_one_clusters);
 }
 
-void ReadClusteringEngine::construct_read_category_map() {
-    this->reader->rewind();
-    std::optional<GenomeReadData> read;
-    while ((read = this->reader->get_next_record()) != std::nullopt) {
-        read_category_map.insert({read->id, read->category_id});
-    }
-}
-
 ReadClusteringEngine::ReadClusteringEngine(SequenceRecordIterator &read_iterator, int k, bloom::BloomFilter<Kmer> &kmers, Platform platform) {
     this->platform = platform;
     this->k = k;
@@ -141,8 +99,6 @@ ReadClusteringEngine::ReadClusteringEngine(SequenceRecordIterator &read_iterator
 
     timeMeasureMemberFunc(&ReadClusteringEngine::construct_indices, this, "Construct indices")();
     std::cout << fmt::format("{}/{} reads converted to clusters\n", cluster_index.size(), reader->meta.records);
-
-    construct_read_category_map();
 }
 
 void ReadClusteringEngine::construct_indices_thread(KmerIndex &kmer_index) {
@@ -176,7 +132,8 @@ void ReadClusteringEngine::construct_indices_thread(KmerIndex &kmer_index) {
             }
 
             std::sort(in_read_discriminative_ids.begin(), in_read_discriminative_ids.end());
-            cluster_index.insert(ClusterIndex::value_type(cluster_id, new GenomeReadCluster(*read, in_read_discriminative_ids)));
+            ReadMetaData meta = {read->id, read->category_id, read->start, read->end};
+            cluster_index.insert(ClusterIndex::value_type(cluster_id, new GenomeReadCluster(meta, in_read_discriminative_ids)));
 
             index_merge.unlock();
         }
@@ -188,7 +145,7 @@ int ReadClusteringEngine::construct_indices() {
     reader->rewind();
 
     KmerIndex kmer_index;
-    auto runner = ThreadRunner(&ReadClusteringEngine::construct_indices_thread, this, std::ref(kmer_index));
+    run_in_threads(&ReadClusteringEngine::construct_indices_thread, this, std::ref(kmer_index));
 
     kmer_id_to_kmer.resize(kmer_index.size());
     for (auto kmer_id_pair : kmer_index){
@@ -211,7 +168,6 @@ void ReadClusteringEngine::get_connections_thread(ConnectionScore min_score, Con
 
         std::map<ClusterID, ConnectionScore> shared_kmer_counts;
         for (KmerID kmer_id : cluster_index[pivot_id]->discriminative_kmer_ids) {
-
             auto stop = std::lower_bound(kmer_cluster_index[kmer_id].begin(), kmer_cluster_index[kmer_id].end(), pivot_id);
             for (auto candidate_it = kmer_cluster_index[kmer_id].begin(); candidate_it != stop; ++candidate_it) {
                 shared_kmer_counts.insert(std::map<ClusterID, ConnectionScore>::value_type(*candidate_it, 0)).first->second += 1;
@@ -239,8 +195,8 @@ std::vector<ClusterConnection> ReadClusteringEngine::get_all_connections(Connect
 std::vector<ClusterConnection> ReadClusteringEngine::get_connections(std::vector<ClusterID> &cluster_ids, ConnectionScore min_score) {
     std::vector<ClusterConnection> connections;
 
-    auto queue = ConcurrentQueue<ClusterID>(cluster_ids);
-    auto r = ThreadRunner(&ReadClusteringEngine::get_connections_thread, this, min_score, std::ref(queue), std::ref(connections));
+    auto queue = ConcurrentQueue<ClusterID>(cluster_ids.begin(), cluster_ids.end());
+    run_in_threads(&ReadClusteringEngine::get_connections_thread, this, min_score, std::ref(queue), std::ref(connections));
 
     std::sort(connections.rbegin(), connections.rend());
     return connections;
@@ -255,22 +211,19 @@ void ReadClusteringEngine::merge_clusters_thread(ConcurrentQueue<IDComponent> &c
         GenomeReadCluster *survivor = cluster_index[component[0]];
 
         std::vector<std::vector<KmerID> *> kmer_merge_queue;
-        std::vector<ReadID> survivor_read_ids;
         std::set<CategoryID> survivor_categories;
-        std::vector<std::vector<Endpoint> *> endpoint_merge_queue;
+        std::vector<ReadMetaData> survivor_contained_reads;
 
         for (auto cluster_id : component){
             auto cluster = cluster_index[cluster_id];
             kmer_merge_queue.push_back(&cluster->discriminative_kmer_ids);
-            survivor_read_ids.insert(survivor_read_ids.end(), cluster->read_ids.begin(), cluster->read_ids.end());
+            survivor_contained_reads.insert(survivor_contained_reads.end(), cluster->contained_reads.begin(), cluster->contained_reads.end());
             survivor_categories.insert(cluster->categories.begin(), cluster->categories.end());
-            endpoint_merge_queue.push_back(&cluster->endpoints);
         }
 
         survivor->discriminative_kmer_ids = merge_n_vectors(kmer_merge_queue, true);
-        survivor->read_ids = survivor_read_ids;
         survivor->categories = survivor_categories;
-        survivor->endpoints = overlap_endpoint_intervals(endpoint_merge_queue);
+        survivor->contained_reads = survivor_contained_reads;
 
         component_erase_mut.lock();
         merge_result_ids.push_back(survivor->id);
@@ -279,26 +232,21 @@ void ReadClusteringEngine::merge_clusters_thread(ConcurrentQueue<IDComponent> &c
                 for_removal.insert({kmer_id, {}}).first.value().push_back(cluster_id);
             }
         }
-        for (int i = 1; i < component.size(); i++) cluster_index.erase(component[i]);
+        for (int i = 1; i < component.size(); i++){
+            free(cluster_index[component[i]]);
+            cluster_index.erase(component[i]);
+        }
         component_erase_mut.unlock();
     }
 }
 
-void ReadClusteringEngine::kmer_cluster_index_update(IndexRemovalMap::iterator &removal_it, IndexRemovalMap::iterator &removal_end){
+void ReadClusteringEngine::kmer_cluster_index_update(ConcurrentQueue<IndexRemovalMap::value_type> &removal_list_queue){
     while (true){
-        IndexRemovalMap::iterator it;
+        auto removal_pair_opt = removal_list_queue.pop();
+        if (removal_pair_opt == std::nullopt) break;
 
-        index_update.lock();
-        if (removal_it != removal_end){
-            it = removal_it++;
-            index_update.unlock();
-        } else {
-            index_update.unlock();
-            break;
-        }
-
-        std::vector<ClusterID>* removal_list = &it.value();
-        KmerID kmer_id = it->first;
+        std::vector<ClusterID>* removal_list = &removal_pair_opt->second;
+        KmerID kmer_id = removal_pair_opt->first;
         std::sort(removal_list->begin(), removal_list->end());
 
         std::vector<ClusterID> updated_list;
@@ -322,15 +270,14 @@ void ReadClusteringEngine::kmer_cluster_index_update(IndexRemovalMap::iterator &
 
 
 std::vector<ClusterID> ReadClusteringEngine::merge_clusters(std::vector<IDComponent> &components) {
-    auto component_queue = ConcurrentQueue<IDComponent>(components);
+    auto component_queue = ConcurrentQueue<IDComponent>(components.begin(), components.end());
 
     IndexRemovalMap for_removal;
     std::vector<ClusterID> merge_result_ids;
-    auto r = ThreadRunner(&ReadClusteringEngine::merge_clusters_thread, this, std::ref(component_queue), std::ref(for_removal), std::ref(merge_result_ids));
+    run_in_threads(&ReadClusteringEngine::merge_clusters_thread, this, std::ref(component_queue), std::ref(for_removal), std::ref(merge_result_ids));
 
-    auto removal_it = for_removal.begin();
-    auto removal_end = for_removal.end();
-    auto r2 = ThreadRunner(&ReadClusteringEngine::kmer_cluster_index_update, this, std::ref(removal_it), std::ref(removal_end));
+    auto removal_list_queue = ConcurrentQueue<IndexRemovalMap::value_type>(for_removal.begin(), for_removal.end());
+    run_in_threads(&ReadClusteringEngine::kmer_cluster_index_update, this, std::ref(removal_list_queue));
     return merge_result_ids;
 }
 
@@ -383,8 +330,8 @@ std::vector<IDComponent> ReadClusteringEngine::union_find(std::vector<ClusterCon
 std::map<ClusterID, std::string> ReadClusteringEngine::export_clusters(std::vector<ClusterID> &cluster_ids, fs::path &directory_path) {
     tsl::robin_map<ReadID, GenomeReadData> id_to_read;
     for (auto cluster_id : cluster_ids) {
-        for (auto read_id: cluster_index[cluster_id]->read_ids) {
-            id_to_read[read_id] = {};
+        for (auto read_meta: cluster_index[cluster_id]->contained_reads) {
+            id_to_read[read_meta.id] = {};
         }
     }
     fs::remove_all(directory_path);
@@ -403,8 +350,8 @@ std::map<ClusterID, std::string> ReadClusteringEngine::export_clusters(std::vect
         std::string cluster_file_path = fmt::format("{}/#{}.fq", directory_path.string(), id);
 
         cluster_file.open(cluster_file_path);
-        for (auto read_id : cluster_index[id]->read_ids) {
-            cluster_file << id_to_read[read_id].fastX_string() << std::endl;
+        for (auto read_meta : cluster_index[id]->contained_reads) {
+            cluster_file << id_to_read[read_meta.id].fastX_string() << std::endl;
         }
         cluster_file.close();
         mapping[id] = cluster_file_path;
@@ -425,7 +372,7 @@ void ReadClusteringEngine::assemble_clusters(std::vector<ClusterID> &cluster_ids
         std::string cmd = fmt::format("./scripts/assemble_pacbio_cluster.sh {} {} {}", mapping[id], assembled_fasta_path, platform == PacBio ? "pb" : "ont");
         run_command_with_input(cmd.c_str(), "");
 
-        std::cout << cluster_index[id]->repr() << " assembly: \n";
+        std::cout << cluster_index[id]->to_string() << " assembly: \n";
         try {
             SequenceRecordIterator r(assembled_fasta_path);
             r.show_progress = false;
@@ -440,33 +387,49 @@ void ReadClusteringEngine::assemble_clusters(std::vector<ClusterID> &cluster_ids
 }
 
 void ReadClusteringEngine::run_clustering() {
-    std::vector<ClusterID> strong_clusters = filter_clusters([](GenomeReadCluster* c){ return (c->discriminative_kmer_ids.size() > 50); });
-    std::vector<ClusterConnection> cluster_connections = timeMeasureMemberFunc(&ReadClusteringEngine::get_all_connections, this, "1st round of connections")(50);
+    std::vector<ClusterConnection> cluster_connections = timeMeasureMemberFunc(&ReadClusteringEngine::get_all_connections, this, "Connection calculation")(1);
+    plot_connection_quality(cluster_connections);
+    int first_round_min_score;
+    std::cin >> first_round_min_score;
+    cluster_connections = filter_connections(cluster_connections, [first_round_min_score](ClusterConnection &conn){ return conn.score >= first_round_min_score; });
 
     tsl::robin_set<ClusterIDPair> restricted;
-    auto chain_components = timeMeasureMemberFunc(&ReadClusteringEngine::union_find, this, "")(cluster_connections, restricted);
-    std::vector<ClusterID> chain_ids = timeMeasureMemberFunc(&ReadClusteringEngine::merge_clusters, this, "Merging of clusters")(chain_components);
+    auto chain_components = timeMeasureMemberFunc(&ReadClusteringEngine::union_find, this, "Union find")(cluster_connections, restricted);
+    std::vector<ClusterID> chain_ids = timeMeasureMemberFunc(&ReadClusteringEngine::merge_clusters, this, "Cluster merging")(chain_components);
 
     print_clusters(-1);
 
-    for (int refine_iter = 0; refine_iter < 5; refine_iter++){
-        restricted.clear();
-        for (auto cluster_id : chain_ids){
-            for (auto cluster_id_2 : chain_ids){
-                restricted.insert(get_cluster_id_pair(cluster_id, cluster_id_2));
-            }
+    for (auto cluster_id : chain_ids){
+        for (auto cluster_id_2 : chain_ids){
+            restricted.insert(get_cluster_id_pair(cluster_id, cluster_id_2));
         }
-        cluster_connections = get_connections(chain_ids, 30);
+    }
+
+    while (true){
+        cluster_connections = get_connections(chain_ids, 1);
+        plot_connection_quality(cluster_connections);
+
+        int refine_score;
+        std::cin >> refine_score;
+        if (refine_score == 0) break;
+
+        cluster_connections = filter_connections(cluster_connections, [refine_score](ClusterConnection &conn){ return conn.score >= refine_score; });
         chain_components = union_find(cluster_connections, restricted);
-        chain_ids = merge_clusters(chain_components);
+        merge_clusters(chain_components);
+
+        print_clusters(-1);
     }
 
     std::vector<GenomeReadCluster *> clusters_for_display;
-    for (auto cluster_id : chain_ids){
-        clusters_for_display.push_back(cluster_index[cluster_id]);
-    }
+    for (auto cluster_id : chain_ids) clusters_for_display.push_back(cluster_index[cluster_id]);
     plot_cluster_coverage(clusters_for_display);
 
-    std::vector<ClusterID> clusters_for_assembly = filter_clusters([](GenomeReadCluster* c){ return (c->size() > 50); });
+    std::vector<ClusterID> clusters_for_assembly = filter_clusters([](GenomeReadCluster* c){ return (c->size() > 20); });
     assemble_clusters(clusters_for_assembly);
+}
+
+ReadClusteringEngine::~ReadClusteringEngine() {
+    for (auto cluster_pair : cluster_index){
+        free(cluster_pair.second);
+    }
 }

@@ -78,7 +78,7 @@ Histogram kmer_occurrence_histogram(SequenceRecordIterator &read_iterator, KmerC
 
     read_iterator.rewind();
     auto* counts = new uint64_t[KMER_COUNT_MAX + 1]();
-    auto runner = ThreadRunner(kmer_occurrence_histogram_thread, std::ref(read_iterator), std::ref(filter), std::ref(processed), k, counts);
+    run_in_threads(kmer_occurrence_histogram_thread, std::ref(read_iterator), std::ref(filter), std::ref(processed), k, counts);
 
     Histogram hist;
     for (int i = 5; i <= KMER_COUNT_MAX; i++){
@@ -141,7 +141,7 @@ void visualize_kmer_positions(SequenceRecordIterator &read_iterator, KmerCountin
     output.open("reads.js");
     output << "reads = [\n";
     read_iterator.rewind();
-    auto runner = ThreadRunner(visualize_kmer_positions_thread, std::ref(read_iterator), std::ref(filter), lower_coverage, upper_coverage, std::ref(output));
+    run_in_threads(visualize_kmer_positions_thread, std::ref(read_iterator), std::ref(filter), lower_coverage, upper_coverage, std::ref(output));
 
     output << "]";
     output.close();

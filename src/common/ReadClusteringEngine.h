@@ -48,23 +48,24 @@ protected:
     int k;
     Platform platform;
 
-    void construct_indices_thread(KmerIndex &kmer_index);
-    int construct_indices();
-
     ClusterIndex cluster_index;
     KmerClusterIndex kmer_cluster_index;
-    tsl::robin_map<ReadID, CategoryID> read_category_map;
     std::vector<Kmer> kmer_id_to_kmer;
+
+    void construct_indices_thread(KmerIndex &kmer_index);
+    int construct_indices();
 
     void get_connections_thread(ConnectionScore min_score, ConcurrentQueue<ClusterID> &cluster_id_queue, std::vector<ClusterConnection> &accumulator);
     std::vector<ClusterConnection> get_all_connections(ConnectionScore min_score);
     std::vector<ClusterConnection> get_connections(std::vector<ClusterID> &cluster_ids, ConnectionScore min_score);
 
-    void kmer_cluster_index_update(IndexRemovalMap::iterator &removal_it, IndexRemovalMap::iterator &removal_end);
+    void kmer_cluster_index_update(ConcurrentQueue<IndexRemovalMap::value_type> &removal_list_queue);
     void merge_clusters_thread(ConcurrentQueue<IDComponent> &component_queue, IndexRemovalMap &for_removal, std::vector<ClusterID> &merge_result_ids);
     std::vector<ClusterID> merge_clusters(std::vector<IDComponent> &components);
 
     std::vector<IDComponent> union_find(std::vector<ClusterConnection> &connections, tsl::robin_set<ClusterIDPair> &restricted);
+
+    void assemble_clusters(std::vector<ClusterID> &cluster_ids);
 
     std::vector<ClusterID> filter_clusters(const std::function<bool(GenomeReadCluster*)>& func){
         std::vector<ClusterID> result;
@@ -80,14 +81,9 @@ public:
     std::map<ClusterID, std::string> export_clusters(std::vector<ClusterID> &cluster_ids, std::experimental::filesystem::path &directory_path);
 
     ReadClusteringEngine(SequenceRecordIterator &read_iterator, int k, bloom::BloomFilter<Kmer> &kmers, Platform platform);
+    ~ReadClusteringEngine();
 
     void print_clusters(int first_n);
-
-    std::string cluster_consistency(GenomeReadCluster *cluster);
-
-    void construct_read_category_map();
-
-    void assemble_clusters(std::vector<ClusterID> &cluster_ids);
 };
 
 void plot_connection_quality(std::vector<ClusterConnection> &connections);

@@ -35,36 +35,16 @@ auto timeMeasure(const F &func, const std::string &label) {
     };
 }
 
-class ThreadRunner {
-public:
-
-    unsigned int num_of_threads;
-    std::vector<std::thread *> threads;
-
-    ThreadRunner() {
-        num_of_threads = std::thread::hardware_concurrency();
-    };
-
-    ~ThreadRunner() {
-        for (auto thread: threads) free(thread);
+void run_in_threads(auto &&... args){
+    unsigned int num_of_threads = std::thread::hardware_concurrency();
+    std::thread threads[num_of_threads];
+    for (unsigned int i = 0; i < num_of_threads; i++){
+        threads[i] = std::thread(std::forward<decltype(args)>(args)...);
     }
-
-    explicit ThreadRunner(auto &&... args) : ThreadRunner() {
-        for (int i = 0; i < num_of_threads; i++) {
-            add_thread(std::forward<decltype(args)>(args)...);
-        }
-        run();
+    for (unsigned int i = 0; i < num_of_threads; i++){
+        threads[i].join();
     }
-
-    bool add_thread(auto &&... args) {
-        if (threads.size() == num_of_threads) return false;
-        threads.push_back(new std::thread(std::forward<decltype(args)>(args)...));
-        return true;
-    };
-
-    void run() { for (auto thread : threads) thread->join(); };
-};
-
+}
 
 template<typename T>
 class ConcurrentQueue {
@@ -73,9 +53,10 @@ public:
     std::queue<T> queue;
     ConcurrentQueue() = default;;
 
-    explicit ConcurrentQueue(std::vector<T> &vec){
-        for (auto elem : vec){
-            queue.push(elem);
+    template<typename It>
+    explicit ConcurrentQueue(It begin, It end){
+        for (It it = begin; it != end; ++it){
+            queue.push(*it);
         }
     }
 
