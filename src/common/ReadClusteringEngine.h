@@ -44,13 +44,15 @@ struct ClusterConnection{
 class ReadClusteringEngine {
 protected:
     SequenceRecordIterator* reader;
-    bloom::BloomFilter<Kmer>* kmers;
+    bloom::BloomFilter<Kmer>* kmers = nullptr;
+    tsl::robin_set<Kmer> kmers_set;
     int k;
     Platform platform;
 
     ClusterIndex cluster_index;
     KmerClusterIndex kmer_cluster_index;
     std::vector<Kmer> kmer_id_to_kmer;
+    std::vector<ReadID> ambiguous_reads;
 
     void construct_indices_thread(KmerIndex &kmer_index);
     int construct_indices();
@@ -65,7 +67,7 @@ protected:
 
     std::vector<IDComponent> union_find(std::vector<ClusterConnection> &connections, tsl::robin_set<ClusterIDPair> &restricted);
 
-    void assemble_clusters(std::vector<ClusterID> &cluster_ids);
+    std::map<ClusterID, std::vector<std::string>> assemble_clusters(std::vector<ClusterID> &cluster_ids);
 
     std::vector<ClusterID> filter_clusters(const std::function<bool(GenomeReadCluster*)>& func){
         std::vector<ClusterID> result;
@@ -81,6 +83,7 @@ public:
     std::map<ClusterID, std::string> export_clusters(std::vector<ClusterID> &cluster_ids, std::experimental::filesystem::path &directory_path);
 
     ReadClusteringEngine(SequenceRecordIterator &read_iterator, int k, bloom::BloomFilter<Kmer> &kmers, Platform platform);
+    ReadClusteringEngine(SequenceRecordIterator &read_iterator, int k, tsl::robin_set<Kmer> &kmers, Platform platform);
     ~ReadClusteringEngine();
 
     void print_clusters(int first_n);

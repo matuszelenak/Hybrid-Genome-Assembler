@@ -101,6 +101,17 @@ ReadClusteringEngine::ReadClusteringEngine(SequenceRecordIterator &read_iterator
     std::cout << fmt::format("{}/{} reads converted to clusters\n", cluster_index.size(), reader->meta.records);
 }
 
+
+ReadClusteringEngine::ReadClusteringEngine(SequenceRecordIterator &read_iterator, int k, tsl::robin_set<Kmer> &kmers, Platform platform) {
+    this->platform = platform;
+    this->k = k;
+    this->reader = &read_iterator;
+    this->kmers_set = kmers;
+
+    timeMeasureMemberFunc(&ReadClusteringEngine::construct_indices, this, "Construct indices")();
+    std::cout << fmt::format("{}/{} reads converted to clusters\n", cluster_index.size(), reader->meta.records);
+}
+
 void ReadClusteringEngine::construct_indices_thread(KmerIndex &kmer_index) {
     std::optional<GenomeReadData> read;
     while ((read = reader->get_next_record()) != std::nullopt) {
@@ -108,12 +119,12 @@ void ReadClusteringEngine::construct_indices_thread(KmerIndex &kmer_index) {
 
         tsl::robin_set<Kmer> in_read_discriminative;
         while (it.next_kmer()) {
-            if (kmers->contains(it.current_kmer)) {
+            if (kmers_set.contains(it.current_kmer) || (kmers != nullptr && kmers->contains(it.current_kmer))){
                 in_read_discriminative.insert(it.current_kmer);
             }
         }
 
-        if (in_read_discriminative.size() >= 5) {
+        if (in_read_discriminative.size() >= 1) {
             std::vector<KmerID> in_read_discriminative_ids;
             ClusterID cluster_id = read->id;
 
@@ -135,6 +146,10 @@ void ReadClusteringEngine::construct_indices_thread(KmerIndex &kmer_index) {
             ReadMetaData meta = {read->id, read->category_id, read->start, read->end};
             cluster_index.insert(ClusterIndex::value_type(cluster_id, new GenomeReadCluster(meta, in_read_discriminative_ids)));
 
+            index_merge.unlock();
+        } else {
+            index_merge.lock();
+            ambiguous_reads.push_back(read->id);
             index_merge.unlock();
         }
     }
@@ -329,30 +344,29 @@ std::vector<IDComponent> ReadClusteringEngine::union_find(std::vector<ClusterCon
 
 std::map<ClusterID, std::string> ReadClusteringEngine::export_clusters(std::vector<ClusterID> &cluster_ids, fs::path &directory_path) {
     tsl::robin_map<ReadID, GenomeReadData> id_to_read;
-    for (auto cluster_id : cluster_ids) {
-        for (auto read_meta: cluster_index[cluster_id]->contained_reads) {
-            id_to_read[read_meta.id] = {};
-        }
-    }
+
     fs::remove_all(directory_path);
     fs::create_directories(directory_path);
     reader->rewind();
     std::optional<GenomeReadData> read;
     while ((read = reader->get_next_record()) != std::nullopt) {
-        if (id_to_read.contains(read->id)) {
-            id_to_read[read->id] = *read;
-        }
+        id_to_read[read->id] = *read;
     }
 
     std::map<ClusterID, std::string> mapping;
     for (auto id : cluster_ids) {
         std::ofstream cluster_file;
-        std::string cluster_file_path = fmt::format("{}/#{}.fq", directory_path.string(), id);
+        std::string cluster_file_path = fmt::format("{}/#{}.fa", directory_path.string(), id);
 
         cluster_file.open(cluster_file_path);
         for (auto read_meta : cluster_index[id]->contained_reads) {
-            cluster_file << id_to_read[read_meta.id].fastX_string() << std::endl;
+            cluster_file << id_to_read[read_meta.id].fasta_string() << std::endl;
         }
+        // Also include reads that likely fit for both haplotypes
+        for (auto read_id : ambiguous_reads){
+            cluster_file << id_to_read[read_id].fasta_string() << std::endl;
+        }
+
         cluster_file.close();
         mapping[id] = cluster_file_path;
     }
@@ -360,30 +374,35 @@ std::map<ClusterID, std::string> ReadClusteringEngine::export_clusters(std::vect
     return mapping;
 }
 
-void ReadClusteringEngine::assemble_clusters(std::vector<ClusterID> &cluster_ids) {
+std::map<ClusterID, std::vector<std::string>> ReadClusteringEngine::assemble_clusters(std::vector<ClusterID> &cluster_ids) {
     sort(cluster_ids.rbegin(), cluster_ids.rend(), [this](ClusterID x, ClusterID y) -> bool { return cluster_index[x]->size() < cluster_index[y]->size(); });
 
     fs::path export_path = "./data/assembly_" + reader->meta.filename;
     auto mapping = export_clusters(cluster_ids, export_path);
 
+    std::map<ClusterID, std::vector<std::string>> assembly_mapping;
     for (ClusterID id : cluster_ids) {
-        std::string assembled_fasta_path = mapping[id] + "_assembled.fasta";
+        std::string assembled_fasta_path = mapping[id] + "_assembled.fa";
 
-        std::string cmd = fmt::format("./scripts/assemble_pacbio_cluster.sh {} {} {}", mapping[id], assembled_fasta_path, platform == PacBio ? "pb" : "ont");
+        std::string cmd = fmt::format("./scripts/assemble_cluster.sh {} {} {}", mapping[id], assembled_fasta_path, platform == PacBio ? "pb" : "ont");
         run_command_with_input(cmd.c_str(), "");
 
-        std::cout << cluster_index[id]->to_string() << " assembly: \n";
+        std::cout << cluster_index[id]->to_string() << " : \n";
         try {
             SequenceRecordIterator r(assembled_fasta_path);
+
+            assembly_mapping[id] = {};
             r.show_progress = false;
             std::optional<GenomeReadData> contig;
             while ((contig = r.get_next_record()) != std::nullopt) {
                 std::cout << fmt::format("\tContig size {}\n", contig->sequence.length());
+                assembly_mapping[id].push_back(contig->sequence);
             }
         } catch (const std::logic_error &e) {
             std::cout << "\t No contigs assembled\n";
         }
     }
+    return assembly_mapping;
 }
 
 void ReadClusteringEngine::run_clustering() {
@@ -425,7 +444,7 @@ void ReadClusteringEngine::run_clustering() {
     plot_cluster_coverage(clusters_for_display);
 
     std::vector<ClusterID> clusters_for_assembly = filter_clusters([](GenomeReadCluster* c){ return (c->size() > 20); });
-    assemble_clusters(clusters_for_assembly);
+    auto assembly = assemble_clusters(clusters_for_assembly);
 }
 
 ReadClusteringEngine::~ReadClusteringEngine() {

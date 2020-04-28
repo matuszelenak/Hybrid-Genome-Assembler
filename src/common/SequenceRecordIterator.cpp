@@ -143,7 +143,7 @@ GenomeReadData SequenceRecordIterator::read_fastq_record() {
     comment = get_next_line();
     qualities = get_next_line();
 
-    return {current_read_index, header, sequence, qualities, _annotate ? current_file_index : 0, 0, 0};
+    return {current_read_index, header.substr(1, std::string::npos), sequence, qualities, _annotate ? current_file_index : 0, 0, 0};
 }
 
 GenomeReadData SequenceRecordIterator::read_fasta_record() {
@@ -151,7 +151,7 @@ GenomeReadData SequenceRecordIterator::read_fasta_record() {
     header = get_next_line();
     sequence = get_next_line();
 
-    return {current_read_index, header, sequence, "", _annotate ? current_file_index : 0, 0, 0};
+    return {current_read_index, header.substr(1, std::string::npos), sequence, "", _annotate ? current_file_index : 0, 0, 0};
 }
 
 std::optional<GenomeReadData> SequenceRecordIterator::get_next_record() {

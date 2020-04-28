@@ -31,11 +31,12 @@ struct GenomeReadData {
     uint32_t start = 0;
     uint32_t end = 0;
 
-    std::string fastX_string() {
-        if (this->qualities.empty()){
-            return fmt::format("{}\n{}", this->header, this->sequence);
-        }
-        return fmt::format("{}\n{}\n+\n{}", this->header, this->sequence, this->qualities);
+    std::string fasta_string(){
+        return fmt::format(">{}\n{}", this->header, this->sequence);
+    }
+
+    std::string fastq_string() {
+        return fmt::format("@{}\n{}\n+\n{}", this->header, this->sequence, this->qualities);
     }
 };
 
