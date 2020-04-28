@@ -43,3 +43,29 @@ int run_command_with_input(const char *command, const std::string &in) {
     }
     return EXIT_SUCCESS;
 }
+
+std::string capture_output_of_command(const char *command){
+    std::array<char, 128> buffer;
+    std::string result;
+    std::unique_ptr<FILE, decltype(&pclose)> pipe(popen(command, "r"), pclose);
+    if (!pipe) {
+        throw std::runtime_error("popen() failed!");
+    }
+    while (fgets(buffer.data(), buffer.size(), pipe.get()) != nullptr) {
+        result += buffer.data();
+    }
+    return result;
+}
+
+std::vector<std::string> split_string(std::string &s, std::string delim){
+    std::vector<std::string> result;
+    auto start = 0U;
+    auto end = s.find(delim);
+    while (end != std::string::npos)
+    {
+        result.push_back(s.substr(start, end - start));
+        start = end + delim.length();
+        end = s.find(delim, start);
+    }
+    return result;
+}

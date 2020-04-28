@@ -345,7 +345,7 @@ std::vector<IDComponent> ReadClusteringEngine::union_find(std::vector<ClusterCon
 std::map<ClusterID, std::string> ReadClusteringEngine::export_clusters(std::vector<ClusterID> &cluster_ids, fs::path &directory_path) {
     tsl::robin_map<ReadID, GenomeReadData> id_to_read;
 
-    fs::remove_all(directory_path);
+    //fs::remove_all(directory_path);
     fs::create_directories(directory_path);
     reader->rewind();
     std::optional<GenomeReadData> read;
@@ -363,9 +363,9 @@ std::map<ClusterID, std::string> ReadClusteringEngine::export_clusters(std::vect
             cluster_file << id_to_read[read_meta.id].fasta_string() << std::endl;
         }
         // Also include reads that likely fit for both haplotypes
-        for (auto read_id : ambiguous_reads){
-            cluster_file << id_to_read[read_id].fasta_string() << std::endl;
-        }
+//        for (auto read_id : ambiguous_reads){
+//            cluster_file << id_to_read[read_id].fasta_string() << std::endl;
+//        }
 
         cluster_file.close();
         mapping[id] = cluster_file_path;
@@ -373,6 +373,8 @@ std::map<ClusterID, std::string> ReadClusteringEngine::export_clusters(std::vect
 
     return mapping;
 }
+
+
 
 std::map<ClusterID, std::vector<std::string>> ReadClusteringEngine::assemble_clusters(std::vector<ClusterID> &cluster_ids) {
     sort(cluster_ids.rbegin(), cluster_ids.rend(), [this](ClusterID x, ClusterID y) -> bool { return cluster_index[x]->size() < cluster_index[y]->size(); });
@@ -405,18 +407,59 @@ std::map<ClusterID, std::vector<std::string>> ReadClusteringEngine::assemble_clu
     return assembly_mapping;
 }
 
+std::vector<InterClusterAlignment> ReadClusteringEngine::get_alignments(std::map<ClusterID, std::vector<std::string>> &assembly){
+    fs::path alignment_path = "./data/alignment_" + reader->meta.filename;
+    fs::remove_all(alignment_path);
+    fs::create_directories(alignment_path);
+
+    std::map<ClusterID, std::string> tail_paths;
+    for (auto id_assembly_pair : assembly){
+        int seq_id = 0;
+        std::string cluster_tails_path = fmt::format("{}/#{}_tails.fa", alignment_path.string(), id_assembly_pair.first);
+        std::ofstream tails_file;
+        tails_file.open(cluster_tails_path);
+        bool has_sequences = false;
+        for (auto sequence : id_assembly_pair.second){
+            if (sequence.length() < 20000) continue;
+
+            has_sequences = true;
+            int tail_length = 20000;
+
+            tails_file << fmt::format(">#{}_{}_head\n", id_assembly_pair.first, seq_id);
+            tails_file << sequence.substr(0, tail_length) << std::endl;
+
+            tails_file << fmt::format(">#{}_{}_tail\n", id_assembly_pair.first, seq_id);
+            tails_file << sequence.substr(sequence.length() - tail_length, std::string::npos) << std::endl;
+
+            seq_id++;
+        }
+        if (has_sequences) tail_paths.insert({id_assembly_pair.first, cluster_tails_path});
+    }
+    std::vector<InterClusterAlignment> result;
+    for (auto tail_1 : tail_paths){
+        for (auto tail_2 : tail_paths){
+            if (tail_1.first < tail_2.first){
+                std::string alignment_cmd = fmt::format("blastn -query {} -subject {} -perc_identity 85 -outfmt \"10 length pident\"", tail_1.second, tail_2.second, alignment_path.string(), tail_1.first, tail_2.first);
+                std::string alignments_output = capture_output_of_command(alignment_cmd.c_str());
+                auto alignments = split_string(alignments_output, "\n");
+                for (auto alignment : alignments){
+                    uint32_t length = std::stoul(alignment.substr(0, alignment.find(",")));
+                    double identity = std::stod(alignment.substr(alignment.find(",") + 1, std::string::npos));
+                    result.push_back({tail_1.first, tail_2.first, length, identity});
+                }
+            }
+        }
+    }
+    std::sort(result.rbegin(), result.rend());
+    return result;
+}
+
 void ReadClusteringEngine::run_clustering() {
-    std::vector<ClusterConnection> cluster_connections = timeMeasureMemberFunc(&ReadClusteringEngine::get_all_connections, this, "Connection calculation")(1);
-    plot_connection_quality(cluster_connections);
-    int first_round_min_score;
-    std::cin >> first_round_min_score;
-    cluster_connections = filter_connections(cluster_connections, [first_round_min_score](ClusterConnection &conn){ return conn.score >= first_round_min_score; });
+    std::vector<ClusterConnection> cluster_connections = timeMeasureMemberFunc(&ReadClusteringEngine::get_all_connections, this, "Connection calculation")(65);
 
     tsl::robin_set<ClusterIDPair> restricted;
     auto chain_components = timeMeasureMemberFunc(&ReadClusteringEngine::union_find, this, "Union find")(cluster_connections, restricted);
     std::vector<ClusterID> chain_ids = timeMeasureMemberFunc(&ReadClusteringEngine::merge_clusters, this, "Cluster merging")(chain_components);
-
-    print_clusters(-1);
 
     for (auto cluster_id : chain_ids){
         for (auto cluster_id_2 : chain_ids){
@@ -424,20 +467,13 @@ void ReadClusteringEngine::run_clustering() {
         }
     }
 
-    while (true){
-        cluster_connections = get_connections(chain_ids, 1);
-        plot_connection_quality(cluster_connections);
-
-        int refine_score;
-        std::cin >> refine_score;
-        if (refine_score == 0) break;
-
-        cluster_connections = filter_connections(cluster_connections, [refine_score](ClusterConnection &conn){ return conn.score >= refine_score; });
+    for (int i = 0; i < 3; i++){
+        cluster_connections = get_connections(chain_ids, 30);
         chain_components = union_find(cluster_connections, restricted);
         merge_clusters(chain_components);
-
-        print_clusters(-1);
     }
+
+    print_clusters(-1);
 
     std::vector<GenomeReadCluster *> clusters_for_display;
     for (auto cluster_id : chain_ids) clusters_for_display.push_back(cluster_index[cluster_id]);
@@ -445,6 +481,11 @@ void ReadClusteringEngine::run_clustering() {
 
     std::vector<ClusterID> clusters_for_assembly = filter_clusters([](GenomeReadCluster* c){ return (c->size() > 20); });
     auto assembly = assemble_clusters(clusters_for_assembly);
+
+    auto alignments = get_alignments(assembly);
+    for (auto alignment : alignments){
+        std::cout << fmt::format("{}-{} {}bp {}%\n", cluster_index[alignment.cluster_x_id]->consistency(), cluster_index[alignment.cluster_y_id]->consistency(), alignment.length, alignment.identity);
+    }
 }
 
 ReadClusteringEngine::~ReadClusteringEngine() {

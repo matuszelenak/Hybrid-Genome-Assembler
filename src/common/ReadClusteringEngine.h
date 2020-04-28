@@ -40,6 +40,22 @@ struct ClusterConnection{
     }
 };
 
+struct InterClusterAlignment {
+    ClusterID cluster_x_id;
+    ClusterID cluster_y_id;
+    uint32_t length;
+    double identity;
+
+    bool operator < (const InterClusterAlignment& aln) const
+    {
+        return ((double)this->length * this->identity < (double)aln.length * aln.identity);
+    }
+    bool operator > (const InterClusterAlignment& aln) const
+    {
+        return ((double)this->length * this->identity > (double)aln.length * aln.identity);
+    }
+};
+
 
 class ReadClusteringEngine {
 protected:
@@ -68,6 +84,8 @@ protected:
     std::vector<IDComponent> union_find(std::vector<ClusterConnection> &connections, tsl::robin_set<ClusterIDPair> &restricted);
 
     std::map<ClusterID, std::vector<std::string>> assemble_clusters(std::vector<ClusterID> &cluster_ids);
+
+    std::vector<InterClusterAlignment> get_alignments(std::map<ClusterID, std::vector<std::string>> &assembly);
 
     std::vector<ClusterID> filter_clusters(const std::function<bool(GenomeReadCluster*)>& func){
         std::vector<ClusterID> result;
