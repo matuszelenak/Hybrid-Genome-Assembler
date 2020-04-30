@@ -141,6 +141,10 @@ void KmerOccurrenceCounter::export_kmers_thread(bloom::BloomFilter<Kmer> &export
 void KmerOccurrenceCounter::export_kmers_in_range(int lower_bound, int upper_bound, std::string &path) {
     if (histogram.empty()) get_histogram();
 
+    if (path.empty()){
+        path = fmt::format("./data/kmers/{}_{}-{}__kmers.bin", reader->meta.filename, lower_bound, upper_bound);
+    }
+
     uint64_t exported_kmer_count = 0;
     for (auto it = histogram.lower_bound(lower_bound); it != histogram.upper_bound(upper_bound + 1); it++) {
         exported_kmer_count += it->second;

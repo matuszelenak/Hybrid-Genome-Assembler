@@ -23,6 +23,9 @@ typedef std::vector<std::vector<ClusterID>> KmerClusterIndex;
 typedef tsl::robin_map<KmerID, std::vector<ClusterID>> IndexRemovalMap;
 typedef std::vector<ClusterID > IDComponent;
 
+typedef std::vector<std::pair<ClusterID, ClusterID> > EdgeList;
+typedef tsl::robin_map<ClusterID, tsl::robin_set<ClusterID> > NeighborMap;
+
 
 struct ClusterConnection{
     ClusterID cluster_x_id;
@@ -70,6 +73,9 @@ protected:
     std::vector<Kmer> kmer_id_to_kmer;
     std::vector<ReadID> ambiguous_reads;
 
+    // TODO remove
+    tsl::robin_map<ReadID, std::pair<uint32_t, uint32_t> > read_intervals;
+
     void construct_indices_thread(KmerIndex &kmer_index);
     int construct_indices();
 
@@ -78,10 +84,10 @@ protected:
     std::vector<ClusterConnection> get_connections(std::vector<ClusterID> &cluster_ids, ConnectionScore min_score);
 
     void kmer_cluster_index_update(ConcurrentQueue<IndexRemovalMap::value_type> &removal_list_queue);
-    void merge_clusters_thread(ConcurrentQueue<IDComponent> &component_queue, IndexRemovalMap &for_removal, std::vector<ClusterID> &merge_result_ids);
-    std::vector<ClusterID> merge_clusters(std::vector<IDComponent> &components);
+    void merge_clusters_thread(ConcurrentQueue<IDComponent> &component_queue, IndexRemovalMap &for_removal);
+    void merge_clusters(std::vector<IDComponent> &components);
 
-    std::vector<IDComponent> union_find(std::vector<ClusterConnection> &connections, tsl::robin_set<ClusterIDPair> &restricted);
+    std::vector<std::pair<IDComponent, EdgeList>> union_find(std::vector<ClusterConnection> &connections, std::set<ClusterID> &restricted, int min_component_size);
 
     std::map<ClusterID, std::vector<std::string>> assemble_clusters(std::vector<ClusterID> &cluster_ids);
 
@@ -96,6 +102,8 @@ protected:
         }
         return result;
     };
+
+    std::pair<std::vector<ClusterID>, std::vector<ClusterID>> get_spanning_tree_boundary_reads(EdgeList &edges);
 public:
     void run_clustering();
     std::map<ClusterID, std::string> export_clusters(std::vector<ClusterID> &cluster_ids, std::experimental::filesystem::path &directory_path);
@@ -105,6 +113,13 @@ public:
     ~ReadClusteringEngine();
 
     void print_clusters(int first_n);
+    void print_clusters(std::vector<ClusterID> &ids);
+
+    std::vector<Interval> get_read_coverage_intervals(std::vector<ReadID> &read_ids);
+
+    std::pair<std::vector<KmerID>, std::vector<KmerID>> get_chain_tail_kmers(std::vector<ClusterID> &chain_component, EdgeList &edges);
+
+    std::vector<ClusterConnection> get_chain_connections(std::vector<std::pair<IDComponent, EdgeList>> &components_with_edges);
 };
 
 void plot_connection_quality(std::vector<ClusterConnection> &connections);

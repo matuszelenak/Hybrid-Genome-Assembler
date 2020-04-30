@@ -120,6 +120,12 @@ class SimLordBackend(ReadGeneratorBackend):
         return sum(1 for _ in SeqIO.parse(f'{output_prefix}.fq', 'fastq'))
 
 
+class PaSSBackend(ReadGeneratorBackend):
+    @staticmethod
+    def reads_from_sequence(record: SeqRecord, output_prefix: str, coverage: int, read_length: int, complement: bool = True, err: float = 0) -> int:
+        pass
+
+
 class NanosimHBackend(ReadGeneratorBackend):
     @staticmethod
     def reads_from_sequence(record: SeqRecord, output_prefix: str, coverage: int, read_length: int, complement: bool = True, err: float = 0) -> int:
