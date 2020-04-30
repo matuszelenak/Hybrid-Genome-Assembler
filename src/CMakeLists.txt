@@ -13,27 +13,19 @@ add_subdirectory(lib/robin-map EXCLUDE_FROM_ALL)
 
 file(GLOB COMMON_SRC_FILES ${PROJECT_SOURCE_DIR}/common/*.cpp)
 file(GLOB LIB_SRC_FILES ${PROJECT_SOURCE_DIR}/lib/*.*pp)
-
-
+file(GLOB OCCURRENCES_SRC_FILES ${PROJECT_SOURCE_DIR}/occurrences/*.*pp)
+file(GLOB CLUSTERING_SRC_FILES ${PROJECT_SOURCE_DIR}/clustering/*.*pp)
 
 # Kmer occurrence executable
-add_executable(occurrences kmer_occurrences.cpp ${COMMON_SRC_FILES} ${LIB_SRC_FILES})
-
+add_executable(occurrences kmer_occurrences.cpp ${OCCURRENCES_SRC_FILES} ${COMMON_SRC_FILES} ${LIB_SRC_FILES})
 TARGET_LINK_LIBRARIES( occurrences LINK_PUBLIC ${Boost_LIBRARIES} stdc++fs pthread fmt)
 target_link_libraries( occurrences PRIVATE tsl::robin_map)
 
 
 ## Clustering executable
-add_executable(clustering read_clustering.cpp ${COMMON_SRC_FILES} ${LIB_SRC_FILES})
-
+add_executable(clustering read_clustering.cpp ${CLUSTERING_SRC_FILES} ${COMMON_SRC_FILES} ${LIB_SRC_FILES})
 TARGET_LINK_LIBRARIES( clustering LINK_PUBLIC ${Boost_LIBRARIES} stdc++fs pthread fmt)
 target_link_libraries( clustering PRIVATE tsl::robin_map)
-
-
-## Locating characteristic kmers in reference genome
-add_executable(locate locate_in_reference.cpp ${COMMON_SRC_FILES} ${LIB_SRC_FILES})
-TARGET_LINK_LIBRARIES( locate LINK_PUBLIC ${Boost_LIBRARIES} stdc++fs pthread fmt)
-target_link_libraries( locate PRIVATE tsl::robin_map)
 
 
 ## Subsampling reads

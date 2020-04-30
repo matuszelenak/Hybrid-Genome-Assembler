@@ -7,9 +7,7 @@
 #include "common/SequenceRecordIterator.h"
 #include "common/KmerIterator.h"
 #include "common/Utils.h"
-#include "common/KmerAnalysis.h"
 #include "common/Plotting.h"
-#include "common/ReadClusteringEngine.h"
 #include "lib/BloomFilter.h"
 
 
@@ -47,7 +45,6 @@ int main(int argc, char *argv[]) {
     int k;
     in.read((char *) &k, sizeof(k));
     auto kmers = bloom::BloomFilter<Kmer>(in);
-
 
     return 0;
 }

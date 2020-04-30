@@ -1,7 +1,7 @@
 #ifndef SRC_PLOTTING_H
 #define SRC_PLOTTING_H
 
-#include "KmerCountingBloomFilter.h"
+#include "Types.h"
 
 void plot_histogram(Histogram &hist);
 

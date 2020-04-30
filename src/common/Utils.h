@@ -13,9 +13,6 @@
 void progress_bar(uint64_t curr, uint64_t total, const std::string &msg);
 
 int run_command_with_input(const char *command, const std::string &in);
-
-std::string capture_output_of_command(const char *command);
-
 template<typename F, typename T>
 auto timeMeasureMemberFunc(const F &func, const T &obj, const std::string &label) {
     return [func, obj, label](auto &&... args) {
@@ -141,7 +138,5 @@ std::vector<T> get_vectors_intersection(std::vector<T> &x, std::vector<T> &y){
     }
     return result;
 }
-
-std::vector<std::string> split_string(std::string &s, std::string delim);
 
 #endif //SRC_UTILS_H

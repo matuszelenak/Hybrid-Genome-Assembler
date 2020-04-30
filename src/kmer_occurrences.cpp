@@ -8,9 +8,10 @@
 #include "common/SequenceRecordIterator.h"
 #include "common/KmerIterator.h"
 #include "common/Utils.h"
-#include "common/KmerAnalysis.h"
 #include "common/Plotting.h"
-#include "common/KmerOccurrenceCounter.h"
+
+#include "occurrences/KmerAnalysis.h"
+#include "occurrences/KmerOccurrenceCounter.h"
 
 
 namespace po = boost::program_options;

@@ -12,6 +12,7 @@ typedef uint32_t ClusterID;
 typedef double UpperSpecificity;
 typedef int NumOfOccurrences;
 typedef int UniqueKmerCount;
+typedef std::map<uint16_t, uint64_t> Histogram;
 typedef std::map<UpperSpecificity, std::map<NumOfOccurrences, UniqueKmerCount>> KmerSpecificity;
 
 #endif //SRC_DNASTRUCTURES_H

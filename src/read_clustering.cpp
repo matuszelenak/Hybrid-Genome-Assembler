@@ -8,9 +8,8 @@
 #include "common/SequenceRecordIterator.h"
 #include "common/KmerIterator.h"
 #include "common/Utils.h"
-#include "common/KmerAnalysis.h"
-#include "common/ReadClusteringEngine.h"
-#include "lib/BloomFilter.h"
+
+#include "clustering/ReadClusteringEngine.h"
 
 
 namespace po = boost::program_options;
