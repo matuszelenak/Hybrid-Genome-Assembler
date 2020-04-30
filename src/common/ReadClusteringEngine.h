@@ -23,7 +23,7 @@ typedef std::vector<std::vector<ClusterID>> KmerClusterIndex;
 typedef tsl::robin_map<KmerID, std::vector<ClusterID>> IndexRemovalMap;
 typedef std::vector<ClusterID > IDComponent;
 
-typedef std::vector<std::pair<ClusterID, ClusterID> > EdgeList;
+typedef std::vector<std::pair<ClusterID, ClusterID> > SpanningTree;
 typedef tsl::robin_map<ClusterID, tsl::robin_set<ClusterID> > NeighborMap;
 
 
@@ -37,92 +37,69 @@ struct ClusterConnection{
     {
         return (this->score < conn.score);
     }
-    bool operator > (const ClusterConnection& conn) const
-    {
-        return (this->score > conn.score);
-    }
 };
 
-struct InterClusterAlignment {
-    ClusterID cluster_x_id;
-    ClusterID cluster_y_id;
-    uint32_t length;
-    double identity;
-
-    bool operator < (const InterClusterAlignment& aln) const
-    {
-        return ((double)this->length * this->identity < (double)aln.length * aln.identity);
-    }
-    bool operator > (const InterClusterAlignment& aln) const
-    {
-        return ((double)this->length * this->identity > (double)aln.length * aln.identity);
-    }
-};
-
+void plot_connection_quality(std::vector<ClusterConnection> &connections);
 
 class ReadClusteringEngine {
 protected:
     SequenceRecordIterator* reader;
     bloom::BloomFilter<Kmer>* kmers = nullptr;
-    tsl::robin_set<Kmer> kmers_set;
-    int k;
-    Platform platform;
+    int k = 0;
 
     ClusterIndex cluster_index;
     KmerClusterIndex kmer_cluster_index;
-    std::vector<Kmer> kmer_id_to_kmer;
-    std::vector<ReadID> ambiguous_reads;
 
-    // TODO remove
+    // DEBUG
     tsl::robin_map<ReadID, std::pair<uint32_t, uint32_t> > read_intervals;
 
     void construct_indices_thread(KmerIndex &kmer_index);
     int construct_indices();
 
     void get_connections_thread(ConnectionScore min_score, ConcurrentQueue<ClusterID> &cluster_id_queue, std::vector<ClusterConnection> &accumulator);
-    std::vector<ClusterConnection> get_all_connections(ConnectionScore min_score);
     std::vector<ClusterConnection> get_connections(std::vector<ClusterID> &cluster_ids, ConnectionScore min_score);
 
     void kmer_cluster_index_update(ConcurrentQueue<IndexRemovalMap::value_type> &removal_list_queue);
     void merge_clusters_thread(ConcurrentQueue<IDComponent> &component_queue, IndexRemovalMap &for_removal);
     void merge_clusters(std::vector<IDComponent> &components);
 
-    std::vector<std::pair<IDComponent, EdgeList>> union_find(std::vector<ClusterConnection> &connections, std::set<ClusterID> &restricted, int min_component_size);
+    std::vector<std::pair<IDComponent, SpanningTree>> union_find(std::vector<ClusterConnection> &connections, std::set<ClusterID> &restricted, int min_component_size);
+
+    std::pair<std::vector<ReadID>, std::vector<ReadID>> get_spanning_tree_boundary_reads(SpanningTree &tree);
+    std::pair<std::vector<KmerID>, std::vector<KmerID>> get_core_cluster_kmer_tails(SpanningTree &tree);
+    std::vector<ClusterConnection> get_core_cluster_connections(std::vector<std::pair<IDComponent, SpanningTree>> &components_with_trees);
 
     std::map<ClusterID, std::vector<std::string>> assemble_clusters(std::vector<ClusterID> &cluster_ids);
 
-    std::vector<InterClusterAlignment> get_alignments(std::map<ClusterID, std::vector<std::string>> &assembly);
-
-    std::vector<ClusterID> filter_clusters(const std::function<bool(GenomeReadCluster*)>& func){
-        std::vector<ClusterID> result;
-        for (auto cluster_pair : cluster_index){
-            if (func(cluster_pair.second)){
-                result.push_back(cluster_pair.first);
-            }
-        }
-        return result;
-    };
-
-    std::pair<std::vector<ClusterID>, std::vector<ClusterID>> get_spanning_tree_boundary_reads(EdgeList &edges);
-public:
-    void run_clustering();
-    std::map<ClusterID, std::string> export_clusters(std::vector<ClusterID> &cluster_ids, std::experimental::filesystem::path &directory_path);
-
-    ReadClusteringEngine(SequenceRecordIterator &read_iterator, int k, bloom::BloomFilter<Kmer> &kmers, Platform platform);
-    ReadClusteringEngine(SequenceRecordIterator &read_iterator, int k, tsl::robin_set<Kmer> &kmers, Platform platform);
-    ~ReadClusteringEngine();
-
-    void print_clusters(int first_n);
-    void print_clusters(std::vector<ClusterID> &ids);
-
     std::vector<Interval> get_read_coverage_intervals(std::vector<ReadID> &read_ids);
 
-    std::pair<std::vector<KmerID>, std::vector<KmerID>> get_chain_tail_kmers(std::vector<ClusterID> &chain_component, EdgeList &edges);
+    std::vector<ClusterConnection> filter_connections(std::vector<ClusterConnection> &original, const std::function<bool(ClusterConnection &)> &func) {
+        std::vector<ClusterConnection> result;
+        for (auto conn : original) {
+            if (func(conn)) result.push_back(conn);
+        }
+        return result;
+    }
 
-    std::vector<ClusterConnection> get_chain_connections(std::vector<std::pair<IDComponent, EdgeList>> &components_with_edges);
+    void clean_cluster_index(){
+        for(auto it = cluster_index.begin();it != cluster_index.end();){
+            if (it->second->size() == 0){
+                free(it->second);
+                cluster_index.erase(it++);
+            } else ++it;
+        }
+    }
+public:
+    void print_clusters(std::vector<ClusterID> &ids);
+    std::map<ClusterID, std::string> export_clusters(std::vector<ClusterID> &cluster_ids, std::experimental::filesystem::path &directory_path);
+
+    explicit ReadClusteringEngine(SequenceRecordIterator &read_iterator);
+    ~ReadClusteringEngine();
+
+    void set_kmers(tsl::robin_set<Kmer> &_kmers, int k);
+    void set_kmers(bloom::BloomFilter<Kmer>* _kmers, int k);
+    std::vector<ClusterID> run_clustering();
 };
-
-void plot_connection_quality(std::vector<ClusterConnection> &connections);
 
 
 #endif //SRC_READCLUSTERINGENGINE_H

@@ -1,6 +1,7 @@
 #include <iostream>
 #include <map>
 #include <string>
+#include <experimental/filesystem>
 #include <boost/program_options.hpp>
 #include <boost/program_options/options_description.hpp>
 
@@ -15,7 +16,7 @@
 namespace po = boost::program_options;
 
 
-std::pair<tsl::robin_set<Kmer>, int> load_kmers(std::string path){
+std::pair<tsl::robin_set<Kmer>, int> load_text_file_kmers(std::string &path){
     std::ifstream in;
     in.open(path);
     std::string kmer;
@@ -27,10 +28,15 @@ std::pair<tsl::robin_set<Kmer>, int> load_kmers(std::string path){
         KmerIterator k_it(kmer, k);
         k_it.next_kmer();
         s.insert(k_it.current_kmer);
-//        std::cout << k_it.number_to_sequence(k_it.current_kmer) << std::endl;
-//        std::cin >> kmer;
     }
     return {s, k};
+}
+
+std::pair<bloom::BloomFilter<Kmer>*, int> load_bloom_filter_kmers(std::string &path){
+    auto in = std::ifstream(path, std::ios::in | std::ios::binary);
+    int k;
+    in.read((char *) &k, sizeof(k));
+    return {new bloom::BloomFilter<Kmer>(in), k};
 }
 
 int main(int argc, char *argv[]) {
@@ -42,9 +48,9 @@ int main(int argc, char *argv[]) {
     desc.add_options()
             ("help,h", "Help screen")
             ("read_paths", po::value<std::vector<std::string>>(&read_paths)->multitoken(), "Path to file with reads (FASTA or FASTQ)")
-            ("bloom,b", po::value<std::string>(), "Path to binary file with discriminative kmers")
             ("kmers,k", po::value<std::string>(), "Path to text file with kmers")
-            ("platform,p", po::value<std::string>(), "Specify origin platform of the reads [pacbio|nanopore]");
+            ("format,f", po::value<std::string>(), "Specify format of the kmer file [plain|bloom]")
+            ("output,o", po::value<std::string>(), "Path to folder with exported clusters");
 
     po::variables_map vm;
     po::store(po::command_line_parser(argc, argv).
@@ -59,35 +65,42 @@ int main(int argc, char *argv[]) {
         throw std::invalid_argument("You need to specify paths to read files");
     }
 
-    Platform platform;
-    if (vm.count("platform")){
-        auto platform_str = vm["platform"].as<std::string>();
-        if (platform_str == "pacbio") platform = PacBio;
-        else if (platform_str == "nanopore") platform = Nanopore;
-        else throw std::invalid_argument("Invalid platform specified");
-    } else platform = PacBio;
-
     SequenceRecordIterator read_iterator = SequenceRecordIterator(read_paths, true);
     for (auto meta: read_iterator.file_meta){
         std::cout << meta.repr();
     }
 
-    if (vm.count("bloom")){
-        auto in = std::ifstream(vm["bloom"].as<std::string>(), std::ios::in | std::ios::binary);
-        int k;
-        in.read((char *) &k, sizeof(k));
-        auto kmers = bloom::BloomFilter<Kmer>(in);
+    auto engine = ReadClusteringEngine(read_iterator);
 
-        auto engine = ReadClusteringEngine(read_iterator, k, kmers, platform);
-        engine.run_clustering();
-    } else if (vm.count("kmers")){
-        auto set_k_pair = load_kmers(vm["kmers"].as<std::string>());
+    if (vm.count("kmers")){
+        std::string kmer_path = vm["kmers"].as<std::string>();
 
-        std::cout << fmt::format("Loaded {} kmers of length {}\n", set_k_pair.first.size(), set_k_pair.second);
-        auto engine = ReadClusteringEngine(read_iterator, set_k_pair.second, set_k_pair.first, platform);
-        engine.run_clustering();
+        if (vm.count("format")){
+            std::string format = vm["format"].as<std::string>();
+            if (format == "bloom"){
+                auto set_k_pair = load_bloom_filter_kmers(kmer_path);
+                engine.set_kmers(set_k_pair.first, set_k_pair.second);
+            } else if (format == "plain"){
+                auto set_k_pair = load_text_file_kmers(kmer_path);
+                engine.set_kmers(set_k_pair.first, set_k_pair.second);
+            } else {
+                throw std::invalid_argument("Invalid kmer file format");
+            }
+        } else {
+            throw std::invalid_argument("Specify the kmer file format");
+        }
+
     } else {
         throw std::invalid_argument("You need to specify path to kmers");
     }
+
+    auto cluster_ids = engine.run_clustering();
+
+    std::experimental::filesystem::path output_folder_path = fmt::format("./{}_clusters/", read_iterator.meta.filename);
+    if (vm.count("output")){
+        output_folder_path = vm["output"].as<std::string>();
+    }
+    engine.export_clusters(cluster_ids, output_folder_path);
+
     return 0;
 }
