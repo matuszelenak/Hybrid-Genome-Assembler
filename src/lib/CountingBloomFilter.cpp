@@ -18,7 +18,8 @@ void CountingBloomFilter<F, T>::add(F &item) {
 
 template<typename F, typename T>
 T CountingBloomFilter<F, T>::get_count(F &item) {
-    T count = UINT64_MAX;
+    T count;
+    count = ~(count & 0u);
 
     uint64_t hash_output[2];
     for (int i = 0; i < hash_count; i++) {

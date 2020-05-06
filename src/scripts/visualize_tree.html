@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <script>
+        nodes = [];
+        edges = [];
+    </script>
+    <script src="../data/trees/ecoli_MG1655_nanosimh_-1b_75x.fa__ecoli_UTI89_nanosimh_-1b_75x.fa_tree_2635.js"></script>
+    <script src="https://d3js.org/d3.v5.js"></script>
+    <title>Spanning tree</title>
+</head>
+<body>
+    <canvas id="canvas">
+
+    </canvas>
+</body>
+<script>
+    let canvas = document.getElementById("canvas");
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+    let context = canvas.getContext('2d');
+    let transform = null;
+
+    const min_interval_start = Math.min(...nodes.map((node) => {return node.start}));
+    const max_interval_end = Math.max(...nodes.map((node) => { return node.end }));
+    console.log(min_interval_start, max_interval_end);
+
+    function percentageToColor(percentage, maxHue = 120, minHue = 0) {
+        const hue = percentage * (maxHue - minHue) + minHue;
+        return `hsl(${hue}, 100%, 50%)`;
+    }
+
+    renderGraph = () => {
+        context.save();
+        context.clearRect(0, 0, canvas.width, canvas.height);
+        context.translate(transform.x, transform.y);
+        context.scale(transform.k, transform.k);
+
+        edges.forEach((edge) => {
+            context.beginPath();
+            context.lineWidth = 3;
+            context.strokeStyle = "black";
+            context.moveTo(edge.source.displayX, edge.source.displayY);
+            context.lineTo(edge.target.displayX, edge.target.displayY);
+            context.stroke();
+        });
+
+        nodes.forEach((node) => {
+            context.beginPath();
+            context.arc(node.displayX, node.displayY, Math.sqrt(node.end - node.start) / 5, 0, 2 * Math.PI, true);
+            context.fillStyle = percentageToColor(((node.start + node.end) / 2) / max_interval_end * 100);
+            context.fill();
+        });
+
+        context.restore();
+    }
+
+    update = () => {
+        nodes.forEach((node) => {
+            node.displayX = ~~node.x;
+            node.displayY = ~~node.y;
+        });
+        renderGraph();
+    };
+
+    zoomed = () => {
+        transform = d3.event.transform;
+        update()
+    };
+
+    nodeOnMousePosition = (mouseX, mouseY) => {
+        let i, dx, dy, x = transform.invertX(mouseX), y = transform.invertY(mouseY);
+        for (i = 0; i < nodes.length; ++i) {
+            const node = nodes[i];
+            dx = x - node.x;
+            dy = y - node.y;
+            if (dx * dx + dy * dy < 100) {
+                return node
+            }
+        }
+    };
+
+    dragSubject = () => {
+        const node = nodeOnMousePosition(d3.event.x, d3.event.y);
+        if (node) {
+            node.x = transform.applyX(node.x);
+            node.y = transform.applyY(node.y);
+            return node
+        }
+    };
+
+    dragstarted = () => {
+        if (!d3.event.active) simulation.alphaTarget(0.3).restart();
+        d3.event.subject.fx = transform.invertX(d3.event.x);
+        d3.event.subject.fy = transform.invertY(d3.event.y);
+    };
+
+    dragged = () => {
+        d3.event.subject.fx = transform.invertX(d3.event.x);
+        d3.event.subject.fy = transform.invertY(d3.event.y);
+    };
+
+    dragended = () => {
+        if (!d3.event.active) simulation.alphaTarget(0);
+        d3.event.subject.fx = null;
+        d3.event.subject.fy = null;
+    }
+
+    let simulation = d3.forceSimulation()
+        .force("collide", d3.forceCollide())
+        .force("x", d3.forceX(canvas.width / 2))
+        .force("y", d3.forceY(canvas.height / 2))
+        .force("charge", d3.forceManyBody().strength(-200))
+        .force("link", d3.forceLink().strength(0.1).id((node) => node.id));
+
+    d3.select(canvas)
+        .call(d3.drag().subject(dragSubject)
+            .on("start", dragstarted)
+            .on("drag", dragged)
+            .on("end", dragended))
+        .call(d3.zoom().scaleExtent([1 / 10, 8]).on("zoom", zoomed));
+
+    transform = d3.zoomIdentity;
+    simulation.on("tick", update);
+
+    simulation.nodes(nodes);
+    simulation.force("link").links(edges);
+    simulation.alphaTarget(0.3).alphaDecay(0.05).restart();
+</script>
+</html>

@@ -18,24 +18,52 @@ KmerOccurrenceCounter::KmerOccurrenceCounter(SequenceRecordIterator &read_iterat
     compute_filters();
 }
 
-void KmerOccurrenceCounter::compute_filters_thread() {
+void KmerOccurrenceCounter::count_non_singletons_thread(bloom::BloomFilter<Kmer> &first_occurrence, bloom::BloomFilter<Kmer> &second_occurrence){
     std::optional<GenomeReadData> read;
     while ((read = reader->get_next_record()) != std::nullopt) {
         KmerIterator it = KmerIterator(read->sequence, k);
         while (it.next_kmer()) {
-            filters[read->category_id]->add(it.current_kmer);
+            if (!first_occurrence.insert(it.current_kmer)){
+                second_occurrence.insert(it.current_kmer);
+            }
+        }
+    }
+}
+
+bloom::BloomFilter<Kmer> KmerOccurrenceCounter::count_non_singletons(){
+    auto first_occurrence = bloom::BloomFilter<Kmer>(expected_num_of_kmers, 0.01);
+    auto second_occurrence = bloom::BloomFilter<Kmer>(expected_num_of_kmers, 0.01);
+
+    reader->rewind();
+    run_in_threads(&KmerOccurrenceCounter::count_non_singletons_thread, this, std::ref(first_occurrence), std::ref(second_occurrence));
+
+    return second_occurrence;
+}
+
+void KmerOccurrenceCounter::compute_filters_thread(bloom::BloomFilter<Kmer> &more_than_once) {
+    std::optional<GenomeReadData> read;
+    while ((read = reader->get_next_record()) != std::nullopt) {
+        KmerIterator it = KmerIterator(read->sequence, k);
+        while (it.next_kmer()) {
+            if (more_than_once.contains(it.current_kmer)){
+                filters[read->category_id]->add(it.current_kmer);
+            }
         }
     }
 }
 
 void KmerOccurrenceCounter::compute_filters() {
+    std::cout << "Counting kmers with more than one occurrence\n";
+    auto more_than_once = count_non_singletons();
+    auto more_than_once_count = more_than_once.cardinality();
+
     std::cout << "Computing filters\n";
     filters.clear();
     for (int temp = 0; temp < reader->categories; temp++) {
-        filters.push_back(new counting_bloom::CountingBloomFilter<Kmer, uint16_t>(expected_num_of_kmers, 0.05));
+        filters.push_back(new counting_bloom::CountingBloomFilter<Kmer, uint16_t>(more_than_once_count, 0.05));
     }
     reader->rewind();
-    run_in_threads(&KmerOccurrenceCounter::compute_filters_thread, this);
+    run_in_threads(&KmerOccurrenceCounter::compute_filters_thread, this, std::ref(more_than_once));
 }
 
 void KmerOccurrenceCounter::specificity_thread(bloom::BloomFilter<Kmer> &processed, std::mutex &mut) {

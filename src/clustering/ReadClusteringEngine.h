@@ -62,8 +62,8 @@ protected:
     std::vector<ClusterConnection> get_connections(std::vector<ClusterID> &cluster_ids, ConnectionScore min_score);
 
     void kmer_cluster_index_update(ConcurrentQueue<IndexRemovalMap::value_type> &removal_list_queue);
-    void merge_clusters_thread(ConcurrentQueue<IDComponent> &component_queue, IndexRemovalMap &for_removal);
-    int merge_clusters(std::vector<IDComponent> &components);
+    void merge_clusters_thread(ConcurrentQueue<IDComponent> &component_queue, IndexRemovalMap &for_removal, std::vector<ClusterID> &merged_ids);
+    std::vector<ClusterID> merge_clusters(std::vector<IDComponent> &components);
 
     std::vector<std::pair<IDComponent, SpanningTree>> union_find(std::vector<ClusterConnection> &connections, std::set<ClusterID> &restricted, int min_component_size);
 
@@ -91,8 +91,12 @@ protected:
             } else ++it;
         }
     }
+
 public:
+    void export_spanning_tree(SpanningTree &tree);
+    void plot_read_overlaps(std::vector<ClusterConnection> &connections);
     void print_clusters(std::vector<ClusterID> &ids);
+
     std::map<ClusterID, std::string> export_clusters(std::vector<ClusterID> &cluster_ids, std::experimental::filesystem::path &directory_path);
 
     explicit ReadClusteringEngine(SequenceRecordIterator &read_iterator);

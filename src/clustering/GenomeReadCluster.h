@@ -37,7 +37,7 @@ public:
     [[nodiscard]] uint64_t size() const{ return contained_reads.size(); };
 
     std::string consistency(){
-        std::map<CategoryID, int> category_counts = {{0, 0}, {1, 0}};
+        std::map<CategoryID, int> category_counts = {{0, 0}, {1, 0}, {2, 0}};
         for (auto meta : contained_reads) {
             category_counts.insert({meta.category_id, 0}).first->second += 1;
         }

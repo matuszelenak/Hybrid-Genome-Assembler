@@ -124,11 +124,66 @@ class ClusterCoverage:
         plt.show()
 
 
+class ConnectionIntervalOverlap:
+    def __init__(self):
+        scores_values = int(input())
+        scores = []
+        scores_avg_overlap = {}
+        scores_min_overlap = {}
+        for _ in range(scores_values):
+            score, overlap_map = eval(input())
+            s = 0
+            c = 0
+            scores_min_overlap[score] = 10000000000
+            for overlap, count in overlap_map.items():
+                s += (overlap * count)
+                c += count
+
+                scores_min_overlap[score] = min(overlap, scores_min_overlap[score])
+
+            scores.append(score)
+            scores_avg_overlap[score] = s / c if c > 0 else 0
+
+        scores.sort()
+        index = 0
+        step = 5
+        y_avg, y_min = [], []
+        x_values = []
+        while True:
+            sum_of_min = 0
+            sum_of_avg = 0
+            for score_index in range(index, min(len(scores), index + step)):
+                sum_of_avg += scores_avg_overlap[scores[score_index]]
+                sum_of_min += scores_min_overlap[scores[score_index]]
+
+            y_avg.append(sum_of_avg / min(step, len(scores) - index))
+            y_min.append(sum_of_min / min(step, len(scores) - index))
+
+            x_values.append(scores[index])
+
+            if index + step >= len(scores):
+                break
+
+            index += step
+            if index >= len(scores):
+                break
+
+            step = int(step * 1.3)
+
+        plt.plot(np.array(x_values), np.array(y_avg), color="blue", label="Average overlap")
+        plt.plot(np.array(x_values), np.array(y_min), color="green", label="Minimal overlap")
+        plt.xlabel("Connection strength")
+        plt.ylabel("Read Overlap size")
+        plt.legend(loc="upper left")
+        plt.title("Relation of read connection strength and overlaps")
+        plt.show()
+
 SUPPORTED_PLOTS = {
     'kmer_histogram': KmerHistogram,
     'kmer_histogram_with_spec': KmerHistogramWithSpec,
     'connection_histogram': ConnectionHistogram,
-    'cluster_coverage': ClusterCoverage
+    'cluster_coverage': ClusterCoverage,
+    'connection_overlaps': ConnectionIntervalOverlap
 }
 
 parser = argparse.ArgumentParser()

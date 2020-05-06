@@ -18,8 +18,6 @@ private:
     uint8_t complement_shift_by;
     Kmer forward_kmer = 0, complementary_kmer = 0;
 
-    unsigned long position_in_sequence = 0;
-
     void roll_forward_strand();
     void roll_complementary_strand();
 public:
@@ -27,6 +25,7 @@ public:
 
     bool next_kmer();
     Kmer current_kmer = 0;
+    unsigned long position_in_sequence = 0;
 
     std::string number_to_sequence(Kmer kmer);
 };

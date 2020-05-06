@@ -23,7 +23,7 @@ public:
     explicit KmerOccurrenceCounter(SequenceRecordIterator &read_iterator);
     KmerOccurrenceCounter(SequenceRecordIterator &read_iterator, int k);
 
-    void compute_filters_thread();
+    void compute_filters_thread(bloom::BloomFilter<Kmer> &more_than_once);
     void compute_filters();
 
     void specificity_thread(bloom::BloomFilter<Kmer> &processed, std::mutex &mut);
@@ -34,6 +34,10 @@ public:
 
     void export_kmers_thread(bloom::BloomFilter<Kmer> &exported_kmers, bloom::BloomFilter<Kmer> &processed, int lower_bound, int upper_bound);
     void export_kmers_in_range(int lower_bound, int upper_bound, std::string &path);
+
+    void count_non_singletons_thread(bloom::BloomFilter <Kmer> &first_occurrence, bloom::BloomFilter <Kmer> &second_occurrence);
+
+    bloom::BloomFilter<Kmer> count_non_singletons();
 };
 
 

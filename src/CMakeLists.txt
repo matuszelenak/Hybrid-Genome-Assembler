@@ -9,7 +9,6 @@ FIND_PACKAGE( Boost 1.65 COMPONENTS program_options date_time system REQUIRED re
 INCLUDE_DIRECTORIES( ${Boost_INCLUDE_DIR} )
 
 add_subdirectory(lib/fmt EXCLUDE_FROM_ALL)
-add_subdirectory(lib/robin-map EXCLUDE_FROM_ALL)
 
 file(GLOB COMMON_SRC_FILES ${PROJECT_SOURCE_DIR}/common/*.cpp)
 file(GLOB LIB_SRC_FILES ${PROJECT_SOURCE_DIR}/lib/*.*pp)
@@ -19,13 +18,11 @@ file(GLOB CLUSTERING_SRC_FILES ${PROJECT_SOURCE_DIR}/clustering/*.*pp)
 # Kmer occurrence executable
 add_executable(occurrences kmer_occurrences.cpp ${OCCURRENCES_SRC_FILES} ${COMMON_SRC_FILES} ${LIB_SRC_FILES})
 TARGET_LINK_LIBRARIES( occurrences LINK_PUBLIC ${Boost_LIBRARIES} stdc++fs pthread fmt)
-target_link_libraries( occurrences PRIVATE tsl::robin_map)
 
 
 ## Clustering executable
 add_executable(clustering read_clustering.cpp ${CLUSTERING_SRC_FILES} ${COMMON_SRC_FILES} ${LIB_SRC_FILES})
 TARGET_LINK_LIBRARIES( clustering LINK_PUBLIC ${Boost_LIBRARIES} stdc++fs pthread fmt)
-target_link_libraries( clustering PRIVATE tsl::robin_map)
 
 
 ## Subsampling reads
@@ -36,4 +33,3 @@ TARGET_LINK_LIBRARIES( subsample LINK_PUBLIC ${Boost_LIBRARIES} stdc++fs pthread
 ## Locating discriminative kmers in reference
 add_executable(find_in_reference find_in_reference.cpp ${COMMON_SRC_FILES} ${LIB_SRC_FILES})
 TARGET_LINK_LIBRARIES( find_in_reference LINK_PUBLIC ${Boost_LIBRARIES} stdc++fs pthread fmt)
-target_link_libraries( find_in_reference PRIVATE tsl::robin_map)

@@ -28,7 +28,7 @@
             contexts[genome_index].fillStyle = colorToCanvasColor[color];
             contexts[genome_index].fillRect(colIndex * (kmer_visual_size + 1), rowIndex * (kmer_visual_size + 1), kmer_visual_size, kmer_visual_size);
             colIndex++;
-            if (colIndex == 180){
+            if (colIndex === 180){
                 colIndex = 0;
                 rowIndex++;
             }
