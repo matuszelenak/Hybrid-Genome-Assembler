@@ -135,7 +135,7 @@ class NanosimHBackend(ReadGeneratorBackend):
         avg_read_length = 7777
         required_reads = round((len(record) / avg_read_length) * coverage)
 
-        cmd = ['nanosim-h', temporary_file, '-n', str(required_reads), '--circular', '-o', output_prefix]
+        cmd = ['nanosim-h', temporary_file, '-n', str(required_reads), '-o', output_prefix]
 
         subprocess.Popen(cmd).wait()
 
@@ -173,8 +173,8 @@ def generate_mutated_sequence_pair(genome_size: int, difference_rate: float) -> 
         id=f'Artificial_mutated_size_{genome_size}'
     )
 
-    SeqIO.write(original_record, f'../data/sequence_data/artificial.fasta', 'fasta')
-    SeqIO.write(mutated_record, f'../data/sequence_data/artificial_mutated.fasta', 'fasta')
+    SeqIO.write(original_record, f'../data/sequences/artificial.fasta', 'fasta')
+    SeqIO.write(mutated_record, f'../data/sequences/artificial_mutated.fasta', 'fasta')
 
     return original_record, mutated_record
 

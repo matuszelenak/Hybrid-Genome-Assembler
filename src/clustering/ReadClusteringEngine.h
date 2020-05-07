@@ -52,6 +52,9 @@ protected:
     ClusterIndex cluster_index;
     KmerClusterIndex kmer_cluster_index;
 
+    tsl::robin_map<ReadID, uint32_t> read_lengths;
+    tsl::robin_map<ReadID, tsl::robin_map<KmerID, int>> kmer_positions;
+
     // DEBUG
     tsl::robin_map<ReadID, std::pair<uint32_t, uint32_t> > read_intervals;
 
@@ -105,6 +108,8 @@ public:
     void set_kmers(tsl::robin_set<Kmer> &_kmers, int k);
     void set_kmers(bloom::BloomFilter<Kmer>* _kmers, int k);
     std::vector<ClusterID> run_clustering();
+
+    int approximate_read_overlap(ReadID x, ReadID y);
 };
 
 
