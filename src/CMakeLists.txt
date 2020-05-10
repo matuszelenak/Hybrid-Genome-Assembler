@@ -33,3 +33,7 @@ TARGET_LINK_LIBRARIES( subsample LINK_PUBLIC ${Boost_LIBRARIES} stdc++fs pthread
 ## Locating discriminative kmers in reference
 add_executable(find_in_reference find_in_reference.cpp ${COMMON_SRC_FILES} ${LIB_SRC_FILES})
 TARGET_LINK_LIBRARIES( find_in_reference LINK_PUBLIC ${Boost_LIBRARIES} stdc++fs pthread fmt)
+
+
+add_executable(jf_occurrences jellyfish_occurrences.cpp ${OCCURRENCES_SRC_FILES} ${COMMON_SRC_FILES} ${LIB_SRC_FILES})
+TARGET_LINK_LIBRARIES( jf_occurrences LINK_PUBLIC ${Boost_LIBRARIES} stdc++fs pthread fmt)

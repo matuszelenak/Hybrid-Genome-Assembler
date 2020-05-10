@@ -59,7 +59,7 @@ class KmerHistogramWithSpec:
             (101, 'g')
         )).get
 
-        skip_first = 5
+        skip_first = 2
 
         bars = []
         indices = np.arange(1, max_coverage + 1)
