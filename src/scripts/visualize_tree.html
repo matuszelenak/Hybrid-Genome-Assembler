@@ -6,7 +6,7 @@
         nodes = [];
         edges = [];
     </script>
-    <script src="../data/trees/ecoli_MG1655_nanosimh_-1b_75x.fa__ecoli_UTI89_nanosimh_-1b_75x.fa_tree_2635.js"></script>
+    <script src="../data/trees/ecoli_MG1655_nanosimh_-1b_75x.fa__ecoli_UTI89_nanosimh_-1b_75x.fa_tree_47643.js"></script>
     <script src="https://d3js.org/d3.v5.js"></script>
     <title>Spanning tree</title>
 </head>
@@ -21,15 +21,10 @@
     canvas.height = window.innerHeight;
     let context = canvas.getContext('2d');
     let transform = null;
+    let highlight = 'N';
 
     const min_interval_start = Math.min(...nodes.map((node) => {return node.start}));
     const max_interval_end = Math.max(...nodes.map((node) => { return node.end }));
-    console.log(min_interval_start, max_interval_end);
-
-    function percentageToColor(percentage, maxHue = 120, minHue = 0) {
-        const hue = percentage * (maxHue - minHue) + minHue;
-        return `hsl(${hue}, 100%, 50%)`;
-    }
 
     renderGraph = () => {
         context.save();
@@ -49,11 +44,21 @@
         nodes.forEach((node) => {
             context.beginPath();
             context.arc(node.displayX, node.displayY, Math.sqrt(node.end - node.start) / 5, 0, 2 * Math.PI, true);
-            context.fillStyle = percentageToColor(((node.start + node.end) / 2) / max_interval_end * 100);
+            const hue = (((node.start - min_interval_start)) / (max_interval_end - min_interval_start)) * 120;
+            let saturation = 10;
+            if (node.tail === highlight || highlight === 'n'){
+                saturation = 100;
+            }
+            context.fillStyle = `hsl(${hue}, ${saturation}%, 50%)`;
             context.fill();
         });
 
         context.restore();
+    }
+
+    document.onkeypress = (e) => {
+        highlight = e.key;
+        renderGraph();
     }
 
     update = () => {

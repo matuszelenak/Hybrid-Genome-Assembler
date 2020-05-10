@@ -7,7 +7,7 @@ typedef uint64_t Kmer;
 typedef uint32_t KmerID;
 typedef int CategoryID;
 typedef uint8_t Quality;
-typedef uint32_t ClusterID;
+typedef uint32_t ComponentID;
 
 typedef double UpperSpecificity;
 typedef int NumOfOccurrences;

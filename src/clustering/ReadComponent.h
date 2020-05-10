@@ -20,16 +20,16 @@ struct ReadMetaData {
 };
 
 
-class GenomeReadCluster {
+class ReadComponent {
 public:
-    GenomeReadCluster(ReadMetaData &initial_read_meta, std::vector<KmerID> &discriminative_kmer_ids){
+    ReadComponent(ReadMetaData &initial_read_meta, std::vector<KmerID> &discriminative_kmer_ids){
         this->id = initial_read_meta.id;
         this->discriminative_kmer_ids = discriminative_kmer_ids;
         this->contained_reads = {initial_read_meta};
         this->categories = {initial_read_meta.category_id};
     };
 
-    ClusterID id = 0;
+    ComponentID id = 0;
     std::vector<ReadMetaData> contained_reads;
     std::vector<KmerID> discriminative_kmer_ids;
     std::set<CategoryID> categories;

@@ -95,13 +95,26 @@ class ConnectionHistogram:
         good_conns: Dict[int, int] = eval(input())
         bad_conns: Dict[int, int] = eval(input())
 
-        strengths = sorted(list(list(good_conns.keys()) + list(bad_conns.keys())), reverse=True)
+        strengths = sorted(list(good_conns.keys()) + list(bad_conns.keys()), reverse=True)
+
+        prefix_conn_count = {}
+        prev_count = 0
+        max_strength_count = 0
+        for s in strengths:
+            prefix_conn_count[s] = prev_count + good_conns.get(s, 0) + bad_conns.get(s, 0)
+            max_strength_count = max(max_strength_count, good_conns.get(s, 0) + bad_conns.get(s, 0))
+            prev_count = prefix_conn_count[s]
+
+        for strength in strengths:
+            if prefix_conn_count[strength] > 0.2 * prev_count:
+                plt.vlines(strength, max_strength_count, 0, 'b')
+                break
 
         indices = np.array(strengths)
-        good_data = np.array([(math.sqrt(good_conns[strength]) if strength in good_conns else 0) for strength in strengths])
+        good_data = np.array([((good_conns[strength]) if strength in good_conns else 0) for strength in strengths])
         plt.bar(indices, good_data, width=0.8, color='g')
 
-        bad_data = np.array([(math.sqrt(bad_conns[strength]) if strength in bad_conns else 0) for strength in strengths])
+        bad_data = np.array([((bad_conns[strength]) if strength in bad_conns else 0) for strength in strengths])
         plt.bar(indices, bad_data, bottom=good_data, width=0.8, color='r')
 
         plt.show()
@@ -178,12 +191,38 @@ class ConnectionIntervalOverlap:
         plt.title("Relation of read connection strength and overlaps")
         plt.show()
 
+class OverlapErrorHisto:
+    def __init__(self):
+        import math
+        errors = []
+        while True:
+            try:
+                i = input()
+            except EOFError:
+                break
+
+            calculated, real = [int(x) for x in i.split()]
+            error = ((calculated - real) / ((calculated + real) / 2))
+            errors.append(math.floor(error * 100))
+
+        mi = min(errors)
+        ma = max(errors)
+        tick_values = np.arange(mi, ma, (ma - mi) / 30)
+
+        plt.hist(errors, bins=300)
+        plt.title("Estimated read overlaps vs real read overlaps")
+        plt.xticks(tick_values, ['{:.2f}%'.format(err / 100) for err in tick_values])
+        plt.xlabel("Difference rate")
+        plt.show()
+
+
 SUPPORTED_PLOTS = {
     'kmer_histogram': KmerHistogram,
     'kmer_histogram_with_spec': KmerHistogramWithSpec,
     'connection_histogram': ConnectionHistogram,
     'cluster_coverage': ClusterCoverage,
-    'connection_overlaps': ConnectionIntervalOverlap
+    'connection_overlaps': ConnectionIntervalOverlap,
+    'overlap_errors' : OverlapErrorHisto
 }
 
 parser = argparse.ArgumentParser()

@@ -12,13 +12,10 @@
 namespace fs = std::experimental::filesystem;
 namespace algo = boost::algorithm;
 
-std::mutex connections_mut;
-std::mutex component_merging_mut;
-std::mutex index_merge;
-
 //DEBUG
-void plot_connection_quality(std::vector<ClusterConnection> &connections) {
-    std::map<bool, std::map<ConnectionScore, int>> score_to_matching = {{true, {}}, {false, {}}};
+void plot_connection_quality(std::vector<ComponentConnection> &connections) {
+    std::map<bool, std::map<ConnectionScore, int>> score_to_matching = {{true,  {}},
+                                                                        {false, {}}};
     for (auto &conn : connections) {
         score_to_matching[conn.is_good].insert(std::map<ConnectionScore, int>::value_type(conn.score, 0)).first->second += 1;
     }
@@ -33,16 +30,17 @@ void plot_connection_quality(std::vector<ClusterConnection> &connections) {
     run_command_with_input("python scripts/plotting.py --plot connection_histogram", hist_input);
 }
 
-void plot_connection_quality(std::vector<ClusterConnection> &connections, std::vector<ClusterID> &core_ids){
-    std::map<ClusterID, std::pair<ConnectionScore, bool> > best_per_vertex;
-    for (auto & conn : connections){
-        auto insert_pair = best_per_vertex.insert({conn.cluster_y_id, {0, false}}).first;
-        if (conn.score > insert_pair->second.first){
-            best_per_vertex[conn.cluster_y_id] = {conn.score, conn.is_good};
+void plot_connection_quality(std::vector<ComponentConnection> &connections, std::vector<ComponentID> &core_ids) {
+    std::map<ComponentID, std::pair<ConnectionScore, bool> > best_per_vertex;
+    for (auto &conn : connections) {
+        auto insert_pair = best_per_vertex.insert({conn.component_y_id, {0, false}}).first;
+        if (conn.score > insert_pair->second.first) {
+            best_per_vertex[conn.component_y_id] = {conn.score, conn.is_good};
         }
     }
-    std::map<bool, std::map<ConnectionScore, int>> score_to_matching = {{true, {}}, {false, {}}};
-    for (auto _score_and_quality : best_per_vertex){
+    std::map<bool, std::map<ConnectionScore, int>> score_to_matching = {{true,  {}},
+                                                                        {false, {}}};
+    for (auto _score_and_quality : best_per_vertex) {
         score_to_matching[_score_and_quality.second.second].insert(std::map<ConnectionScore, int>::value_type(_score_and_quality.second.first, 0)).first->second += 1;
     }
     std::vector<std::string> good_connections, bad_connections;
@@ -57,7 +55,7 @@ void plot_connection_quality(std::vector<ClusterConnection> &connections, std::v
 }
 
 //DEBUG
-void plot_cluster_coverage(std::vector<GenomeReadCluster *> &clusters) {
+void plot_cluster_coverage(std::vector<ReadComponent *> &clusters) {
 //    std::map<CategoryID, std::vector<std::string> > category_intervals = {{0, {}},
 //                                                                          {1, {}}};
 //    for (auto cluster : clusters) {
@@ -72,11 +70,12 @@ void plot_cluster_coverage(std::vector<GenomeReadCluster *> &clusters) {
 //    run_command_with_input("python scripts/plotting.py --plot cluster_coverage", input);
 }
 
-void ReadClusteringEngine::plot_read_overlaps(std::vector<ClusterConnection> &connections){
+//DEBUG
+void ReadClusteringEngine::plot_read_overlaps(std::vector<ComponentConnection> &connections) {
     std::map<ConnectionScore, std::map<int, int> > overlaps_for_strength;
-    for (auto & conn : connections){
-        auto a = read_intervals[conn.cluster_x_id];
-        auto b = read_intervals[conn.cluster_y_id];
+    for (auto &conn : connections) {
+        auto a = read_intervals[conn.component_x_id];
+        auto b = read_intervals[conn.component_y_id];
 
         int overlap = std::max(0u, std::min(a.second, b.second) - std::max(a.first, b.first));
         if (overlap < 1) continue;
@@ -87,9 +86,9 @@ void ReadClusteringEngine::plot_read_overlaps(std::vector<ClusterConnection> &co
     }
 
     std::vector<std::string> per_score_overlaps;
-    for (auto score_overlaps : overlaps_for_strength){
+    for (auto score_overlaps : overlaps_for_strength) {
         std::vector<std::string> overlap_counts;
-        for (auto overlap_count : score_overlaps.second){
+        for (auto overlap_count : score_overlaps.second) {
             overlap_counts.push_back(fmt::format("{}: {}", overlap_count.first, overlap_count.second));
         }
         per_score_overlaps.push_back(fmt::format("({}, {{{}}})", score_overlaps.first, boost::algorithm::join(overlap_counts, ", ")));
@@ -98,23 +97,26 @@ void ReadClusteringEngine::plot_read_overlaps(std::vector<ClusterConnection> &co
     run_command_with_input("python scripts/plotting.py --plot connection_overlaps", plot_input);
 }
 
-void ReadClusteringEngine::export_spanning_tree(SpanningTree &tree){
-    std::set<ClusterID> nodes;
-    std::vector<std::string> node_strings;
-    std::vector<std::string> edge_strings;
-    for (auto edge : tree){
-        nodes.insert(edge.first);
-        nodes.insert(edge.second);
-        edge_strings.push_back(fmt::format("{{source: {}, target: {}}}", edge.first, edge.second));
-    }
-    for (ClusterID node : nodes){
-        node_strings.push_back(fmt::format("{{ id: {}, start : {}, end : {} }}", node, read_intervals[node].first, read_intervals[node].second));
-    }
+//DEBUG
+void ReadClusteringEngine::plot_overlap_differences(std::vector<ComponentConnection> &connections) {
+    auto get_real_overlap = [this](ReadID x, ReadID y) {
+        auto a = read_intervals[x];
+        auto b = read_intervals[y];
+        int real_overlap = std::max(0u, std::min(a.second, b.second) - std::max(a.first, b.first));
+        return real_overlap;
+    };
 
-    std::ofstream output;
-    output.open(fmt::format("./data/trees/{}_tree_{}.js", reader->meta.filename, *nodes.begin()));
-    output << fmt::format("nodes = [{}]\nedges = [{}]\n", boost::algorithm::join(node_strings, ", "), boost::algorithm::join(edge_strings, ", "));
-    output.close();
+    std::ofstream dump;
+    dump.open("overlaps");
+    for (auto &conn : connections) {
+        auto overlap = approximate_read_overlap(conn.component_x_id, conn.component_y_id);
+        int real_overlap = get_real_overlap(conn.component_x_id, conn.component_y_id);
+
+        if (real_overlap > 1) {
+            dump << fmt::format("{} {}\n", overlap, real_overlap);
+        }
+    }
+    dump.close();
 }
 
 //DEBUG
@@ -147,238 +149,266 @@ std::vector<Interval> ReadClusteringEngine::get_read_coverage_intervals(std::vec
 }
 
 //DEBUG
-void ReadClusteringEngine::print_clusters(std::vector<ClusterID> &ids) {
-    sort(ids.rbegin(), ids.rend(), [this](ClusterID x, ClusterID y) -> bool { return cluster_index[x]->size() < cluster_index[y]->size(); });
+void ReadClusteringEngine::print_components(std::vector<ComponentID> &ids) {
+    sort(ids.rbegin(), ids.rend(), [this](ComponentID x, ComponentID y) -> bool { return component_index[x]->size() < component_index[y]->size(); });
     std::cout << "Clusters:\n";
     for (auto id : ids) {
-        std::cout << cluster_index[id]->to_string() << std::endl;
+        std::cout << component_index[id]->to_string() << std::endl;
     }
     std::cout << "End clusters\n";
+}
+
+void ReadClusteringEngine::export_spanning_tree(SpanningTree &tree, std::pair<std::vector<ReadID>, std::vector<ReadID>> &tails) {
+    std::set<ComponentID> nodes;
+    std::vector<std::string> node_strings;
+    std::vector<std::string> edge_strings;
+    for (auto edge : tree) {
+        nodes.insert(edge.first);
+        nodes.insert(edge.second);
+        edge_strings.push_back(fmt::format("{{source: {}, target: {}}}", edge.first, edge.second));
+    }
+
+    std::set<ReadID> left_tail(tails.first.begin(), tails.first.end());
+    std::set<ReadID> right_tail(tails.second.begin(), tails.second.end());
+    for (ComponentID node : nodes) {
+        char tail_marker;
+        if (left_tail.contains(node)) {
+            tail_marker = 'L';
+        } else if (right_tail.contains(node)) {
+            tail_marker = 'R';
+        } else tail_marker = 'N';
+        node_strings.push_back(fmt::format("{{ id: {}, start : {}, end : {}, tail: '{}' }}", node, read_intervals[node].first, read_intervals[node].second, tail_marker));
+    }
+
+    std::ofstream output;
+    output.open(fmt::format("./data/trees/{}_tree_{}.js", reader->meta.filename, *nodes.begin()));
+    output << fmt::format("nodes = [{}]\nedges = [{}]\n", boost::algorithm::join(node_strings, ", "), boost::algorithm::join(edge_strings, ", "));
+    output.close();
 }
 
 ReadClusteringEngine::ReadClusteringEngine(SequenceRecordIterator &read_iterator) {
     this->reader = &read_iterator;
 }
 
-void ReadClusteringEngine::set_kmers(tsl::robin_set<Kmer> &_kmers, int _k){
+void ReadClusteringEngine::set_kmers(tsl::robin_set<Kmer> &_kmers, int _k) {
     this->k = _k;
     this->kmers = new bloom::BloomFilter<Kmer>(_kmers.size(), 0.01);
-    for (Kmer kmer : _kmers){
+    for (Kmer kmer : _kmers) {
         this->kmers->add(kmer);
     }
 }
 
-void ReadClusteringEngine::set_kmers(bloom::BloomFilter<Kmer> *_kmers, int _k){
+void ReadClusteringEngine::set_kmers(bloom::BloomFilter<Kmer> *_kmers, int _k) {
     this->k = _k;
     this->kmers = _kmers;
-}
-
-void ReadClusteringEngine::construct_indices_thread(KmerIndex &kmer_index) {
-    std::optional<GenomeReadData> read;
-    while ((read = reader->get_next_record()) != std::nullopt) {
-        KmerIterator it = KmerIterator(read->sequence, k);
-
-        std::vector<std::pair<Kmer, int>> in_read_discriminative;
-        while (it.next_kmer()) {
-            if (kmers->contains(it.current_kmer)) {
-                in_read_discriminative.push_back({it.current_kmer, it.position_in_sequence});
-            }
-        }
-
-        if (in_read_discriminative.size() > 1) {
-            std::vector<KmerID> in_read_discriminative_ids;
-            ClusterID cluster_id = read->id;
-
-            index_merge.lock();
-            kmer_positions.insert({read->id, {}});
-
-            std::pair<KmerIndex::iterator, bool> insert_result;
-            KmerID new_kmer_id = kmer_index.size();
-            for (auto kmer_position_pair : in_read_discriminative) {
-                insert_result = kmer_index.insert(KmerIndex::value_type(kmer_position_pair.first, new_kmer_id));
-                if (insert_result.second) {
-                    kmer_cluster_index.push_back({});
-                    ++new_kmer_id;
-                }
-                in_read_discriminative_ids.push_back(insert_result.first->second);
-                kmer_cluster_index[insert_result.first->second].push_back(cluster_id);
-                kmer_positions[read->id].insert({insert_result.first->second, kmer_position_pair.second});
-            }
-
-            std::sort(in_read_discriminative_ids.begin(), in_read_discriminative_ids.end());
-            ReadMetaData meta = {read->id, read->category_id, read->start, read->end};
-            cluster_index.insert(ClusterIndex::value_type(cluster_id, new GenomeReadCluster(meta, in_read_discriminative_ids)));
-            read_intervals[read->id] = {read->start, read->end};
-
-            read_lengths.insert({read->id, read->sequence.length()});
-            index_merge.unlock();
-        }
-    }
 }
 
 int ReadClusteringEngine::construct_indices() {
     reader->rewind();
 
     KmerIndex kmer_index;
-    run_in_threads(&ReadClusteringEngine::construct_indices_thread, this, std::ref(kmer_index));
+    std::mutex index_merge_mut;
+    auto construct_indices_thread = [this, &kmer_index, &index_merge_mut]() {
+        std::optional<GenomeReadData> read;
+        while ((read = reader->get_next_record()) != std::nullopt) {
+            KmerIterator it = KmerIterator(read->sequence, k);
+            std::vector<std::pair<Kmer, int>> in_read_discriminative;
+            while (it.next_kmer()) {
+                if (kmers->contains(it.current_kmer)) {
+                    in_read_discriminative.push_back({it.current_kmer, it.position_in_sequence});
+                }
+            }
 
-    for (auto &arr : kmer_cluster_index) {
+            if (in_read_discriminative.size() > 1) {
+                std::vector<KmerID> in_read_discriminative_ids;
+                ComponentID component_id = read->id;
+
+                index_merge_mut.lock();
+                kmer_positions.insert({read->id, {}});
+
+                std::pair<KmerIndex::iterator, bool> insert_result;
+                KmerID new_kmer_id = kmer_index.size();
+                for (auto kmer_position_pair : in_read_discriminative) {
+                    insert_result = kmer_index.insert(KmerIndex::value_type(kmer_position_pair.first, new_kmer_id));
+                    if (insert_result.second) {
+                        kmer_component_index.push_back({});
+                        ++new_kmer_id;
+                    }
+                    in_read_discriminative_ids.push_back(insert_result.first->second);
+                    kmer_component_index[insert_result.first->second].push_back(component_id);
+                    kmer_positions[read->id].insert({insert_result.first->second, kmer_position_pair.second});
+                }
+
+                std::sort(in_read_discriminative_ids.begin(), in_read_discriminative_ids.end());
+                ReadMetaData meta = {read->id, read->category_id, read->start, read->end};
+                component_index.insert(ComponentIndex::value_type(component_id, new ReadComponent(meta, in_read_discriminative_ids)));
+                read_intervals[read->id] = {read->start, read->end};
+
+                read_lengths.insert({read->id, read->sequence.length()});
+                index_merge_mut.unlock();
+            }
+        }
+    };
+    run_in_threads(construct_indices_thread);
+
+    for (auto &arr : kmer_component_index) {
         std::sort(arr.begin(), arr.end());
     }
-    std::cout << fmt::format("Kmer cluster index size {}\n", kmer_cluster_index.size());
+    std::cout << fmt::format("Kmer cluster index size {}\n", kmer_component_index.size());
     return 0;
 }
 
-void ReadClusteringEngine::get_connections_thread(ConnectionScore min_score, ConcurrentQueue<ClusterID> &cluster_id_queue, std::vector<ClusterConnection> &accumulator) {
-    while (true) {
-        auto pivot = cluster_id_queue.pop();
-        if (pivot == std::nullopt) break;
-        ClusterID pivot_id = *pivot;
+std::vector<ComponentConnection> ReadClusteringEngine::get_connections(std::vector<ComponentID> &component_ids, ConnectionScore min_score) {
+    std::vector<ComponentConnection> connections;
+    std::mutex connections_mut;
 
-        std::map<ClusterID, ConnectionScore> shared_kmer_counts;
-        for (KmerID kmer_id : cluster_index[pivot_id]->discriminative_kmer_ids) {
-            for (auto candidate : kmer_cluster_index[kmer_id]) {
-                shared_kmer_counts.insert(std::map<ClusterID, ConnectionScore>::value_type(candidate, 0)).first->second += 1;
+    auto queue = ConcurrentQueue<ComponentID>(component_ids.begin(), component_ids.end());
+    auto get_connections_thread = [this, &queue, &connections_mut, &connections, min_score]() {
+        while (true) {
+            auto pivot = queue.pop();
+            if (pivot == std::nullopt) break;
+            ComponentID pivot_id = *pivot;
+
+            std::map<ComponentID, ConnectionScore> shared_kmer_counts;
+            for (KmerID kmer_id : component_index[pivot_id]->discriminative_kmer_ids) {
+                for (auto candidate : kmer_component_index[kmer_id]) {
+                    shared_kmer_counts.insert(std::map<ComponentID, ConnectionScore>::value_type(candidate, 0)).first->second += 1;
+                }
+            }
+            shared_kmer_counts.erase(pivot_id);
+
+            for (auto iter = begin(shared_kmer_counts); iter != end(shared_kmer_counts); iter++) {
+                if (iter->second < min_score) continue;
+                connections_mut.lock();
+                connections.push_back({pivot_id, iter->first, iter->second,
+                                       component_index[iter->first]->categories == component_index[pivot_id]->categories && component_index[iter->first]->categories.size() == 1});
+                connections_mut.unlock();
             }
         }
-        shared_kmer_counts.erase(pivot_id);
-
-        for (auto iter = begin(shared_kmer_counts); iter != end(shared_kmer_counts); iter++) {
-            if (iter->second < min_score) continue;
-
-            connections_mut.lock();
-            accumulator.push_back({pivot_id, iter->first, iter->second,
-                                   cluster_index[iter->first]->categories == cluster_index[pivot_id]->categories && cluster_index[iter->first]->categories.size() == 1});
-            connections_mut.unlock();
-        }
-    }
-}
-
-std::vector<ClusterConnection> ReadClusteringEngine::get_connections(std::vector<ClusterID> &cluster_ids, ConnectionScore min_score) {
-    std::vector<ClusterConnection> connections;
-
-    auto queue = ConcurrentQueue<ClusterID>(cluster_ids.begin(), cluster_ids.end());
-    run_in_threads(&ReadClusteringEngine::get_connections_thread, this, min_score, std::ref(queue), std::ref(connections));
+    };
+    run_in_threads(get_connections_thread);
 
     std::sort(connections.rbegin(), connections.rend());
     return connections;
 }
 
-void ReadClusteringEngine::merge_clusters_thread(ConcurrentQueue<IDComponent> &component_queue, IndexRemovalMap &for_removal, std::vector<ClusterID> &merged_ids) {
-    while (true) {
-        auto component_opt = component_queue.pop();
-        if (component_opt == std::nullopt) break;
-        auto component = *component_opt;
-
-        if (component.size() == 1){
-            component_merging_mut.lock();
-            merged_ids.push_back(component[0]);
-            component_merging_mut.unlock();
-            continue;
-        }
-        GenomeReadCluster *survivor = cluster_index[component[0]];
-
-        std::vector<std::vector<KmerID> *> kmer_merge_queue;
-        std::set<CategoryID> survivor_categories;
-        std::vector<ReadMetaData> survivor_contained_reads;
-
-        for (auto cluster_id : component) {
-            auto cluster = cluster_index[cluster_id];
-            kmer_merge_queue.push_back(&cluster->discriminative_kmer_ids);
-            survivor_contained_reads.insert(survivor_contained_reads.end(), cluster->contained_reads.begin(), cluster->contained_reads.end());
-            survivor_categories.insert(cluster->categories.begin(), cluster->categories.end());
-
-            cluster->contained_reads.clear();
-        }
-
-        survivor->discriminative_kmer_ids = merge_n_vectors(kmer_merge_queue, true);
-        survivor->categories = survivor_categories;
-        survivor->contained_reads = survivor_contained_reads;
-
-        component_merging_mut.lock();
-        merged_ids.push_back(component[0]);
-        for (auto cluster_id : component) {
-            for (KmerID kmer_id : cluster_index[cluster_id]->discriminative_kmer_ids) {
-                for_removal.insert({kmer_id, {}}).first.value().push_back(cluster_id);
-            }
-        }
-        component_merging_mut.unlock();
+std::vector<KmerID> ReadClusteringEngine::accumulate_kmer_ids(std::vector<ComponentID> &component_ids) {
+    std::vector<std::vector<KmerID> *> merge_queue;
+    for (auto component_id : component_ids) {
+        merge_queue.push_back(&component_index[component_id]->discriminative_kmer_ids);
     }
+    return merge_n_vectors(merge_queue, true);
 }
 
-void ReadClusteringEngine::kmer_cluster_index_update(ConcurrentQueue<IndexRemovalMap::value_type> &removal_list_queue) {
-    while (true) {
-        auto removal_pair_opt = removal_list_queue.pop();
-        if (removal_pair_opt == std::nullopt) break;
-
-        std::vector<ClusterID> *removal_list = &removal_pair_opt->second;
-        KmerID kmer_id = removal_pair_opt->first;
-        std::sort(removal_list->begin(), removal_list->end());
-
-        std::vector<ClusterID> updated_list;
-        int i = 0, j = 0;
-        while (i < removal_list->size() && j < kmer_cluster_index[kmer_id].size()) {
-            if ((*removal_list)[i] < kmer_cluster_index[kmer_id][j]) {
-                i++;
-            } else if (kmer_cluster_index[kmer_id][j] < (*removal_list)[i]) {
-                updated_list.push_back(kmer_cluster_index[kmer_id][j]);
-                j++;
-            } else {  // Should be removed
-                i++;
-                j++;
-            }
-        }
-        kmer_cluster_index[kmer_id] = updated_list;
-    }
-}
-
-std::vector<ClusterID> ReadClusteringEngine::merge_clusters(std::vector<IDComponent> &components) {
-    auto component_queue = ConcurrentQueue<IDComponent>(components.begin(), components.end());
-
+std::vector<ComponentID> ReadClusteringEngine::merge_components(std::vector<Component> &components) {
+    auto component_queue = ConcurrentQueue<Component>(components.begin(), components.end());
     IndexRemovalMap for_removal;
-    std::vector<ClusterID> merged_ids;
-    run_in_threads(&ReadClusteringEngine::merge_clusters_thread, this, std::ref(component_queue), std::ref(for_removal), std::ref(merged_ids));
+    std::vector<ComponentID> merged_ids;
+    std::mutex component_merging_mut;
+
+    auto merge_components_thread = [this, &merged_ids, &component_queue, &for_removal, &component_merging_mut]() {
+        std::optional<Component> next_component;
+        while ((next_component = component_queue.pop()) != std::nullopt) {
+            auto component_ids = *next_component;
+
+            if (component_ids.size() == 1) {
+                component_merging_mut.lock();
+                merged_ids.push_back(component_ids[0]);
+                component_merging_mut.unlock();
+                continue;
+            }
+            ReadComponent *survivor = component_index[component_ids[0]];
+
+            std::set<CategoryID> survivor_categories;
+            std::vector<ReadMetaData> survivor_contained_reads;
+
+            for (auto component_id : component_ids) {
+                auto component = component_index[component_id];
+                survivor_contained_reads.insert(survivor_contained_reads.end(), component->contained_reads.begin(), component->contained_reads.end());
+                component->contained_reads.clear();
+
+                survivor_categories.insert(component->categories.begin(), component->categories.end());
+            }
+
+            survivor->discriminative_kmer_ids = accumulate_kmer_ids(component_ids);
+            survivor->categories = survivor_categories;
+            survivor->contained_reads = survivor_contained_reads;
+
+            component_merging_mut.lock();
+            merged_ids.push_back(component_ids[0]);
+            for (auto component_id : component_ids) {
+                for (KmerID kmer_id : component_index[component_id]->discriminative_kmer_ids) {
+                    for_removal.insert({kmer_id, {}}).first.value().push_back(component_id);
+                }
+            }
+            component_merging_mut.unlock();
+        }
+    };
+    run_in_threads(merge_components_thread);
 
     auto removal_list_queue = ConcurrentQueue<IndexRemovalMap::value_type>(for_removal.begin(), for_removal.end());
-    run_in_threads(&ReadClusteringEngine::kmer_cluster_index_update, this, std::ref(removal_list_queue));
+    auto kmer_component_index_update = [this, &removal_list_queue]() {
+        std::optional<IndexRemovalMap::value_type> next_removal;
+        while ((next_removal = removal_list_queue.pop()) != std::nullopt) {
+            KmerID kmer_id = next_removal->first;
+            std::vector<ComponentID> *removal_list = &next_removal->second;
+            std::sort(removal_list->begin(), removal_list->end());
+
+            std::vector<ComponentID> updated_list;
+            int i = 0, j = 0;
+            while (i < removal_list->size() && j < kmer_component_index[kmer_id].size()) {
+                if ((*removal_list)[i] < kmer_component_index[kmer_id][j]) {
+                    i++;
+                } else if (kmer_component_index[kmer_id][j] < (*removal_list)[i]) {
+                    updated_list.push_back(kmer_component_index[kmer_id][j]);
+                    j++;
+                } else {
+                    i++;
+                    j++;
+                }
+            }
+            kmer_component_index[kmer_id] = updated_list;
+        }
+    };
+    run_in_threads(kmer_component_index_update);
 
     return merged_ids;
 }
 
-std::vector<std::pair<IDComponent, SpanningTree>>
-ReadClusteringEngine::union_find(std::vector<ClusterConnection> &connections, std::set<ClusterID> &restricted, int min_component_size) {
-    tsl::robin_set<ClusterID> affected_vertices;
+std::vector<std::pair<Component, SpanningTree>>
+ReadClusteringEngine::union_find(std::vector<ComponentConnection> &connections, std::set<ComponentID> &restricted, int min_component_size) {
+    tsl::robin_set<ComponentID> affected_vertices;
     for (auto &conn : connections) {
-        affected_vertices.insert(conn.cluster_x_id);
-        affected_vertices.insert(conn.cluster_y_id);
+        affected_vertices.insert(conn.component_x_id);
+        affected_vertices.insert(conn.component_y_id);
     }
 
-    tsl::robin_map<ClusterID, ClusterID> parents;
-    tsl::robin_map<ClusterID, IDComponent> components;
-    tsl::robin_map<ClusterID, std::vector<std::pair<ClusterID, ClusterID>>> component_edges;
-    tsl::robin_map<ClusterID, bool> component_contains_restricted;
-    for (ClusterID vertex : affected_vertices) {
+    tsl::robin_map<ComponentID, ComponentID> parents;
+    tsl::robin_map<ComponentID, Component> components;
+    tsl::robin_map<ComponentID, std::vector<std::pair<ComponentID, ComponentID>>> component_edges;
+    tsl::robin_map<ComponentID, bool> component_contains_restricted;
+    for (ComponentID vertex : affected_vertices) {
         parents[vertex] = vertex;
         components[vertex] = {vertex};
         component_edges[vertex] = {};
         component_contains_restricted[vertex] = restricted.contains(vertex);
     }
 
-    std::function<ClusterID(ClusterID)> get_parent = [&parents, &get_parent](ClusterID cluster_id) {
-        if (cluster_id == parents[cluster_id]) {
-            return cluster_id;
+    std::function<ComponentID(ComponentID)> get_parent = [&parents, &get_parent](ComponentID component_id) {
+        if (component_id == parents[component_id]) {
+            return component_id;
         }
-        parents[cluster_id] = get_parent(parents[cluster_id]);
-        return parents[cluster_id];
+        parents[component_id] = get_parent(parents[component_id]);
+        return parents[component_id];
     };
 
-    for (ClusterConnection &conn : connections) {
-        ClusterID parent_x = get_parent(conn.cluster_x_id);
-        ClusterID parent_y = get_parent(conn.cluster_y_id);
+    for (ComponentConnection &conn : connections) {
+        ComponentID parent_x = get_parent(conn.component_x_id);
+        ComponentID parent_y = get_parent(conn.component_y_id);
         if (parent_x == parent_y) continue;
         if (component_contains_restricted[parent_x] && component_contains_restricted[parent_y]) continue;
 
-        ClusterID bigger, smaller;
+        ComponentID bigger, smaller;
         if (components[parent_x].size() > components[parent_y].size()) {
             bigger = parent_x;
             smaller = parent_y;
@@ -387,13 +417,13 @@ ReadClusteringEngine::union_find(std::vector<ClusterConnection> &connections, st
             smaller = parent_x;
         }
 
-        for (ClusterID cluster_id : components[smaller]) {
-            parents[cluster_id] = bigger;
+        for (ComponentID component_id : components[smaller]) {
+            parents[component_id] = bigger;
         }
         components[bigger].insert(components[bigger].end(), components[smaller].begin(), components[smaller].end());
         components.erase(smaller);
 
-        component_edges[bigger].emplace_back(conn.cluster_x_id, conn.cluster_y_id);
+        component_edges[bigger].emplace_back(conn.component_x_id, conn.component_y_id);
         component_edges[bigger].insert(component_edges[bigger].end(), component_edges[smaller].begin(), component_edges[smaller].end());
         component_edges.erase(smaller);
 
@@ -401,7 +431,7 @@ ReadClusteringEngine::union_find(std::vector<ClusterConnection> &connections, st
         component_contains_restricted.erase(smaller);
     }
 
-    std::vector<std::pair<IDComponent, SpanningTree>> result;
+    std::vector<std::pair<Component, SpanningTree>> result;
     for (const auto &comp : components) {
         if (comp.second.size() >= min_component_size) {
             result.emplace_back(comp.second, component_edges[comp.first]);
@@ -410,7 +440,7 @@ ReadClusteringEngine::union_find(std::vector<ClusterConnection> &connections, st
     return result;
 }
 
-std::map<ClusterID, std::string> ReadClusteringEngine::export_clusters(std::vector<ClusterID> &cluster_ids, fs::path &directory_path) {
+std::map<ComponentID, std::string> ReadClusteringEngine::export_components(std::vector<ComponentID> &component_ids, fs::path &directory_path) {
     tsl::robin_map<ReadID, GenomeReadData> id_to_read;
 
     fs::remove_all(directory_path);
@@ -421,37 +451,37 @@ std::map<ClusterID, std::string> ReadClusteringEngine::export_clusters(std::vect
         id_to_read[read->id] = *read;
     }
 
-    std::map<ClusterID, std::string> mapping;
-    for (auto id : cluster_ids) {
-        std::ofstream cluster_file;
-        std::string cluster_file_path = fmt::format("{}/#{}.fa", directory_path.string(), id);
+    std::map<ComponentID, std::string> mapping;
+    for (auto id : component_ids) {
+        std::ofstream component_file;
+        std::string component_file_path = fmt::format("{}/#{}.fa", directory_path.string(), id);
 
-        cluster_file.open(cluster_file_path);
-        for (auto read_meta : cluster_index[id]->contained_reads) {
-            cluster_file << id_to_read[read_meta.id].fasta_string() << std::endl;
+        component_file.open(component_file_path);
+        for (auto read_meta : component_index[id]->contained_reads) {
+            component_file << id_to_read[read_meta.id].fasta_string() << std::endl;
         }
 
-        cluster_file.close();
-        mapping[id] = cluster_file_path;
+        component_file.close();
+        mapping[id] = component_file_path;
     }
 
     return mapping;
 }
 
-std::map<ClusterID, std::vector<std::string>> ReadClusteringEngine::assemble_clusters(std::vector<ClusterID> &cluster_ids) {
-    sort(cluster_ids.rbegin(), cluster_ids.rend(), [this](ClusterID x, ClusterID y) -> bool { return cluster_index[x]->size() < cluster_index[y]->size(); });
+std::map<ComponentID, std::vector<std::string>> ReadClusteringEngine::assemble_clusters(std::vector<ComponentID> &component_ids) {
+    sort(component_ids.rbegin(), component_ids.rend(), [this](ComponentID x, ComponentID y) -> bool { return component_index[x]->size() < component_index[y]->size(); });
 
     fs::path export_path = "./data/assembly_" + reader->meta.filename;
-    auto mapping = export_clusters(cluster_ids, export_path);
+    auto mapping = export_components(component_ids, export_path);
 
-    std::map<ClusterID, std::vector<std::string>> assembly_mapping;
-    for (ClusterID id : cluster_ids) {
+    std::map<ComponentID, std::vector<std::string>> assembly_mapping;
+    for (ComponentID id : component_ids) {
         std::string assembled_fasta_path = mapping[id] + "_assembled.fa";
 
         std::string cmd = fmt::format("./scripts/assemble_cluster.sh {} {}", mapping[id], assembled_fasta_path);
         run_command_with_input(cmd.c_str(), "");
 
-        std::cout << cluster_index[id]->to_string() << " : \n";
+        std::cout << component_index[id]->to_string() << " : \n";
         try {
             SequenceRecordIterator r(assembled_fasta_path);
 
@@ -469,11 +499,11 @@ std::map<ClusterID, std::vector<std::string>> ReadClusteringEngine::assemble_clu
     return assembly_mapping;
 }
 
-int ReadClusteringEngine::approximate_read_overlap(ReadID x, ReadID y){
-    auto shared_kmers = get_vectors_intersection(cluster_index[x]->discriminative_kmer_ids, cluster_index[y]->discriminative_kmer_ids);
+int ReadClusteringEngine::approximate_read_overlap(ReadID x, ReadID y) {
+    auto shared_kmers = get_vectors_intersection(component_index[x]->discriminative_kmer_ids, component_index[y]->discriminative_kmer_ids);
 
     std::vector<int> x_positions, y_positions;
-    for (auto kmer_id : shared_kmers){
+    for (auto kmer_id : shared_kmers) {
         x_positions.push_back(kmer_positions[x][kmer_id]);
         y_positions.push_back(kmer_positions[y][kmer_id]);
     }
@@ -484,32 +514,18 @@ int ReadClusteringEngine::approximate_read_overlap(ReadID x, ReadID y){
     min_y = *std::min_element(y_positions.begin(), y_positions.end());
 
     auto overlap = std::max(max_x - min_x, max_y - min_y);
-
-//    auto a = read_intervals[x];
-//    auto b = read_intervals[y];
-//    int real_overlap = std::max(0u, std::min(a.second, b.second) - std::max(a.first, b.first));
-//    if (real_overlap < 0){
-//        std::cout << fmt::format("Estimated {} real {} for #{}({})[{}-{}] and #{}({})[{}-{}]\n",
-//                overlap, real_overlap,
-//                x, read_lengths[x], read_intervals[x].first, read_intervals[x].second,
-//                y, read_lengths[y], read_intervals[y].first, read_intervals[y].second);
-//    }
     return overlap;
 }
 
 std::pair<std::vector<ReadID>, std::vector<ReadID>> ReadClusteringEngine::get_spanning_tree_boundary_reads(SpanningTree &tree) {
-    // convert the edges into adjacency map
-    tsl::robin_set<ReadID> vertices;
     tsl::robin_map<ReadID, tsl::robin_map<ReadID, int>> adjacency_map;
     for (auto edge : tree) {
         auto dist = approximate_read_overlap(edge.first, edge.second);
         adjacency_map.insert({edge.first, {}}).first.value().insert({edge.second, dist});
         adjacency_map.insert({edge.second, {}}).first.value().insert({edge.first, dist});
-        vertices.insert(edge.first);
-        vertices.insert(edge.second);
     }
 
-    auto distance_bfs = [this, &adjacency_map](ReadID starting_vertex){
+    auto distance_bfs = [this, &adjacency_map](ReadID starting_vertex) {
         std::stack<ReadID> stack;
         stack.push(starting_vertex);
 
@@ -533,152 +549,128 @@ std::pair<std::vector<ReadID>, std::vector<ReadID>> ReadClusteringEngine::get_sp
         return distances;
     };
 
-    auto get_max_distance_pair = [](tsl::robin_map<ReadID, int> &distances){
-        return *std::max_element(distances.begin(), distances.end(),[](const std::pair<ReadID, int> &p1, const std::pair<ReadID, int> &p2) {
+    auto get_max_distance_pair = [](tsl::robin_map<ReadID, int> &distances) {
+        return *std::max_element(distances.begin(), distances.end(), [](const std::pair<ReadID, int> &p1, const std::pair<ReadID, int> &p2) {
             return p1.second < p2.second;
         });
     };
 
-    ReadID edge_most_vertex = *std::max_element(vertices.begin(), vertices.end(), [this](const ReadID &x, const ReadID &y){ return read_intervals[x].second < read_intervals[y].second; });
-    auto true_distances = distance_bfs(edge_most_vertex);
-    auto edge_most_vertex_pair = get_max_distance_pair(true_distances);
+    auto initial_distances = distance_bfs(adjacency_map.begin()->first);
+    auto farthest_vertex_and_dist = get_max_distance_pair(initial_distances);
 
-    std::cout << fmt::format("Distances {} for #{}({})[{}-{}] and #{}({})[{}-{}]\n",
-                edge_most_vertex_pair.second, edge_most_vertex, read_lengths[edge_most_vertex], read_intervals[edge_most_vertex].first, read_intervals[edge_most_vertex].second,
-                edge_most_vertex_pair.first, read_lengths[edge_most_vertex_pair.first], read_intervals[edge_most_vertex_pair.first].first, read_intervals[edge_most_vertex_pair.first].second);
-
-
-    // Run BFS to figure out the vertex that has the greatest distance from other vertex in the graph
-    auto distances = distance_bfs(adjacency_map.begin()->first);
-    auto left_side_vertex_and_dist = get_max_distance_pair(distances);
-
-    // Run BFS again to figure out the opposing vertex to the first one
-
-    // Gather vertices that are about as distant as the two vertices found before and merge their kmers into one vector
     std::vector<ReadID> left_side_vertices, right_side_vertices;
 
-    distances = distance_bfs(left_side_vertex_and_dist.first);
-    auto right_side_vertex_and_dist = get_max_distance_pair(distances);
-    int tail_length = std::max(right_side_vertex_and_dist.second * 0.03, 1000.0);
-    for (auto vertex_dist_pair : distances) {
-        if (vertex_dist_pair.second + tail_length > right_side_vertex_and_dist.second) {
+    auto distances_to_right = distance_bfs(farthest_vertex_and_dist.first);
+    auto farthest_right_vertex_and_dist = get_max_distance_pair(distances_to_right);
+    int tail_length = std::max(farthest_right_vertex_and_dist.second * 0.03, 1000.0);
+    for (auto vertex_dist_pair : distances_to_right) {
+        if (vertex_dist_pair.second + tail_length > farthest_right_vertex_and_dist.second) {
             right_side_vertices.push_back(vertex_dist_pair.first);
         }
     }
 
-    distances = distance_bfs(right_side_vertex_and_dist.first);
-    left_side_vertex_and_dist = get_max_distance_pair(distances);
-    tail_length = std::max(left_side_vertex_and_dist.second * 0.03, 1000.0);
-    for (auto vertex_dist_pair : distances) {
-        if (vertex_dist_pair.second + tail_length > left_side_vertex_and_dist.second) {
+    auto distances_to_left = distance_bfs(farthest_right_vertex_and_dist.first);
+    auto farthest_left_vertex_and_dist = get_max_distance_pair(distances_to_left);
+    tail_length = std::max(farthest_left_vertex_and_dist.second * 0.03, 1000.0);
+    for (auto vertex_dist_pair : distances_to_left) {
+        if (vertex_dist_pair.second + tail_length > farthest_left_vertex_and_dist.second) {
             left_side_vertices.push_back(vertex_dist_pair.first);
         }
     }
 
-    std::cout << fmt::format("Computed distance {} for [{}-{}] and [{}-{}]\n",
-                             right_side_vertex_and_dist.second,
-                             read_intervals[right_side_vertex_and_dist.first].first, read_intervals[right_side_vertex_and_dist.first].second,
-                             read_intervals[left_side_vertex_and_dist.first].first, read_intervals[left_side_vertex_and_dist.first].second);
-
-
-    for (auto interval : get_read_coverage_intervals(right_side_vertices)){
-        std::cout << fmt::format("{}-{} ", interval.first, interval.second);
-    } std::cout << " / ";
-    for (auto interval : get_read_coverage_intervals(left_side_vertices)){
-        std::cout << fmt::format("{}-{} ", interval.first, interval.second);
-    } std::cout << "\n\n";
+    std::cout << fmt::format("Initial left {} - {}\n", read_intervals[farthest_left_vertex_and_dist.first].first, read_intervals[farthest_left_vertex_and_dist.first].second);
+    std::cout << fmt::format("Initial right {} - {}\n", read_intervals[farthest_right_vertex_and_dist.first].first, read_intervals[farthest_right_vertex_and_dist.first].second);
 
     return {left_side_vertices, right_side_vertices};
 }
 
-std::pair<std::vector<KmerID>, std::vector<KmerID>> ReadClusteringEngine::get_core_cluster_kmer_tails(SpanningTree &tree) {
-    auto core_cluster_tails = get_spanning_tree_boundary_reads(tree);
-
-    auto left_tail_connections = get_connections(core_cluster_tails.first, 40);
-    //plot_connection_quality(left_tail_connections);
-    std::set<ReadID> left_tail_vertex_set(core_cluster_tails.first.begin(), core_cluster_tails.first.end());
-    for (auto conn : left_tail_connections) {
-        left_tail_vertex_set.insert(conn.cluster_x_id);
-        left_tail_vertex_set.insert(conn.cluster_y_id);
+std::vector<ComponentID> ReadClusteringEngine::amplify_component(Component &component, int min_score) {
+    auto connections = get_connections(component, min_score);
+    std::set<ReadID> id_set(component.begin(), component.end());
+    for (auto conn : connections) {
+        id_set.insert(conn.component_x_id);
+        id_set.insert(conn.component_y_id);
     }
-
-    auto right_tail_connections = get_connections(core_cluster_tails.second, 40);
-    //plot_connection_quality(right_tail_connections);
-    std::set<ReadID> right_tail_vertex_set(core_cluster_tails.second.begin(), core_cluster_tails.second.end());
-    for (auto conn : right_tail_connections) {
-        right_tail_vertex_set.insert(conn.cluster_x_id);
-        right_tail_vertex_set.insert(conn.cluster_y_id);
-    }
-
-    std::vector<std::vector<KmerID> *> left_side_kmer_merge_queue;
-    for (auto cluster_id : left_tail_vertex_set) {
-        left_side_kmer_merge_queue.push_back(&cluster_index[cluster_id]->discriminative_kmer_ids);
-    }
-    std::vector<std::vector<KmerID> *> right_side_kmer_merge_queue;
-    for (auto cluster_id : right_tail_vertex_set) {
-        right_side_kmer_merge_queue.push_back(&cluster_index[cluster_id]->discriminative_kmer_ids);
-    }
-    return {merge_n_vectors(left_side_kmer_merge_queue, true), merge_n_vectors(right_side_kmer_merge_queue, true)};
+    std::vector<ComponentID> result(id_set.begin(), id_set.end());
+    return result;
 }
 
-std::vector<ClusterConnection> ReadClusteringEngine::get_core_cluster_connections(std::vector<std::pair<IDComponent, SpanningTree>> &components_with_trees) {
-    std::multimap<ClusterID, std::vector<KmerID>> core_cluster_twin_tails;
-    for (auto &component_and_tree : components_with_trees){
-        export_spanning_tree(component_and_tree.second);
-        auto twin_tail_kmers = get_core_cluster_kmer_tails(component_and_tree.second);
-        core_cluster_twin_tails.insert({component_and_tree.first[0], twin_tail_kmers.first});
-        core_cluster_twin_tails.insert({component_and_tree.first[0], twin_tail_kmers.second});
-    }
+std::vector<ComponentConnection> ReadClusteringEngine::get_core_component_connections(std::vector<std::pair<Component, SpanningTree>> &components_with_trees) {
+    std::ofstream intervals;
+    intervals.open(reader->meta.filename + "_intervals");
 
-    std::vector<ClusterConnection> tail_connecting_edges;
-    for (auto c_id_kmers_pair : core_cluster_twin_tails) {
-        for (auto c_id_kmers_pair_2 : core_cluster_twin_tails) {
+    std::multimap<ComponentID, std::vector<KmerID>> core_component_twin_tails;
+    for (auto &component_and_tree : components_with_trees) {
+        auto tails = get_spanning_tree_boundary_reads(component_and_tree.second);
+        auto left_vertices = amplify_component(tails.first, 40);
+        auto right_vertices = amplify_component(tails.second, 40);
+
+        auto left_kmers = accumulate_kmer_ids(left_vertices);
+        auto right_kmers = accumulate_kmer_ids(right_vertices);
+
+        core_component_twin_tails.insert({component_and_tree.first[0], left_kmers});
+        core_component_twin_tails.insert({component_and_tree.first[0], right_kmers});
+
+        export_spanning_tree(component_and_tree.second, tails);
+
+        auto left_tail_interval = get_read_coverage_intervals(tails.first);
+        for (auto i : left_tail_interval) std::cout << fmt::format("{}-{} , ", i.first, i.second); std::cout << std::endl;
+        auto right_tail_interval = get_read_coverage_intervals(tails.second);
+        for (auto i : right_tail_interval) std::cout << fmt::format("{}-{} , ", i.first, i.second); std::cout << std::endl;
+        auto component_interval = get_read_coverage_intervals(component_and_tree.first);
+        for (auto i : component_interval) std::cout << fmt::format("{}-{} , ", i.first, i.second); std::cout << "\n\n";
+        intervals << fmt::format("({}, {}), ({}, {}), ({}, {})\n", left_tail_interval[0].first, left_tail_interval[0].second, right_tail_interval[0].first, right_tail_interval[0].second,
+                                 component_interval[0].first, component_interval[0].second);
+    }
+    intervals.close();
+
+    std::vector<ComponentConnection> tail_connecting_edges;
+    for (auto c_id_kmers_pair : core_component_twin_tails) {
+        for (auto c_id_kmers_pair_2 : core_component_twin_tails) {
             if (c_id_kmers_pair.first < c_id_kmers_pair_2.first) {
                 auto kmer_intersection = get_vectors_intersection(c_id_kmers_pair.second, c_id_kmers_pair_2.second);
-
-                bool is_good = cluster_index[c_id_kmers_pair.first]->categories == cluster_index[c_id_kmers_pair_2.first]->categories;
+                bool is_good = component_index[c_id_kmers_pair.first]->categories == component_index[c_id_kmers_pair_2.first]->categories;
                 tail_connecting_edges.push_back({c_id_kmers_pair.first, c_id_kmers_pair_2.first, kmer_intersection.size(), is_good});
             }
         }
     }
     std::sort(tail_connecting_edges.rbegin(), tail_connecting_edges.rend());
     for (auto edge : tail_connecting_edges) {
-        std::cout << fmt::format("{} : {} between {} and {}\n", edge.is_good ? '+' : '-', edge.score, cluster_index[edge.cluster_x_id]->to_string(),
-                                 cluster_index[edge.cluster_y_id]->to_string());
-        //if (!edge.is_good) break;
+        std::cout << fmt::format("{} : {} between {} and {}\n", edge.is_good ? '+' : '-', edge.score, component_index[edge.component_x_id]->to_string(),
+                                 component_index[edge.component_y_id]->to_string());
         if (edge.score < 100) break;
     }
 
     ConnectionScore min_score;
     std::cin >> min_score;
-    return filter_connections(tail_connecting_edges, [min_score](ClusterConnection &conn) { return conn.score >= min_score; });
+    return filter_connections(tail_connecting_edges, [min_score](ComponentConnection &conn) { return conn.score >= min_score; });
 }
 
-std::vector<ClusterID> ReadClusteringEngine::run_clustering() {
+std::vector<ComponentID> ReadClusteringEngine::run_clustering() {
     if (kmers == nullptr || k == 0) throw std::logic_error("You need to set the discriminative kmers first");
 
-    auto extract_components = [](std::vector<std::pair<IDComponent, SpanningTree>> &union_find_output) {
-        std::vector<IDComponent> result;
+    auto extract_components = [](std::vector<std::pair<Component, SpanningTree>> &union_find_output) {
+        std::vector<Component> result;
         std::transform(union_find_output.begin(), union_find_output.end(), std::back_inserter(result),
-                       [](std::pair<IDComponent, SpanningTree> &p) { return p.first; }
+                       [](std::pair<Component, SpanningTree> &p) { return p.first; }
         );
         return result;
     };
 
-    auto filter_clusters = [this](const std::function<bool(GenomeReadCluster *)> &func) {
-        std::vector<ClusterID> result;
-        for (auto cluster_pair : cluster_index) {
-            if (func(cluster_pair.second)) {
-                result.push_back(cluster_pair.first);
+    auto filter_components = [this](const std::function<bool(ReadComponent *)> &func) {
+        std::vector<ComponentID> result;
+        for (auto component_id_and_ptr : component_index) {
+            if (func(component_id_and_ptr.second)) {
+                result.push_back(component_id_and_ptr.first);
             }
         }
         return result;
     };
 
-    auto get_core_component_ids = [this](int threshold_size){
-        std::vector<ClusterID> result;
-        for (auto id_ptr_pair : cluster_index){
-            if (id_ptr_pair.second->size() >= threshold_size){
+    auto get_core_component_ids = [this](int threshold_size) {
+        std::vector<ComponentID> result;
+        for (auto id_ptr_pair : component_index) {
+            if (id_ptr_pair.second->size() >= threshold_size) {
                 result.push_back(id_ptr_pair.first);
             }
         }
@@ -686,64 +678,68 @@ std::vector<ClusterID> ReadClusteringEngine::run_clustering() {
     };
 
     timeMeasureMemberFunc(&ReadClusteringEngine::construct_indices, this, "Construct indices")();
-    std::cout << fmt::format("{}/{} reads converted to clusters\n", cluster_index.size(), reader->meta.records);
+    std::cout << fmt::format("{}/{} reads converted to clusters\n", component_index.size(), reader->meta.records);
 
     int magic = 5;
-    auto strong_initial_clusters = filter_clusters([magic](GenomeReadCluster *c) { return c->discriminative_kmer_ids.size() > magic; });
-    auto cluster_connections = timeMeasureMemberFunc(&ReadClusteringEngine::get_connections, this, "Strong connections")(strong_initial_clusters, magic);
-    plot_connection_quality(cluster_connections);
-    //plot_read_overlaps(cluster_connections);
+    auto strong_initial_clusters = filter_components([magic](ReadComponent *c) { return c->discriminative_kmer_ids.size() > magic; });
+    auto component_connections = timeMeasureMemberFunc(&ReadClusteringEngine::get_connections, this, "Strong connections")(strong_initial_clusters, magic);
+    plot_connection_quality(component_connections);
+
+    auto threshold_value = std::find_if(component_connections.begin(), component_connections.end(), [](ComponentConnection &conn) { return !conn.is_good; })->score + 1;
+    std::cout << fmt::format("Threshold value is {}\n", threshold_value);
+    //plot_read_overlaps(component_connections);
 
     ConnectionScore min;
     std::cin >> min;
-    auto strong_connections = filter_connections(cluster_connections, [min](ClusterConnection &conn) { return conn.score >= min; });
+    auto strong_connections = filter_connections(component_connections, [min](ComponentConnection &conn) { return conn.score >= min; });
+    //plot_overlap_differences(strong_connections);
 
-    std::set<ClusterID> restricted;
+    std::set<ComponentID> restricted;
     auto components_and_trees = union_find(strong_connections, restricted, 5);
-    std::vector<IDComponent> components = extract_components(components_and_trees);
-    auto core_cluster_ids = timeMeasureMemberFunc(&ReadClusteringEngine::merge_clusters, this, "Creation of strong clusters")(components);
-    print_clusters(core_cluster_ids);
+    std::vector<Component> components = extract_components(components_and_trees);
+    auto core_component_ids = timeMeasureMemberFunc(&ReadClusteringEngine::merge_components, this, "Creation of strong clusters")(components);
+    print_components(core_component_ids);
 
 
-    auto core_cluster_connections = timeMeasureMemberFunc(&ReadClusteringEngine::get_core_cluster_connections, this, "Core connections")(components_and_trees);
-    if (!core_cluster_connections.empty()){
-        components_and_trees = union_find(core_cluster_connections, restricted, 1);
+    auto core_component_connections = timeMeasureMemberFunc(&ReadClusteringEngine::get_core_component_connections, this, "Core connections")(components_and_trees);
+    if (!core_component_connections.empty()) {
+        components_and_trees = union_find(core_component_connections, restricted, 1);
         components = extract_components(components_and_trees);
-        timeMeasureMemberFunc(&ReadClusteringEngine::merge_clusters, this, "Merging of core clusters")(components);
-        remove_merged_clusters();
-        core_cluster_ids = get_core_component_ids(30);
+        timeMeasureMemberFunc(&ReadClusteringEngine::merge_components, this, "Merging of core clusters")(components);
+        remove_merged_components();
+        core_component_ids = get_core_component_ids(30);
     } else {
-        remove_merged_clusters();
+        remove_merged_components();
     }
 
-    print_clusters(core_cluster_ids);
+    print_components(core_component_ids);
 
     for (int i = 0; i < 3; i++) {
-        cluster_connections = get_connections(core_cluster_ids, 1);
-        plot_connection_quality(cluster_connections, core_cluster_ids);
+        component_connections = get_connections(core_component_ids, 1);
+        plot_connection_quality(component_connections, core_component_ids);
 
         ConnectionScore min_score;
         std::cin >> min_score;
-        cluster_connections = filter_connections(cluster_connections, [min_score](ClusterConnection &conn) { return conn.score >= min_score; });
-        if (cluster_connections.empty()) break;
+        component_connections = filter_connections(component_connections, [min_score](ComponentConnection &conn) { return conn.score >= min_score; });
+        if (component_connections.empty()) break;
 
         restricted.clear();
-        restricted.insert(core_cluster_ids.begin(), core_cluster_ids.end());
-        components_and_trees = union_find(cluster_connections, restricted, 1);
+        restricted.insert(core_component_ids.begin(), core_component_ids.end());
+        components_and_trees = union_find(component_connections, restricted, 1);
         components = extract_components(components_and_trees);
-        merge_clusters(components);
-        remove_merged_clusters();
+        merge_components(components);
+        remove_merged_components();
 
-        core_cluster_ids = get_core_component_ids(30);
+        core_component_ids = get_core_component_ids(30);
 
-        print_clusters(core_cluster_ids);
+        print_components(core_component_ids);
     }
 
-    return core_cluster_ids;
+    return core_component_ids;
 }
 
 ReadClusteringEngine::~ReadClusteringEngine() {
-    for (auto cluster_pair : cluster_index) {
-        free(cluster_pair.second);
+    for (auto component_pair : component_index) {
+        free(component_pair.second);
     }
 }

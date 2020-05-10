@@ -99,7 +99,7 @@ int main(int argc, char *argv[]) {
     if (vm.count("output")){
         output_folder_path = vm["output"].as<std::string>();
     }
-    engine.export_clusters(cluster_ids, output_folder_path);
+    engine.export_components(cluster_ids, output_folder_path);
 
     return 0;
 }
