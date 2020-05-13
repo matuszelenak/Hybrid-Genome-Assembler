@@ -157,24 +157,25 @@ get_backend = dict(backends).get
 
 def generate_mutated_sequence_pair(genome_size: int, difference_rate: float) -> Tuple[SeqRecord, SeqRecord]:
     original_sequence_indices = np.random.choice(len(DNA.letters), genome_size)
-    # Choose which positions to mutate and shift those positions by 1 to 3 slots
     mutation_index_shift = np.random.binomial(1, difference_rate, genome_size) * np.random.randint(1, 4, size=genome_size)
 
     mutated_sequence_indices = (original_sequence_indices + mutation_index_shift) % len(DNA.letters)
 
     original_sequence = indices_to_strand(original_sequence_indices)
+    original_sequence_name = f'artificial_size={genome_size}_A'
     original_record = SeqRecord(
         Seq(original_sequence, DNA),
-        id=f'Artificial_size_{genome_size}',
+        id=original_sequence_name
     )
     mutated_sequence = indices_to_strand(mutated_sequence_indices)
+    mutated_sequence_name = f'artificial_size={genome_size}_B'
     mutated_record = SeqRecord(
         Seq(mutated_sequence, DNA),
-        id=f'Artificial_mutated_size_{genome_size}'
+        id=mutated_sequence_name
     )
 
-    SeqIO.write(original_record, f'../data/sequences/artificial.fasta', 'fasta')
-    SeqIO.write(mutated_record, f'../data/sequences/artificial_mutated.fasta', 'fasta')
+    SeqIO.write(original_record, f'../data/sequences/{original_sequence_name}.fasta', 'fasta')
+    SeqIO.write(mutated_record, f'../data/sequences/{mutated_sequence_name}.fasta', 'fasta')
 
     return original_record, mutated_record
 
@@ -204,7 +205,7 @@ else:
 
 backend: ReadGeneratorBackend = get_backend(args.backend)
 for seq in sequences:
-    prefix = os.path.join(DATA_DIR, 'reads', f'{seq.id}_{args.backend}_{args.read_length}b_{args.coverage}x')
+    prefix = os.path.join(DATA_DIR, 'reads', f'{seq.id}_{args.backend}_{args.coverage}x')
     read_count = backend.reads_from_sequence(
         seq,
         prefix,

@@ -13,7 +13,6 @@ SequenceRecordIterator::SequenceRecordIterator(std::string &path) {
     show_progress = true;
 }
 
-
 SequenceRecordIterator::SequenceRecordIterator(std::vector<std::string> &reads_paths, bool annotate) {
     _annotate = annotate;
     this->paths = reads_paths;
@@ -83,7 +82,6 @@ bool SequenceRecordIterator::load_file_at_position(int pos) {
         throw std::invalid_argument(fmt::format("File with path \"{}\" does not exist", paths[pos]));
     }
 
-    // Determine the file format
     try{
         std::string header = get_next_line();
         std::string sequence = get_next_line();

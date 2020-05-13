@@ -1,5 +1,4 @@
 import argparse
-import math
 from typing import List, Tuple, Dict
 
 import numpy as np
@@ -56,7 +55,7 @@ class KmerHistogramWithSpec:
             (90, 'xkcd:orange'),
             (95, 'y'),
             (100, 'b'),
-            (101, 'g')
+            (100.01, 'g')
         )).get
 
         skip_first = 2
@@ -73,7 +72,7 @@ class KmerHistogramWithSpec:
             bottoms += specificity_level_data
 
         bounds = [x[0] for x in bound_specificities]
-        subplot.legend(bars, [f'{low} ≤ x < {high}' for low, high in zip([50] + bounds, bounds)])
+        subplot.legend(bars, [f'{int(low)} ≤ x < {int(high)}' for low, high in zip([50] + bounds, bounds)])
 
     @staticmethod
     def plot_histograms(specificities: List[KmerSpecificities], max_coverage: int):
@@ -81,11 +80,11 @@ class KmerHistogramWithSpec:
             fig, axs = plt.subplots(len(specificities), sharex='col', sharey='row', num=None, figsize=(1920 // 80, 1080 // 80), dpi=80, facecolor='w', edgecolor='k')
 
             for row, (k_value, data) in enumerate(specificities):
-                axs[row].set_title(f'Occurrences of characteristic {k_value}-mers in reads')
+                axs[row].set_title(f'Occurrences of discriminative {k_value}-mers in reads')
                 KmerHistogramWithSpec.render_subplot(axs[row], data, max_coverage)
         else:
             for row, (k_value, data) in enumerate(specificities):
-                plt.title(f'Occurrences of characteristic {k_value}-mers in reads')
+                plt.title(f'Occurrences of discriminative {k_value}-mers in reads')
                 KmerHistogramWithSpec.render_subplot(plt, data, max_coverage)
         plt.show()
 
@@ -190,6 +189,7 @@ class ConnectionIntervalOverlap:
         plt.legend(loc="upper left")
         plt.title("Relation of read connection strength and overlaps")
         plt.show()
+
 
 class OverlapErrorHisto:
     def __init__(self):

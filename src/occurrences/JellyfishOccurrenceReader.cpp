@@ -1,12 +1,10 @@
 #include <fstream>
 #include <filesystem>
 #include <numeric>
+#include <random>
 #include "JellyfishOccurrenceReader.h"
 #include "../common/Utils.h"
 
-bool queue_compare(std::pair<std::string, std::ifstream*> &x, std::pair<std::string, std::ifstream*> &y){
-    return x.first > y.first;
-}
 
 CountPair parse_line(std::string &s){
     auto space_pos = s.find(' ');
@@ -15,53 +13,14 @@ CountPair parse_line(std::string &s){
     return {kmer, count};
 }
 
-std::string merge_sorted_files(std::vector<std::string> &file_paths, std::string output_path){
-    std::string line;
-
-    std::priority_queue<
-            std::pair<std::string, std::ifstream*>,
-            std::vector<std::pair<std::string, std::ifstream*>>,
-            std::function<bool(std::pair<std::string, std::ifstream*>&, std::pair<std::string, std::ifstream*>&)>
-    > q(queue_compare);
-
-    std::vector<std::ifstream*> files(file_paths.size());
-    for (int i = 0; i < file_paths.size(); i++){
-        files[i] = new std::ifstream;
-        files[i]->open(file_paths[i]);
-        getline(*files[i], line);
-        q.push({line, files[i]});
-    }
-
-    std::ofstream output;
-    output.open(output_path);
-    while (!q.empty()){
-        auto val_file_pair = q.top();
-        output << val_file_pair.first << std::endl;
-        q.pop();
-
-        if (getline(*val_file_pair.second, line)){
-            q.push({line, val_file_pair.second});
-        }
-    }
-    output.close();
-    for (auto file_ptr : files){
-        file_ptr->close();
-        free(file_ptr);
-    }
-    for (const auto& path : file_paths){
-        std::filesystem::remove(path);
-    }
-    return output_path;
-}
-
 JellyfishOccurrenceReader::JellyfishOccurrenceReader(std::vector<std::string> &paths, int k) {
     this->k = k;
 
     for (auto read_path : paths){
-        std::string sorted_path = read_path + "_kmers_sorted";
+        std::string sorted_path = fmt::format("{}_{}-mers_sorted", read_path, k);
         if (!std::filesystem::exists(sorted_path)){
-            auto partial_sorted_paths = create_sorted_files(read_path);
-            merge_sorted_files(partial_sorted_paths, sorted_path);
+            std::string jellyfish_cmd = fmt::format("./occurrences/run_jellyfish.sh {} {} {}", read_path, k, sorted_path);
+            run_command_with_input(jellyfish_cmd.c_str(), "");
         }
         sorted_paths.push_back(sorted_path);
     }
@@ -126,47 +85,6 @@ bool JellyfishOccurrenceReader::get_next_kmer(std::string &kmer, std::vector<int
     return true;
 }
 
-std::vector<std::string> JellyfishOccurrenceReader::create_sorted_files(std::string &read_file_path) {
-    std::string jellyfish_cmd = fmt::format("./occurrences/run_jellyfish.sh {} {}", read_file_path, k);
-    run_command_with_input(jellyfish_cmd.c_str(), "");
-
-    std::ifstream dumped_kmers;
-    dumped_kmers.open("mers.txt");
-
-    std::string kmer_line;
-    std::vector<std::string> sorted_files_paths;
-
-    std::vector<std::string> kmer_block;
-    int block_counter = 0;
-
-    auto sort_and_dump = [&kmer_block, &block_counter, &read_file_path](){
-        std::sort(kmer_block.begin(), kmer_block.end());
-
-        std::ofstream block_file;
-        std::string block_file_path = fmt::format("{}_kmers_{}", read_file_path, block_counter);
-        block_file.open(block_file_path);
-        for (const auto& kmer_count_pair : kmer_block){
-            block_file << kmer_count_pair << std::endl;
-        }
-        block_file.close();
-        kmer_block.clear();
-        return block_file_path;
-    };
-
-    while (getline(dumped_kmers, kmer_line)){
-        kmer_block.push_back(kmer_line);
-
-        if (kmer_block.size() == 1000000){
-            sorted_files_paths.push_back(sort_and_dump());
-            block_counter++;
-        }
-    }
-    if (!kmer_block.empty()) sorted_files_paths.push_back(sort_and_dump());
-
-    std::filesystem::remove("mers.txt");
-    return sorted_files_paths;
-}
-
 KmerSpecificity JellyfishOccurrenceReader::get_specificity(std::set<double> &thresholds){
     KmerSpecificity result;
     for (auto threshold : thresholds) {
@@ -189,8 +107,11 @@ KmerSpecificity JellyfishOccurrenceReader::get_specificity(std::set<double> &thr
     return result;
 }
 
-void JellyfishOccurrenceReader::export_kmers(int lower, int upper, std::string &path){
+void JellyfishOccurrenceReader::export_kmers(int lower, int upper, double percent, std::string &path){
     reset_reader();
+    std::random_device dev;
+    std::mt19937 rng(dev());
+    std::uniform_real_distribution<> dis(0.0, 1.0);
 
     std::ofstream out;
     out.open(path);
@@ -198,8 +119,11 @@ void JellyfishOccurrenceReader::export_kmers(int lower, int upper, std::string &
     std::vector<int> counts(sorted_paths.size(), 0);
     while (get_next_kmer(kmer, counts)) {
         int total_count = std::accumulate(counts.begin(), counts.end(), 0);
-        if (lower <= total_count && total_count <= upper){
+        if (lower <= total_count && total_count <= upper && dis(rng) < percent){
             out << fmt::format("{}\n", kmer);
+        }
+        if (std::count_if(counts.begin(), counts.end(), [](int c){ return c > 0; }) == 1){
+            //out << fmt::format("{}\n", kmer);
         }
     }
     out.close();

@@ -29,15 +29,13 @@ public:
 
     JellyfishOccurrenceReader(std::vector<std::string> &paths, int k);
 
-    std::vector<std::string> create_sorted_files(std::string &read_file_path);
-
     bool get_next_kmer(std::string &kmer, std::vector<int> &counts);
 
     void reset_reader();
 
     KmerSpecificity get_specificity(std::set<double> &thresholds);
 
-    void export_kmers(int lower, int upper, std::string &path);
+    void export_kmers(int lower, int upper, double percent, std::string &path);
 };
 
 

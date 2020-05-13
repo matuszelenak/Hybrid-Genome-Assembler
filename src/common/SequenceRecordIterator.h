@@ -27,9 +27,11 @@ struct GenomeReadData {
     std::string sequence = "";
     std::string qualities = "";
 
+    //DEBUG
     CategoryID category_id = 0;
     uint32_t start = 0;
     uint32_t end = 0;
+    //END DEBUG
 
     std::string fasta_string(){
         return fmt::format(">{}\n{}", this->header, this->sequence);
@@ -37,6 +39,12 @@ struct GenomeReadData {
 
     std::string fastq_string() {
         return fmt::format("@{}\n{}\n+\n{}", this->header, this->sequence, this->qualities);
+    }
+
+    std::string fastX_string() {
+        if (this->qualities.empty()){
+            return this->fasta_string();
+        } else return this->fastq_string();
     }
 };
 
