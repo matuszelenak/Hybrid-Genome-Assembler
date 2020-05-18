@@ -46,11 +46,16 @@ int main(int argc, char *argv[]) {
             ("read_paths", po::value<std::vector<std::string>>(&read_paths)->multitoken(), "Path to file with reads (FASTA or FASTQ)")
             ("kmers,k", po::value<std::string>(&kmer_path), "Path to text file with kmers")
             ("output,o", po::value<std::string>(&output_folder_path), "Path to folder with exported clusters")
-            ("core_size", po::value<int>(&config.core_component_min_size), "Minimum size for a core component")
-            ("core_conn", po::value<double>(&config.core_forming_connections), "Minimum score for a core component forming connection")
+            ("sc_max_size", po::value<int>(&config.scaffold_component_max_size), "Maximum size for a scaffold component")
+            ("sc_min_size", po::value<int>(&config.scaffold_component_min_size), "Minimum size for a scaffold component")
+            ("sc_fraction", po::value<double>(&config.scaffold_forming_fraction), "Minimum score for a scaffold component forming connection")
+            ("sc_score", po::value<ConnectionScore>(&config.scaffold_forming_score), "Minimum score for a scaffold component forming connection")
             ("tail_amplification", po::value<ConnectionScore>(&config.tail_amplification_min_score), "Minimal score for tail amplifying connections")
             ("core_enrichment", po::value<ConnectionScore>(&config.enrichment_connections_min_score), "Minimal score for connections enriching core components")
-            ("debug,d", po::bool_switch(&debug), "Debug flag. Treat read files as separate haplotype reads.");
+            ("spectral_dims", po::value<int>(&config.spectral_dims), "Number of dimensions for spectral embedding")
+            ("spectral,s", po::bool_switch(&config.force_spectral), "Forces the usage of spectral clustering on the entire dataset")
+            ("debug,d", po::bool_switch(&debug), "Debug flag. Treat read files as separate haplotype reads.")
+            ("threads,t", po::value<int>(&config.threads), "Number of threads to use");
 
     po::variables_map vm;
     po::store(po::command_line_parser(argc, argv).

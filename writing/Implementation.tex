@@ -1,0 +1,190 @@
+\chapter{Implementation}
+
+\section{Ensuring fast execution time}
+
+\subsection{$K$-mer compression}
+
+For purposes of tracking occurrences we compress the SDK  into a set of 32-bit $k$-mer IDs. It is reasonable to do so, as more than 4 billion SDKs would exceed the memory limitation of contemporary hardware anyway. In practice, we expect no more than several million of SDKs - for the EIL30 dataset, the exported number of $k$-mers was little over 2 million. Even if the SDK set cardinality was in the high millions, we recommend downsampling the set to keep the memory consumption of other parts of our algorithm within reasonable limits.
+
+\subsection{Representation of reads and components}
+
+Once we extracted the information about SDKs from a read, its sequence is no longer of any use to us and thus we can keep track of the read by a number identifier (such as its position in the input file)
+
+A component is a structure that contains:
+\begin{enumerate}
+	\item Its identifier. Initially, this identifier is identical to the identifier of a read used to create a component
+	\item List of reads (via their identifiers) contained in the component
+	\item Sorted list of SDKs (via their IDs) contained in the reads that the component contains
+\end{enumerate}
+
+
+\subsection{Fast connections via index}
+
+From the description of our methods it may not be clear how can a quadratic time complexity be avoided when calculating the connections between reads before running the first union-find. The answer lies in the use of a data structure we call \textit{KmerComponent} index.
+The structure is a two-dimensional vector - indexing into the top level is done via $k$-mer IDs mentioned earlier, while the inner vectors contain for an indexed $k$-mer sorted identifiers of the components in which that $k$-mer occurs.
+
+In order to calculate all the non-zero strength connections from one component $X$ to all other components $\{Y_1, Y_2...Y_n\}$, we can simply iterate through all the inner vectors of $k$-mers contained in $X$, and count for each $Y_i$ the number of $k$-mers it shares with $X$.
+
+\begin{figure}[H]
+\lstset{language=Python}
+\begin{lstlisting}[basicstyle=\small]
+def get_connections(from_component: ComponentID):
+    shared_kmer_counts : Dict[ComponentID, int]
+    for kmer in components[from_component].discriminative:
+        for component_id in kmer_component_index[kmer]:
+            if component_id in shared_kmer_counts:
+                shared_kmer_counts[component_id] += 1
+            else:
+                shared_kmer_counts[component_id] = 1
+
+    del shared_kmer_counts[from_component]
+
+    result = []
+    for component_id, shared_count in shared_kmer_counts.items():
+        result.append(from_component, component_id, shared_count)
+
+    return result
+
+\end{lstlisting}
+\caption{Method for calculation of connections from a component}
+\label{fig:get_connections}
+\end{figure}
+
+Runnin $get\_connections$ from every read/component and accumulating the results yields us all the non-zero connections between reads. In fact, every connection is going to be included twice - but this can easily be countered by having $get\_connections$ only calculate a connection if the tuple of identifiers for the two connected components is sorted in ascending/descending order.
+
+\subsection{Fast merging of components}
+In order to merge the components as dictated by the union-find and later spectral clustering, we need to perform two subtasks:
+\begin{itemize}
+\item Merge the components themselves
+\item Update the \textit{KmerComponent} index to match the new layout of components
+\end{itemize}
+
+On the input of our merge procedure is a list of K component identifiers that are to be merged together. We choose the first component in the list to be the one absorbing all the others. Appending all of the read identifiers in the absorbed K - 1 components is straightforward, when it comes to identifiers of SDKs however, we need to make sure that the absorption process is both speedy and maintains the sorted order. Luckily, merging of K sorted lists of total size N can be done in $\mathcal{O}(N \cdot \log_2 k)$ as following:
+
+\begin{figure}[H]
+\lstset{language=Python}
+\begin{lstlisting}[basicstyle=\small]
+def merge_sorted_arrays(arrays: List[List[Element]]):
+    heap = PriorityQueue()
+    next_position_for_array = [0 for _ in range(len(arrays))]
+    for i, arr in enumerate(arrays):
+        if next_position[arr_index] < len(arrays[arr_index]):
+            heap.push((arr[next_position[i]], i))
+            next_position[i] += 1
+
+    previous_element = None
+    result = []
+    while not heap.empty():
+        element, arr_index = heap.pop()
+
+        if element != previous_element:
+            result.append(element)
+            previous_element = element
+
+        if next_position[arr_index] < len(arrays[arr_index]):
+            next_element = arrays[arr_index][next_position[arr_index]]
+            heap.push((next_element, arr_index))
+            next_position[arr_index] += 1
+
+    return result
+\end{lstlisting}
+\caption{Method for merging of N sorted arrays}
+\label{fig:merge_sorted}
+\end{figure}
+
+During the merging of components, we also accumulate key-value pairs of ($k$-mer id, list of component ids) that are to be removed from the \textit{KmerComponent} index into a hash-map . Once the merging is complete, we iterate through this map and sort all of the value lists.
+Since for every $k$-mer (id) the list of components containing it is sorted in our index, we can purge all of the entries specified in the hash-map value for this $k$-mer in linear time as following:
+
+\begin{figure}[H]
+\lstset{language=Python}
+\begin{lstlisting}[basicstyle=\small]
+def get_filtered_list(original: list, for_removal: list):
+    i, j = len(original), len(for_removal)
+    filtered = []
+    while i < len(original) and j < len(for_removal):
+        if for_removal[j] < original[i]:
+            j += 1
+        elif original[i] < for_removal[j]:
+            filtered.append(original[i])
+            i += 1
+        else:
+            i += 1
+            j += 1
+    return filtered
+\end{lstlisting}
+\caption{Method for filtering out values out of a sorted list}
+\label{fig:merge_sorted}
+\end{figure}
+
+One tid-bit to mention is that we need not insert identifiers of the absorbing component into the index. Since the components doing the absorption become scaffold components,  the way we calculate connections is in a directed fashion (calculate from component to component) and the fact that in the future we will always be calculating connections only from the scaffold components, this just isn’t necessary.
+
+The part of our work where we determine connections between tails of vertices requires us to have another method for calculating connections. Once again, we make use of the method of merging $N$ sorted lists to obtain aggregate lists $X, Y$ of all the SDKs in the amplified tails $T_x$, $T_y$. The number of shared SDKs between the tails is equal to the length of intersection of $X$ and $Y$.
+
+\begin{figure}[H]
+\lstset{language=Python}
+\begin{lstlisting}[basicstyle=\small]
+def intersection_size(x: list, y: list):
+    x_index, y_index = 0, 0
+    Intersection_size = 0
+    while x_index < len(x) and y_index < len(y):
+        if x[x_index] < y[y_index]:
+            x_index += 1
+        elif y[y_index] < x[x_index]:
+            y_index += 1
+        else:
+            Intersection_size += 1
+            x_index += 1
+            y_index += 1
+            
+    return result
+\end{lstlisting}
+\caption{Method for calculating the size of intersection of two sorted arrays}
+\label{fig:merge_sorted}
+\end{figure}
+
+\section{Complexity analysis}
+
+Variables used in this section:
+\begin{itemize}
+	\item{$C$ - coverage of the used reads}
+	\item{$N$ - number of reads}
+	\item{$R$ - average read length}
+	\item{$K$ - number of SDKs}
+	\item{$O$ - average occurrence count of an SDK in the used reads}
+	\item{$S$ - number of created scaffold components}
+\end{itemize}
+
+By far the two most computationally expensive parts of our algorithm are the construction of the \textit{KmerComponent} index and calculation of connection for the first union-find step.
+
+\subsection{Construction of \textit{KmerComponent} index}
+
+In order to build the \textit{KmerComponent} index, we have to iterate all $N$ reads and save all the occurrences of SDK as well as their positions in the reads. Since our index is made out of vectors, every addition to it is performed in constant time. In the entire run of our algorithm, we only ever remove items from the index, so the memory usage of both the index, and the hash-map tracking $k$-mer positions in reads remains $\mathcal{O}(K \cdot O)$ .The dominating factor during index construction however is the number of bases in the input read files we have to iterate through - $\mathcal{O}(N \cdot R)$.
+
+\subsection{Calculating connections}
+
+In order to calculate all connections, we need to run the $get\_connections$ from all the vertices. Since every read contains on average $\frac{K \cdot O}{N}$ SDKs, and for every one of SDKs we need to iterate its $O$ average occurrences, we end up with $\mathcal{O}(N \cdot \frac{K \cdot O}{N} \cdot O) = \mathcal{O}(K \cdot O^2)$ time complexity of calculating all the connections. As for memory complexity, each read overlaps on average $C - 1$ other reads, meaning that in case of uncontaminated SDK set it also connects with an average of $C - 1$ other reads, resulting in an $\mathcal{O}(N \cdot C)$ memory required to store all the connections. In our experiments however, small SDK contamination did not increase this amount noticeably.
+
+\subsection{Union-find and merging of components}
+Union-find yielding the scaffold components requires us to sort the connections in $\mathcal{O}(N \cdot C \cdot \log_2{N \cdot C})$ time, and subsequently perform $\mathcal{O}(N \cdot C)$ join operations in $\mathcal{O}(N \cdot C \cdot \alpha^*(N))$ where $\alpha^*$ is an inverse ackermann function.
+
+If we assume that the union-find includes all $N$ vertices in its join operations, the component merging step requires us to perform $N$ merging operations on lists of average size $\frac{K /cdot O}{N}$. We already showed that merging together $M$ components can be done in $\mathcal{O}(M \cdot \frac{K \cdot O}{N})$, and as such merging of $N$ components will take $\mathcal{O}(K \cdot O)$.
+
+Subsequent update of the \textit{KmerComponent} index requires us to purge at worst $O$ items from every one of $K$ vectors of \textit{KmerComponent} index. As we demonstrated, this can be done in $\mathcal{O}(K \cdot O)$.
+
+\subsection{Finding tails in scaffold components}
+
+For each component of size $M$, we run BFS 3 times and then iterate through the $M$ computed distances to find tail vertices. This has both time and memory complexity of $\mathcal{O}(M)$ per component, totalling $\mathcal{O}(N)$O for all components combined.
+
+To amplify the tails, we need to run $get\_connections$ from the tail vertices, of which there is a constant number for each of $S$ components. In total, calculating connections takes $\mathcal{O}(S \cdot \frac{K \cdot O}{N} \cdot O)$ operations. Since every read overlaps with an average of $C - 1$ other reads, the total number of vertices in tails of all components amounts to $\mathcal{O}(S \cdot C)$ items.
+
+To obtain SDKs from the amplified tails, we need to merge $\mathcal{O}(S \cdot C)$ lists of SDKs of average length $K \cdot \frac{O}{N}$, therefore requiring $\mathcal{O}(S \cdot C \cdot K \cdot \frac{O}{N})$ operations. 
+
+\subsection{Spectral clustering}
+
+Lastly, to calculate connections between tails requires $\mathcal{O}(S^2 \cdot C \cdot K \cdot \frac{O}{N})$ operations, as for pair of tails we compute the intersection of two $\mathcal{O}(C \cdot K \cdot \frac{O}{N})$ sized arrays.
+
+The input to the spectral clustering is a $\mathcal{O}(S^2)$ sized adjacency matrix of connections, and the computation of eigenvalues (which takes $\mathcal{O}(S^3)$ time ) does not exceed this memory complexity. Subsequent merging of scaffold components takes at most $\mathcal{O}(S \cdot K)$ operations.
+
+\subsection{Core component enrichment}
+
+To compute connections from $M$ core components, we perform at most $\mathcal{O}(M \cdot K \dot S)$ operations (at worst every core component contains all of the SDKs) yielding at most $\mathcal{O}(M \dot N)$ connections. Subsequent merging of components takes at worst $\mathcal{O}(M \cdot K)$ time.

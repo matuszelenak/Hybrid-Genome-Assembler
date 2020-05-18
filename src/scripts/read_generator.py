@@ -174,8 +174,8 @@ def generate_mutated_sequence_pair(genome_size: int, difference_rate: float) -> 
         id=mutated_sequence_name
     )
 
-    SeqIO.write(original_record, f'../data/sequences/{original_sequence_name}.fasta', 'fasta')
-    SeqIO.write(mutated_record, f'../data/sequences/{mutated_sequence_name}.fasta', 'fasta')
+    SeqIO.write(original_record, f'./{original_sequence_name}.fasta', 'fasta')
+    SeqIO.write(mutated_record, f'./{mutated_sequence_name}.fasta', 'fasta')
 
     return original_record, mutated_record
 
@@ -205,7 +205,7 @@ else:
 
 backend: ReadGeneratorBackend = get_backend(args.backend)
 for seq in sequences:
-    prefix = os.path.join(DATA_DIR, 'reads', f'{seq.id}_{args.backend}_{args.coverage}x')
+    prefix = f'{seq.id}_{args.backend}_{args.coverage}x'
     read_count = backend.reads_from_sequence(
         seq,
         prefix,

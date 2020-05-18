@@ -1,0 +1,86 @@
+\chapter{Evaluation}
+
+For ENP75 dataset, our algorithm outputs as little as 4 components of the characteristics specified in table \ref{table:final_comp}.
+
+\begin{table}[]
+\begin{tabular}{|l|l|l|}
+\hline
+\textbf{MG1655 reads} & \textbf{UTI89 reads} & \textbf{Assembled contig sizes} \\ \hline
+634                        & 34345                      & 2019783, 2228493, 163042, 19549 \\ \hline
+22958                      & 0                          & 2985850                         \\ \hline
+12714                      & 0                          & 1663641                         \\ \hline
+83                         & 4521                       & 666732                          \\ \hline
+\end{tabular}
+\caption{Final components of the ENP75 dataset}
+\label{table:final_comp}
+\end{table}
+
+
+We can see that for the largest components, the purity is maintained above 98\%, and the coverage of the regions spanned by components was enough for long contigs to be formed.
+
+To assemble the sequence, we used a pipeline consisting of
+\begin{enumerate}
+	\item{Mapping the reads using Minimap2}
+	\item{Assembling the mapped reads using Miniasm}
+	\item{Polishing of the assembled contigs using Racon}
+\end{enumerate}
+
+For illustration we present a dot plot in figure \ref{fig:dot} resulting from megablast\cite{megablast} alignment of the contigs in the first listed component to both MG1655 and UTI89 reference genome.
+
+\begin{figure}
+\includegraphics[width=400bp]{figures/dot.png}
+\caption{On the left alignment to UTI89, on the right alignment to MG1655 reference}
+\label{fig:dot}
+\end{figure}
+
+The results for aligning all the other contigs were similar - alignment with the organism whose reads dominate in the component yields over 99\% identity score every time compared to no more than 97.6\% with the organism the reads of which are in minority.
+
+\section{Hybrid genome application}
+
+For the sake of simplicity of explanation, we presented the application of our methods only to a case of a diploid organism. Neither the methods nor our implementation however warrant a restriction to two haplotypes. In fact, haplotyping is only a better defined instance of a more general problem of categorization of what is called a “hybrid genome”. For example, some yeast strains undergo hybridization events, where different strains exchange fragments of genomes, increasing their genomic complexity \cite{lopandic2018saccharomyces}.
+
+At our disposal are Illumina, PacBio and Nanopore reads of a novel yeast strain Magnusiomyces spicifer the reference genome of which is as of yet unknown, but we suspect it carries a hybrid genome. Presented on Figure \ref{fig:spicifer_histo} is a histogram of $k$-mers obtained from the Illumina reads.
+
+\begin{figure}
+\includegraphics[width=400bp]{figures/MagSpi_17mers.png}
+\caption{$k$-mer histogram for Magnusiomyces spicifer}
+\label{fig:spicifer_histo}
+\end{figure}
+
+Two well defined peaks might indicate a hybrid genome. We select kmers occurring between 10 and 78 times, and downsample them to 40\%, yielding a little over 5 million SDKs.
+
+Our algorithm however runs into problems during the first union-find phase. Even with manually selected very high threshold value for selection of connections (>500 shared SDKs), our algorithm immediately collapses most of the affected reads into a single component. After the final enrichment, this single component contains 89\% of all the reads in the dataset.
+
+This outcome offers itself to a few possible scenarions:
+\begin{itemize}
+	\item{The right peak in the histogram \ref{fig:spicifer_histo} does not actually represent $k$-mers that are shared between several copies of chromosomes, but rather $k$-mers that exist in a section of a genome that repeats itself twice. However, we consider this unlikely}
+	\item{The union-find step of our algorithm is too sensitive to incorrect connections with high strength. This is possible, since even one unfortunately placed incorrect connection can collapse two large pure components into one that is mixed}
+	\item{The SDK set is more contaminated than the results from simulated reads would lead us to believe. It is entirely possible that the safe threshold of connection strengths we envisioned when devising our methodology does not exist at all}
+\end{itemize}
+
+In conclusion, we think the best course of action in to future is to make our algorithm more resilient to fuzzy information. 
+Revisiting spectral clustering as a method used directly on reads may be viable. As we point out in the next chapter, every read in a dataset with coverage $C$ overlaps with an average of $C - 1$ other reads in case all the SDKs are discriminative. 
+This provides hope that even with mild contamination, the adjacency matrix of a graph of reads could be sparse. Paired with a hardware acceleration, such as provided by CUDA\cite{cuda} and utilizing related software tools such as cuSPARSE\cite{cusparse}, a practical running time might be achievable even for real datasets.
+
+
+\section{Running time}
+
+The program was run on an Intel Core i5-8250U CPU with 32GB of RAM.
+Memory consumption at no point exceeded 6GB. Table \ref{table:runtime} presents a list of elapsed time for each part of our algorithm.
+
+\begin{table}[]
+\begin{tabular}{|l|l|l|}
+\hline
+\textbf{}                         & \textbf{ENP75} & \textbf{EPB75} \\ \hline
+\textbf{Index construction}       & 49225ms        & 40794ms        \\ \hline
+\textbf{All connections}          & 4353ms         & 2105ms         \\ \hline
+\textbf{Merging into scaffold c.} & 8751ms         & 5352ms         \\ \hline
+\textbf{Tail connecions}          & 7281ms         & 3107ms         \\ \hline
+\textbf{Spectral clustering}      & 183ms          & 5ms            \\ \hline
+\textbf{Merging scaffold c.}      & 1914ms         & 629ms          \\ \hline
+\textbf{Enrichment connections}   & 116ms          & 136ms          \\ \hline
+\textbf{Merging into core c.}     & 2634ms         & 2781ms         \\ \hline
+\end{tabular}
+\caption{Listing of run times for each part of our pipeline}
+\label{table:runtime}
+\end{table}

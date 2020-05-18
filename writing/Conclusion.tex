@@ -1,0 +1,8 @@
+\chapter{Conclusion}
+
+In this work we present a pipeline for categorization of mixed haplotype sequencing data by utilizing high-quality short-reads as means to extract haplotype-specific information usable as a guide for categorization of long reads. We have successfully demonstrated that for simulated datasets constructed from two E.coli strains in place of haplotype references it is possible to recover large, highly consistent sets of reads. Assembling the reads contained in mentioned sets results in very long contigs with excellent mapping to the reference genome.
+
+Our methods however show limitations when it comes to a real dataset with unknown reference genome. 
+Applying our algorithm to a novel yeast strain did not yield any usable information, as most of the reads were clustered together, demonstrating the fragility of some parts of our pipeline. Future research and testing needs to be done to determine ways of making it more robust against impurities on the input.\\\\\\
+
+Our software is open-source and available on Github\\ \url{https://github.com/matuszelenak/Hybrid-Genome-Assembler/}.

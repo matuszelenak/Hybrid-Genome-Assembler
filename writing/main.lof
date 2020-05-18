@@ -1,0 +1,35 @@
+\babel@toc {english}{}
+\addvspace {10\p@ }
+\addvspace {10\p@ }
+\addvspace {10\p@ }
+\contentsline {figure}{\numberline {3.1}{\ignorespaces SNP\cite {snp_img}}}{6}{figure.3.1}% 
+\contentsline {figure}{\numberline {3.2}{\ignorespaces $k$-mer histogram of EIL30 dataset with too small k value. Peaks on the right represent $k$-mers that occur more than once in one haplotype}}{7}{figure.3.2}% 
+\contentsline {figure}{\numberline {3.3}{\ignorespaces Algorithm for determining }}{8}{figure.3.3}% 
+\contentsline {figure}{\numberline {3.4}{\ignorespaces $k$-mer histogram of EIL30 dataset with k=19}}{9}{figure.3.4}% 
+\contentsline {figure}{\numberline {3.5}{\ignorespaces $k$-mer histogram of EIL30 dataset with k=19 and exported SDKs highlighted by checkerboard}}{10}{figure.3.5}% 
+\contentsline {figure}{\numberline {3.6}{\ignorespaces $k$-mer histogram of ENP75 dataset. There is noticeable contamination in the left peak.}}{10}{figure.3.6}% 
+\addvspace {10\p@ }
+\contentsline {figure}{\numberline {4.1}{\ignorespaces Example of spectral embedding. On left side force-directed layout, on right side embedding into 2D space}}{12}{figure.4.1}% 
+\contentsline {figure}{\numberline {4.2}{\ignorespaces On top, histogram of connections in RNP50 color coded by their correctness. On bottom, the relation between number of shared SDKs and a proportion of correct connections.}}{13}{figure.4.2}% 
+\contentsline {figure}{\numberline {4.3}{\ignorespaces Same type of histogram as \ref {fig:artificial_conn}, but for ENP75}}{14}{figure.4.3}% 
+\contentsline {figure}{\numberline {4.4}{\ignorespaces Relation between number of shared SDKs between reads and the size of their overlap (as determined by read metadata)}}{15}{figure.4.4}% 
+\contentsline {figure}{\numberline {4.5}{\ignorespaces Scaffold component rendered using its spanning tree, with edges connecting reads}}{16}{figure.4.5}% 
+\contentsline {figure}{\numberline {4.6}{\ignorespaces Method that overlaps intervals, forming larger interval(s)}}{18}{figure.4.6}% 
+\contentsline {figure}{\numberline {4.8}{\ignorespaces Error distribution of calculated overlap lengths vs. real overlap lengths}}{21}{figure.4.8}% 
+\contentsline {figure}{\numberline {4.7}{\ignorespaces Method for calculating approximate overlap between reads}}{21}{figure.4.7}% 
+\contentsline {figure}{\numberline {4.9}{\ignorespaces Method for calculating distances from one vertex in the spanning tree to all the other}}{22}{figure.4.9}% 
+\contentsline {figure}{\numberline {4.10}{\ignorespaces Highlighted sets of vertices $Tail_{left}$ and $Tail_{right}$}}{24}{figure.4.10}% 
+\contentsline {figure}{\numberline {4.11}{\ignorespaces Method for amplifying a tail of a spanning tree}}{25}{figure.4.11}% 
+\contentsline {figure}{\numberline {4.12}{\ignorespaces Graph of scaffold components and tail connections between them. Correct categorization on the left, clusters found by spectral clustering on the right. Edges with strengths lower than 50 not displayed for brevity}}{26}{figure.4.12}% 
+\contentsline {figure}{\numberline {4.13}{\ignorespaces On top, histogram of connections in ENP75 color coded by their correctness. On bottom, the relation between number of shared SDKs and a proportion of correct connections.}}{27}{figure.4.13}% 
+\contentsline {figure}{\numberline {4.14}{\ignorespaces Histogram of coverage within components before enrichment}}{27}{figure.4.14}% 
+\contentsline {figure}{\numberline {4.15}{\ignorespaces Histogram of coverage within components after enrichment. We can see that enrichment visibly improved the overal coverage in the last component}}{28}{figure.4.15}% 
+\addvspace {10\p@ }
+\contentsline {figure}{\numberline {5.1}{\ignorespaces On the left alignment to UTI89, on the right alignment to MG1655 reference}}{30}{figure.5.1}% 
+\contentsline {figure}{\numberline {5.2}{\ignorespaces $k$-mer histogram for Magnusiomyces spicifer}}{30}{figure.5.2}% 
+\addvspace {10\p@ }
+\contentsline {figure}{\numberline {6.1}{\ignorespaces Method for calculation of connections from a component}}{34}{figure.6.1}% 
+\contentsline {figure}{\numberline {6.2}{\ignorespaces Method for merging of N sorted arrays}}{35}{figure.6.2}% 
+\contentsline {figure}{\numberline {6.3}{\ignorespaces Method for filtering out values out of a sorted list}}{36}{figure.6.3}% 
+\contentsline {figure}{\numberline {6.4}{\ignorespaces Method for calculating the size of intersection of two sorted arrays}}{37}{figure.6.4}% 
+\addvspace {10\p@ }

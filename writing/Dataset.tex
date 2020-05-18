@@ -1,0 +1,48 @@
+\chapter{Used datasets and prerequisites}
+
+\section{Used datasets}
+
+In order to confidently validate if our methods are successful, we need to know the parental haplotypes of our subject organism, so that we can align the categorized reads to a reference. Obtaining read data of a diploid organism for which we also know the parental haplotype genomes is however difficult. As will become apparent later, we moreover require reads of the same sample from two different sequencing platforms, which narrows down the options for real datasets even further. As a consequence, we decided to treat two E.coli strains as our reference haplotypes and use reads created by simulation software.
+
+The strains used were MG1655 and UTI89. These strains were chosen for several reasons:
+\begin{enumerate}
+\item{High quality assemblies exist - lack of unknown bases means our read simulators won’t create gaps between reads that would result in multiple contings during assembly, making not only the evaluation of our methods difficult, but also rendering some of our methods invalid}
+\item{The genomes of these strains are very similar (megablast\cite{megablast} reports 97.87\% identity), which in case of successful categorization gives hope for categorizations of real haplotypes, as those are highly similar as well. Human genome for example can reach heterozygosity as low as 0.1\%\cite{koren2018complete}}
+\end{enumerate}
+
+To simulate reads, we used the following tools:
+\begin{enumerate}
+	\item{Art Illumina for Illumina HiSeQ reads\cite{huang2012art}}
+	\item{Nanosim-H for Oxford Nanopore reads\cite{yang2017nanosim} \cite{nanosimh}}
+	\item{PaSS for PacBio SMRT reads\cite{zhang2019pass}}
+\end{enumerate}
+
+All but the Art Illumina sequencers have built-in error profiles for E.coli bacteria, so we expect the simulated reads to be close to reality.
+One of the main reasons for using simulated reads for the development of our methods is the fact that they also include useful metadata, such as the position in the reference sequence where the reads originate from. We use this particular data point extensively for tuning our algorithm.
+
+In addition to real organism genomes, we also create a small (500000 bases), randomly generated sequence and its slightly mutated (3\% substitution rate) copy for demonstration purposes in cases where computational complexity of algorithms does not allow for use of real, larger genomes. Reads from this sequence are of course, simulated as well.
+
+All the datasets are listed in Table \ref{table:datasets}.
+
+\begin{table}[]
+\begin{tabular}{|l|l|l|l|l|}
+\hline
+\textbf{Name} & \textbf{Reference A} & \textbf{Reference B} & \textbf{Simulator} & \textbf{Coverage} \\ \hline
+EIL30         & E.coli MG1655        & E.coli UTI89         & Art Illumina       & 30x               \\ \hline
+ENP75         & E.coli MG1655        & E.coli UTI89         & Nanosim-H          & 75x               \\ \hline
+EPB75         & E.coli MG1655        & E.coli UTI89         & PaSS               & 75x               \\ \hline
+RIL30         & Random 500000b       & Random 500000b       & Art Illumina       & 30x               \\ \hline
+RNP           & Random 500000b       & Random 500000b       & Nanosim-H          & 50x               \\ \hline
+\end{tabular}
+\caption{List of used datasets}
+\label{table:datasets}
+\end{table}
+
+
+\subsection{Prerequisites}
+
+In order for the methodology introduced in our work to function properly, several prerequisites have to be met by the input data:
+\begin{enumerate}
+	\item{For reads used for calculation of discriminative kmers, there should not be a significant amplification bias of the sequenced genome. We will be using Illumina reads for this purpose. The PCR amplification in Illumina sequencing seems to mostly affect GC-rich regions of genome\cite{aird2011analyzing}}
+	\item{For reads used in categorization it should hold that for every pair of neighboring SNPs, there exists at least one read that contains them both, otherwise construction of one contig per haplotype chromosome will not be possible. For Nanopore and PacBio reads that average several thousands bases per read, this should not pose a problem even in cases when haplotypes have high identity}
+\end{enumerate}

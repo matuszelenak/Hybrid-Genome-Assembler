@@ -117,14 +117,19 @@ void JellyfishOccurrenceReader::export_kmers(int lower, int upper, double percen
     out.open(path);
     std::string kmer;
     std::vector<int> counts(sorted_paths.size(), 0);
+    uint32_t discriminative_count = 0;
+    uint32_t exported_count = 0;
     while (get_next_kmer(kmer, counts)) {
         int total_count = std::accumulate(counts.begin(), counts.end(), 0);
         if (lower <= total_count && total_count <= upper && dis(rng) < percent){
             out << fmt::format("{}\n", kmer);
-        }
-        if (std::count_if(counts.begin(), counts.end(), [](int c){ return c > 0; }) == 1){
-            //out << fmt::format("{}\n", kmer);
+            exported_count++;
+
+            if (std::count_if(counts.begin(), counts.end(), [](int c){ return c > 0; }) == 1){
+                discriminative_count++;
+            }
         }
     }
+    std::cout << fmt::format("{} out of {} exported kmers are discriminative", discriminative_count, exported_count);
     out.close();
 }

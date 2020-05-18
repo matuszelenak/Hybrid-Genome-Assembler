@@ -46,13 +46,14 @@ int main(int argc, char *argv[]) {
     std::ofstream subsampled_file;
     std::string cluster_file_path = fmt::format("{}_subsampled", s);
 
-    subsampled_file.open(cluster_file_path);
+    //subsampled_file.open(cluster_file_path);
 
     std::optional<GenomeReadData> read;
     while ((read = reader.get_next_record()) != std::nullopt){
-        if (dis(rng) < percentage && read->sequence.find('N') == std::string::npos){
-            subsampled_file << read->fastq_string() << std::endl;
-        }
+        std::cout << fmt::format("{}\n", read->sequence.length());
+//        if (dis(rng) < percentage && read->sequence.find('N') == std::string::npos){
+//            subsampled_file << read->fastq_string() << std::endl;
+//        }
     }
-    subsampled_file.close();
+    //subsampled_file.close();
 }

@@ -1,0 +1,39 @@
+\BOOKMARK [0][-]{chapter*.8}{Introduction}{}% 1
+\BOOKMARK [1][-]{section.0.1}{DNA}{chapter*.8}% 2
+\BOOKMARK [1][-]{section.0.2}{Chromosomes, diploid and polyploid organisms}{chapter*.8}% 3
+\BOOKMARK [1][-]{section.0.3}{Genome sequencing and assembly}{chapter*.8}% 4
+\BOOKMARK [0][-]{chapter.1}{Problem statement and related work}{}% 5
+\BOOKMARK [1][-]{section.1.1}{Problem statement}{chapter.1}% 6
+\BOOKMARK [1][-]{section.1.2}{Related work}{chapter.1}% 7
+\BOOKMARK [0][-]{chapter.2}{Used datasets and prerequisites}{}% 8
+\BOOKMARK [1][-]{section.2.1}{Used datasets}{chapter.2}% 9
+\BOOKMARK [2][-]{subsection.2.1.1}{Prerequisites}{section.2.1}% 10
+\BOOKMARK [0][-]{chapter.3}{Discriminative k-mers}{}% 11
+\BOOKMARK [1][-]{section.3.1}{Definition and characteristics}{chapter.3}% 12
+\BOOKMARK [1][-]{section.3.2}{Determining the value of k}{chapter.3}% 13
+\BOOKMARK [1][-]{section.3.3}{Computation of histogram}{chapter.3}% 14
+\BOOKMARK [1][-]{section.3.4}{Discriminative k-mer contamination}{chapter.3}% 15
+\BOOKMARK [0][-]{chapter.4}{Read categorization}{}% 16
+\BOOKMARK [1][-]{section.4.1}{Spectral clustering}{chapter.4}% 17
+\BOOKMARK [1][-]{section.4.2}{Forming scaffold components}{chapter.4}% 18
+\BOOKMARK [1][-]{section.4.3}{Component intervals}{chapter.4}% 19
+\BOOKMARK [1][-]{section.4.4}{Connecting scaffold components}{chapter.4}% 20
+\BOOKMARK [2][-]{subsection.4.4.1}{Longest path in a spanning tree}{section.4.4}% 21
+\BOOKMARK [1][-]{section.4.5}{Enrichment of core components}{chapter.4}% 22
+\BOOKMARK [0][-]{chapter.5}{Evaluation}{}% 23
+\BOOKMARK [1][-]{section.5.1}{Hybrid genome application}{chapter.5}% 24
+\BOOKMARK [1][-]{section.5.2}{Running time}{chapter.5}% 25
+\BOOKMARK [0][-]{chapter.6}{Implementation}{}% 26
+\BOOKMARK [1][-]{section.6.1}{Ensuring fast execution time}{chapter.6}% 27
+\BOOKMARK [2][-]{subsection.6.1.1}{K-mer compression}{section.6.1}% 28
+\BOOKMARK [2][-]{subsection.6.1.2}{Representation of reads and components}{section.6.1}% 29
+\BOOKMARK [2][-]{subsection.6.1.3}{Fast connections via index}{section.6.1}% 30
+\BOOKMARK [2][-]{subsection.6.1.4}{Fast merging of components}{section.6.1}% 31
+\BOOKMARK [1][-]{section.6.2}{Complexity analysis}{chapter.6}% 32
+\BOOKMARK [2][-]{subsection.6.2.1}{Construction of KmerComponent index}{section.6.2}% 33
+\BOOKMARK [2][-]{subsection.6.2.2}{Calculating connections}{section.6.2}% 34
+\BOOKMARK [2][-]{subsection.6.2.3}{Union-find and merging of components}{section.6.2}% 35
+\BOOKMARK [2][-]{subsection.6.2.4}{Finding tails in scaffold components}{section.6.2}% 36
+\BOOKMARK [2][-]{subsection.6.2.5}{Spectral clustering}{section.6.2}% 37
+\BOOKMARK [2][-]{subsection.6.2.6}{Core component enrichment}{section.6.2}% 38
+\BOOKMARK [0][-]{chapter.7}{Conclusion}{}% 39

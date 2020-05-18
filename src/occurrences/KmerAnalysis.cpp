@@ -39,15 +39,16 @@ uint64_t get_approximate_kmer_count(SequenceRecordIterator &read_iterator, int k
 
 
 std::pair<int, uint64_t > get_unique_k_length(SequenceRecordIterator &read_iterator){
-    uint64_t previous_count = get_approximate_kmer_count(read_iterator, 11);
-    int k = 13;
+    int k = 11;
+    long long previous_count = get_approximate_kmer_count(read_iterator, k);
     std::cout << fmt::format("k=11 : ~{} kmers", previous_count) << std::endl;
     while (k < 33){
-        uint64_t count = get_approximate_kmer_count(read_iterator, k);
-        std::cout << fmt::format("k={} : ~{} kmers", k, count) << std::endl;
-        if (count < previous_count || ((double)std::min(count, previous_count) / (double)std::max(count, previous_count)) > 0.9){
-            return {k, count};
+        long long count = get_approximate_kmer_count(read_iterator, k + 2);
+        std::cout << fmt::format("k={} : ~{} kmers", k + 2, count) << std::endl;
+        if (((double)abs(count - previous_count) / ((double)(count + previous_count) / 2.0)) < 0.1){
+            return {k, previous_count};
         }
+
         k += 2;
         previous_count = count;
     }

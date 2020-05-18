@@ -1,0 +1,16 @@
+\chapter{Problem statement and related work}
+
+\section{Problem statement}
+
+Given a set of reads $R$ and an unknown function $h : R \rightarrow \{A, B\}$ assigning a read to its haplotype, we are tasked with partitioning $R$ into two or more disjoint subsets $R_1, R_2, ... R_n$ such that:
+\begin{enumerate}
+	\item{$n$ is minimized}
+	\item{$abs(|\{ r \in R_i : h(r) = A \}| - |\{ r \in R_i : h(r) = B \}|)$ is maximized}
+\end{enumerate}
+
+In other words, we want to create at best two subsets of $R$, while keeping the proportion of reads from one haplotype in every subset as high as possible.
+
+\section{Related work}
+
+We draw inspiration from the "Complete assembly of parental haplotypes with trio binning"\cite{koren2018complete}. In their work, authors managed to isolate haplotype genomes of a hybrid offspring between two cattle subspecies by identifying haplotype-specific $k$-mers from high-quality reads of both the parents, and using them to bin long reads from the offspring.
+The main distinguishing factor of our work is that we do not have access to the parental genomes of the sequenced offspring and are instead attempting to identify haplotype-specific $k$-mers from the high-quality reads of the offspring itself, relying on statistical characteristics emerging from sequence amplification in the process of sequencing.

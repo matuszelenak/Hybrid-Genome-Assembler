@@ -1,0 +1,40 @@
+\babel@toc {english}{}
+\contentsline {chapter}{Introduction}{1}{chapter*.8}% 
+\contentsline {section}{\numberline {0.1}DNA}{1}{section.0.1}% 
+\contentsline {section}{\numberline {0.2}Chromosomes, diploid and polyploid organisms}{1}{section.0.2}% 
+\contentsline {section}{\numberline {0.3}Genome sequencing and assembly}{2}{section.0.3}% 
+\contentsline {chapter}{\numberline {1}Problem statement and related work}{3}{chapter.1}% 
+\contentsline {section}{\numberline {1.1}Problem statement}{3}{section.1.1}% 
+\contentsline {section}{\numberline {1.2}Related work}{3}{section.1.2}% 
+\contentsline {chapter}{\numberline {2}Used datasets and prerequisites}{4}{chapter.2}% 
+\contentsline {section}{\numberline {2.1}Used datasets}{4}{section.2.1}% 
+\contentsline {subsection}{\numberline {2.1.1}Prerequisites}{5}{subsection.2.1.1}% 
+\contentsline {chapter}{\numberline {3}Discriminative $k$-mers}{6}{chapter.3}% 
+\contentsline {section}{\numberline {3.1}Definition and characteristics}{6}{section.3.1}% 
+\contentsline {section}{\numberline {3.2}Determining the value of $k$}{7}{section.3.2}% 
+\contentsline {section}{\numberline {3.3}Computation of histogram}{8}{section.3.3}% 
+\contentsline {section}{\numberline {3.4}Discriminative $k$-mer contamination}{9}{section.3.4}% 
+\contentsline {chapter}{\numberline {4}Read categorization}{11}{chapter.4}% 
+\contentsline {section}{\numberline {4.1}Spectral clustering}{12}{section.4.1}% 
+\contentsline {section}{\numberline {4.2}Forming scaffold components}{14}{section.4.2}% 
+\contentsline {section}{\numberline {4.3}Component intervals}{17}{section.4.3}% 
+\contentsline {section}{\numberline {4.4}Connecting scaffold components}{20}{section.4.4}% 
+\contentsline {subsection}{\numberline {4.4.1}Longest path in a spanning tree}{20}{subsection.4.4.1}% 
+\contentsline {section}{\numberline {4.5}Enrichment of core components}{26}{section.4.5}% 
+\contentsline {chapter}{\numberline {5}Evaluation}{29}{chapter.5}% 
+\contentsline {section}{\numberline {5.1}Hybrid genome application}{30}{section.5.1}% 
+\contentsline {section}{\numberline {5.2}Running time}{31}{section.5.2}% 
+\contentsline {chapter}{\numberline {6}Implementation}{33}{chapter.6}% 
+\contentsline {section}{\numberline {6.1}Ensuring fast execution time}{33}{section.6.1}% 
+\contentsline {subsection}{\numberline {6.1.1}$K$-mer compression}{33}{subsection.6.1.1}% 
+\contentsline {subsection}{\numberline {6.1.2}Representation of reads and components}{33}{subsection.6.1.2}% 
+\contentsline {subsection}{\numberline {6.1.3}Fast connections via index}{34}{subsection.6.1.3}% 
+\contentsline {subsection}{\numberline {6.1.4}Fast merging of components}{34}{subsection.6.1.4}% 
+\contentsline {section}{\numberline {6.2}Complexity analysis}{37}{section.6.2}% 
+\contentsline {subsection}{\numberline {6.2.1}Construction of \textit {KmerComponent} index}{37}{subsection.6.2.1}% 
+\contentsline {subsection}{\numberline {6.2.2}Calculating connections}{38}{subsection.6.2.2}% 
+\contentsline {subsection}{\numberline {6.2.3}Union-find and merging of components}{38}{subsection.6.2.3}% 
+\contentsline {subsection}{\numberline {6.2.4}Finding tails in scaffold components}{38}{subsection.6.2.4}% 
+\contentsline {subsection}{\numberline {6.2.5}Spectral clustering}{39}{subsection.6.2.5}% 
+\contentsline {subsection}{\numberline {6.2.6}Core component enrichment}{39}{subsection.6.2.6}% 
+\contentsline {chapter}{\numberline {7}Conclusion}{40}{chapter.7}% 

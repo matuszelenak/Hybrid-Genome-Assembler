@@ -151,17 +151,13 @@ void KmerOccurrenceCounter::export_kmers_in_range(int lower_bound, int upper_bou
         path = fmt::format("./data/kmers/{}_{}-{}__kmers.bin", reader->meta.filename, lower_bound, upper_bound);
     }
 
-    uint64_t exported_kmer_count = 0;
-    for (auto it = histogram.lower_bound(lower_bound); it != histogram.upper_bound(upper_bound + 1); it++) {
-        exported_kmer_count += it->second;
-    }
-    std::cout << "Exporting ~" << exported_kmer_count << " kmers\n";
-
-    bloom::BloomFilter<Kmer> exported_kmers(exported_kmer_count, 0.01);
     bloom::BloomFilter<Kmer> processed(expected_num_of_kmers, 0.01);
     reader->rewind();
 
-    auto export_kmers_thread = [this, &exported_kmers, &processed, lower_bound, upper_bound](){
+    auto out = std::ofstream(path);
+
+    std::mutex export_mut;
+    auto export_kmers_thread = [this, &processed, lower_bound, upper_bound, &out, &export_mut](){
         std::optional<GenomeReadData> read;
         while ((read = reader->get_next_record()) != std::nullopt) {
             KmerIterator it = KmerIterator(read->sequence, k);
@@ -173,15 +169,14 @@ void KmerOccurrenceCounter::export_kmers_in_range(int lower_bound, int upper_bou
                     total_count += filters[category_id]->get_count(it.current_kmer);
                 }
                 if (lower_bound <= total_count && total_count <= upper_bound) {
-                    exported_kmers.add(it.current_kmer);
+                    export_mut.lock();
+                    out << it.number_to_sequence(it.current_kmer);
+                    export_mut.unlock();
                 }
             }
         }
     };
     run_in_threads(export_kmers_thread);
 
-    auto out = std::ofstream(path, std::ios::out | std::ios::binary);
-    out.write((char*)&k, sizeof(k));
-    exported_kmers.dump(out);
     out.close();
 }

@@ -6,6 +6,7 @@
 #include <fmt/format.h>
 #include "occurrences/JellyfishOccurrenceReader.h"
 #include "common/Plotting.h"
+#include "occurrences/KmerAnalysis.h"
 
 namespace po = boost::program_options;
 
@@ -35,12 +36,17 @@ int main(int argc, char *argv[]) {
     }
 
     if (read_paths.empty()) throw std::invalid_argument("You need to specify paths to read files");
+    if (!vm.contains("k-size")){
+        SequenceRecordIterator reader(read_paths, true);
+        auto k_count_pair = get_unique_k_length(reader);
+        k = k_count_pair.first;
+    };
 
-    auto counter = JellyfishOccurrenceReader(read_paths, vm["k-size"].as<int>());
+    auto counter = JellyfishOccurrenceReader(read_paths, k);
 
     std::set<double> spec_thresholds = {70, 85, 90, 95, 99, 100, 100.01};
     KmerSpecificity spec = counter.get_specificity(spec_thresholds);
-    std::map<int, KmerSpecificity> spec_map = {{vm["k-size"].as<int>(), spec}};
+    std::map<int, KmerSpecificity> spec_map = {{k, spec}};
     plot_kmer_specificity(spec_map, 200);
 
     int lower, upper;

@@ -1,0 +1,46 @@
+\chapter*{Introduction}
+
+\addcontentsline{toc}{chapter}{Introduction}
+
+\section{DNA}
+
+
+All known living creatures store the information essential for their correct functioning (such as growth and reproduction) in a molecule called deoxyribonucleic acid (or DNA for short).
+
+This molecule consists among other parts of four building blocks called bases. These are adenine, thymine, cytosine and guanine (for brevity annotated as $A, T, C, G$ respectively) . DNA can be visually imagined as a helix structure of two strands. Each strand contains a sequence of aforementioned bases and it encodes the functions of the carrier organism. The two strands complement one another, with base pairs $\{A, T\}$ and $\{C, G\}$ connecting them along their entire length \cite{wiki:dna}.
+
+For purposes of our work, we will refer to the genome as a set of strings consisting of letters $\{A, C, G, T\}$. Each such string is called a DNA sequence, or sequence for short. Note, that to obtain the full information contained in the genome, we need to know the composition of only one of the strands, as the other can be determined through complementary base pairs.
+
+\section{Chromosomes, diploid and polyploid organisms}
+
+The genome of an organism consists of one or more DNA molecules. Each molecule is encased in a structure called chromosome. Chromosomes themselves have no physical connections to one another. For the purpose of our work, we will use the term “chromosome” to refer to both the organic structure and the sequence contained within interchangeably.
+
+Simple prokaryotic organisms such as bacteria have only one chromosome, humans for example have 23 pairs of chromosomes and there are species of fish that have over a hundred.
+
+Chromosome pairs are of particular interest for us: such pairs are created during reproduction, when the offspring organism receives one copy of each chromosome from both parents. Lifeforms with this behaviour are called diploid, because the offspring ends up with two copies of each chromosome. A set of chromosomes inherited from one parent is called a haplotype.
+
+From the description above, it closely follows that determining a complete haplotype for a multi-chromosome organism from the offspring genome alone proves difficult, if not straight up impossible. While it is in theory possible to find haplotype pairs for all the chromosomes, determining which of the two chromosome sequences belongs to each parent is a coin toss, unless we also possess the reference genome of both the parents with which we can perform alignment.
+
+\section{Genome sequencing and assembly}
+
+In an effort to retrieve a genome, many different sequencing methods have been developed. While every method works differently, in the end their output can be converted into base-called reads, which for our purposes can be simply represented as strings of letters $\{A, C, G, T\}$. In theory, each such read can be mapped back to an interval of bases in the reference genome. In practice however, sequencing errors often render such mapping difficult.
+
+In order to increase the likelihood that every base position (nucleotide) in the genome has been read, prior to sequencing the extracted DNA samples are amplified in the process that creates copies of DNA fragments\cite{massung2005dna}. 
+Amplification is performed to a degree where a desired coverage is obtained, where coverage refers to the expected number of occurrences of any one base position in the resulting genome reads.
+Coverage for a specific genome of length $G$ and a sequencing platform producing $N$ reads with average length $R$ can be therefore be computed as $\frac{N \cdot R}{G}$. 
+
+Another benefit of amplification is that by having several reads of a particular base position sequencing errors can be corrected.
+
+Sequencing methods differ in parameters such as error distribution, read length distribution, cost per sequenced base etc. Table \ref{table:sequencing} presents selected few methods (and associated devices) along with their characteristics. \cite{kchouk2017generations}.
+
+\begin{table}[]
+\begin{tabular}{|l|l|l|l|l|}
+\hline
+\textbf{Platform} & \textbf{Instrument} & \textbf{Avg. r. length} & \textbf{Error type} & \textbf{Error rate} \\ \hline
+Illumina          & HiSeq               & 150                      & mismatch            & 0.1\%                      \\ \hline
+PacBio            & RS II P6 C4         & 13500                    & indel               & 12\%                       \\ \hline
+Oxford Nanopore   & MinION Mk           & 9545                     & indel/mismatch      & 12\%                       \\ \hline
+\end{tabular}
+\caption{List of sequencing technolofies}
+\label{table:sequencing}
+\end{table}

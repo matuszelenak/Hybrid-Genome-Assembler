@@ -1,0 +1,127 @@
+\newcommand{\noopsort}[1]{} \newcommand{\printfirst}[2]{#1}
+  \newcommand{\singleletter}[1]{#1} \newcommand{\switchargs}[2]{#2#1}
+\begin{thebibliography}{10}
+
+\bibitem{cuda}
+Cuda - high performance computing.
+\newblock \url{https://developer.nvidia.com/cuda-zone}.
+\newblock Accessed: 18.5.2020.
+
+\bibitem{cusparse}
+cusparse, the cuda sparse matrix library.
+\newblock \url{https://docs.nvidia.com/cuda/cusparse/index.html}.
+\newblock Accessed: 18.5.2020.
+
+\bibitem{wiki:dna}
+Dna.
+\newblock \url{https://en.wikipedia.org/wiki/DNA}.
+\newblock Accessed: 15.5.2017.
+
+\bibitem{clustering_lib}
+Libclustering.
+\newblock \url{https://github.com/pthimon/clustering}.
+\newblock Accessed: 18.5.2020.
+
+\bibitem{megablast}
+Megablast.
+\newblock \url{https://blast.ncbi.nlm.nih.gov/Blast.cgi}.
+\newblock Accessed: 18.5.2020.
+
+\bibitem{nanosimh}
+Nanosim-h.
+\newblock \url{https://pypi.org/project/NanoSim-H/}.
+\newblock Accessed: 18.5.2020.
+
+\bibitem{snp}
+Snps.
+\newblock \url{https://ghr.nlm.nih.gov/primer/genomicresearch/snp}.
+\newblock Accessed: 18.5.2020.
+
+\bibitem{diameter}
+Tree diameter.
+\newblock \url{https://www.geeksforgeeks.org/diameter-n-ary-tree-using-bfs/}.
+\newblock Accessed: 18.5.2020.
+
+\bibitem{aird2011analyzing}
+Daniel Aird, Michael~G Ross, Wei-Sheng Chen, Maxwell Danielsson, Timothy
+  Fennell, Carsten Russ, David~B Jaffe, Chad Nusbaum, and Andreas Gnirke.
+\newblock Analyzing and minimizing pcr amplification bias in illumina
+  sequencing libraries.
+\newblock {\em Genome biology}, 12(2):R18, 2011.
+
+\bibitem{snp_img}
+{Clinical Scientist}.
+\newblock Population health research and disease management – the frontier,
+  2015.
+\newblock Accessed: 18.5.2020.
+
+\bibitem{flajolet2007hyperloglog}
+Philippe Flajolet, {\'E}ric Fusy, Olivier Gandouet, and Fr{\'e}d{\'e}ric
+  Meunier.
+\newblock Hyperloglog: the analysis of a near-optimal cardinality estimation
+  algorithm.
+\newblock 2007.
+
+\bibitem{huang2012art}
+Weichun Huang, Leping Li, Jason~R Myers, and Gabor~T Marth.
+\newblock Art: a next-generation sequencing read simulator.
+\newblock {\em Bioinformatics}, 28(4):593--594, 2012.
+
+\bibitem{kchouk2017generations}
+Mehdi Kchouk, Jean-Fran{\c{c}}ois Gibrat, and Mourad Elloumi.
+\newblock Generations of sequencing technologies: from first to next
+  generation.
+\newblock {\em Biology and Medicine}, 9(3), 2017.
+
+\bibitem{koren2018complete}
+Sergey Koren, Arang Rhie, Brian~P Walenz, Alexander~T Dilthey, Derek~M
+  Bickhart, Sarah~B Kingan, Stefan Hiendleder, John~L Williams, Timothy~PL
+  Smith, and Adam Phillippy.
+\newblock Complete assembly of parental haplotypes with trio binning.
+\newblock {\em BioRxiv}, page 271486, 2018.
+
+\bibitem{lopandic2018saccharomyces}
+Ksenija Lopandic.
+\newblock Saccharomyces interspecies hybrids as model organisms for studying
+  yeast adaptation to stressful environments.
+\newblock {\em Yeast}, 35(1):21--38, 2018.
+
+\bibitem{luo2003spectral}
+Bin Luo, Richard~C Wilson, and Edwin~R Hancock.
+\newblock Spectral embedding of graphs.
+\newblock {\em Pattern recognition}, 36(10):2213--2230, 2003.
+
+\bibitem{marccais2011fast}
+Guillaume Mar{\c{c}}ais and Carl Kingsford.
+\newblock A fast, lock-free approach for efficient parallel counting of
+  occurrences of k-mers.
+\newblock {\em Bioinformatics}, 27(6):764--770, 2011.
+
+\bibitem{massung2005dna}
+Robert~F Massung.
+\newblock Dna amplification: Current technologies and applications.
+\newblock {\em Emerging infectious diseases}, 11(2):357, 2005.
+
+\bibitem{tarkoma2011theory}
+Sasu Tarkoma, Christian~Esteve Rothenberg, and Eemil Lagerspetz.
+\newblock Theory and practice of bloom filters for distributed systems.
+\newblock {\em IEEE Communications Surveys \& Tutorials}, 14(1):131--155, 2011.
+
+\bibitem{yang2017nanosim}
+Chen Yang, Justin Chu, Ren{\'e}~L Warren, and Inan{\c{c}} Birol.
+\newblock Nanosim: nanopore sequence read simulator based on statistical
+  characterization.
+\newblock {\em GigaScience}, 6(4):gix010, 2017.
+
+\bibitem{zelnik2005self}
+Lihi Zelnik-Manor and Pietro Perona.
+\newblock Self-tuning spectral clustering.
+\newblock In {\em Advances in neural information processing systems}, pages
+  1601--1608, 2005.
+
+\bibitem{zhang2019pass}
+Wenmin Zhang, Ben Jia, and Chaochun Wei.
+\newblock Pass: a sequencing simulator for pacbio sequencing.
+\newblock {\em BMC bioinformatics}, 20(1):1--7, 2019.
+
+\end{thebibliography}
