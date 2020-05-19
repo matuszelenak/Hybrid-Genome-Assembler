@@ -35,7 +35,7 @@ bloom::BloomFilter<Kmer> KmerOccurrenceCounter::count_non_singletons(){
     };
 
     reader->rewind();
-    run_in_threads(count_non_singletons_thread);
+    run_in_threads(count_non_singletons_thread, 8);
 
     return second_occurrence;
 }
@@ -64,7 +64,7 @@ void KmerOccurrenceCounter::compute_filters() {
             }
         }
     };
-    run_in_threads(compute_filters_thread);
+    run_in_threads(compute_filters_thread, 8);
 }
 
 KmerSpecificity KmerOccurrenceCounter::get_specificity(std::vector<double> &thresholds) {
@@ -105,7 +105,7 @@ KmerSpecificity KmerOccurrenceCounter::get_specificity(std::vector<double> &thre
             }
         }
     };
-    run_in_threads(get_specificity_thread);
+    run_in_threads(get_specificity_thread, 8);
     return specificity;
 }
 
@@ -133,7 +133,7 @@ Histogram KmerOccurrenceCounter::get_histogram() {
             }
         }
     };
-    run_in_threads(get_histogram_thread);
+    run_in_threads(get_histogram_thread, 8);
 
     histogram.clear();
     for (int i = 1; i <= UINT16_MAX; i++) {
@@ -176,7 +176,7 @@ void KmerOccurrenceCounter::export_kmers_in_range(int lower_bound, int upper_bou
             }
         }
     };
-    run_in_threads(export_kmers_thread);
+    run_in_threads(export_kmers_thread, 8);
 
     out.close();
 }

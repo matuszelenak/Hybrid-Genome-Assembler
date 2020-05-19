@@ -17,8 +17,8 @@ file(GLOB CLUSTERING_SRC_FILES ${PROJECT_SOURCE_DIR}/clustering/*.*pp)
 file(GLOB LIB_CLUSTERING_SRC_FILES ${PROJECT_SOURCE_DIR}/lib/clustering/*.cpp)
 
 # Kmer occurrence executable
-add_executable(occurrences kmer_occurrences.cpp ${OCCURRENCES_SRC_FILES} ${COMMON_SRC_FILES} ${LIB_SRC_FILES})
-TARGET_LINK_LIBRARIES( occurrences LINK_PUBLIC ${Boost_LIBRARIES} stdc++fs pthread fmt)
+add_executable(bf_occurrences kmer_occurrences.cpp ${OCCURRENCES_SRC_FILES} ${COMMON_SRC_FILES} ${LIB_SRC_FILES})
+TARGET_LINK_LIBRARIES( bf_occurrences LINK_PUBLIC ${Boost_LIBRARIES} stdc++fs pthread fmt)
 
 
 # Jellyfish based occurrence counting
@@ -27,8 +27,8 @@ TARGET_LINK_LIBRARIES( jf_occurrences LINK_PUBLIC ${Boost_LIBRARIES} stdc++fs pt
 
 
 ## Clustering executable
-add_executable(clustering read_clustering.cpp ${CLUSTERING_SRC_FILES} ${COMMON_SRC_FILES} ${LIB_SRC_FILES} ${LIB_CLUSTERING_SRC_FILES})
-TARGET_LINK_LIBRARIES( clustering LINK_PUBLIC ${Boost_LIBRARIES} stdc++fs pthread fmt)
+add_executable(categorization read_clustering.cpp ${CLUSTERING_SRC_FILES} ${COMMON_SRC_FILES} ${LIB_SRC_FILES} ${LIB_CLUSTERING_SRC_FILES})
+TARGET_LINK_LIBRARIES( categorization LINK_PUBLIC ${Boost_LIBRARIES} stdc++fs pthread fmt)
 
 
 ## Sub-sampling reads
