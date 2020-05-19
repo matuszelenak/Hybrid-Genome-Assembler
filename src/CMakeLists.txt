@@ -8,7 +8,7 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3 -march=native -fconcepts")
 FIND_PACKAGE( Boost 1.65 COMPONENTS program_options date_time system REQUIRED regex )
 INCLUDE_DIRECTORIES( ${Boost_INCLUDE_DIR} )
 
-add_subdirectory(lib/fmt EXCLUDE_FROM_ALL)
+# add_subdirectory(lib/fmt EXCLUDE_FROM_ALL)
 
 file(GLOB COMMON_SRC_FILES ${PROJECT_SOURCE_DIR}/common/*.cpp)
 file(GLOB LIB_SRC_FILES ${PROJECT_SOURCE_DIR}/lib/*.*pp)
