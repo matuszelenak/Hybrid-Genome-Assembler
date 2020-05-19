@@ -5,6 +5,8 @@
 #include <string>
 #include <queue>
 #include <boost/function.hpp>
+#include <map>
+#include <set>
 
 typedef std::pair<std::string, int> CountPair;
 typedef double UpperSpecificity;
